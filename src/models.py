@@ -500,7 +500,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         compiled model
     '''
 
-    def __get_nth_pool_layer(n, config):
+    '''def __get_nth_pool_layer(n, config):
         n_pool = 0
         pool_layer = 0
         for l in range(len(config.layers) - 1):
@@ -510,32 +510,43 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                     break
                 n_pool += 1
 
-        return pool_layer
+        return pool_layer'''
 
-    def Branch(l, n_add, first_branch, branches, amend_ib_n=True):
+    def Branch(l, n_add, first_branch, branches, amend_ib_n=True,
+        return_names=False):
         inbound = config.layers[l + n_add]
         outbound = config.layers[l + 1 + n_add]
 
         remove = True
+
+        if return_names:
+            names_list = []
 
         for b in range(branches):
             if first_branch < branches:
                 # n_add = __add_mask_layer(l, n_add, masks, b)
                 n_add, name = Ip(l, n_add, masks[l][b])
                 # n_add = __add_drop_layer(l, n_add, inbound_name, 0)
-                n_add, _ = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
+                n_add, name = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
                     [[[inbound.name, 0], [name, 0]]])
                 first_branch += 1
             else:
                 # n_add = __add_mask_layer(l, n_add, masks, b)
                 n_add, name = Ip(l, n_add, masks[l][b])
                 # n_add = __add_drop_layer(l, n_add, inbound_name, b)
-                n_add, _ = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
+                n_add, name = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
                     [[[inbound.name, b], [name, 0]]])
+
+            if return_names:
+                names_list.append(name)
 
             if amend_ib_n:
                 remove = amend_inbound_nodes(l, n_add, outbound, remove)
-        return n_add, first_branch
+
+        if return_names:
+            return n_add, first_branch, names_list
+        else:
+            return n_add, first_branch
 
     def Ip(l, n_add, constant, dtype=tf.float32, name=None):
         ip_op = Input(tensor=K.constant(constant, dtype=dtype))
@@ -637,6 +648,8 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     first_branch = 0
     branches = len(masks[-1])
 
+    first_lambdas, first_concat = None, None
+
     for l in range(len(masks) - 1):
         if len(masks[l]) > 0:
             outbound = config.layers[l + 1 + n_add]
@@ -666,10 +679,20 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                     else:
                         l_ib_n.append([[concat_ib_n[0][0], b], [name, 0]])
                     outbound.inbound_nodes = np.array(l_ib_n)
+
+                if not first_concat:
+                    first_concat = outbound
             else:
                 if config.layers[l + n_add].class_name != 'Concatenate':
-                    n_add, first_branch = Branch(
-                        l, n_add, first_branch, branches)
+                    if not first_lambdas:
+                        n_add, first_branch, first_lambdas = Branch(
+                            l, n_add, first_branch, branches, True, True)
+                    else:
+                        n_add, first_branch = Branch(
+                            l, n_add, first_branch, branches)
+
+                    # n_add, first_branch = Branch(
+                    #    l, n_add, first_branch, branches)
                 else:
                     remove = True
                     for b in range(branches):
@@ -686,10 +709,17 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     n_add = Gather(
         len(init_config.layers) - 1, n_add, branches, masks)
 
-    if tile:
+    """if tile:
         config.layers[359].inbound_nodes[0][0][0] = 'l_312'
         config.layers[359].inbound_nodes[1][0][0] = 'l_314'
-        config.layers[359].inbound_nodes[2][0][0] = 'l_316'
+        config.layers[359].inbound_nodes[2][0][0] = 'l_316'"""
+
+    if first_concat and first_lambdas:
+        for b in range(branches):
+            first_concat.inbound_nodes[b][0][0] = first_lambdas[b]
+    else:
+        raise ValueError, \
+            'first_concat and first_lambdas must both not be None'
 
     # return config
 

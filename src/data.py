@@ -35,7 +35,8 @@ BODY_PARTS = [
     "LEar"
 ]
 
-DATA_ROOT = '/home/albert/github/tensorflow/data/'
+# DATA_ROOT = '/home/albert/github/tensorflow/data/'
+DATA_ROOT = '/home/albert/research/vbranch/data/'
 if not os.path.exists(DATA_ROOT):
     DATA_ROOT = '/home/ubuntu/albert/data/'
 

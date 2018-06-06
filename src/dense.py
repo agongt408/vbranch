@@ -34,14 +34,16 @@ import os
 from subpixel import SubPixelUpscaling
 
 import sys
-sys.path.append('/home/albert/github/DenseNet/')
-sys.path.append('/home/ubuntu/DenseNet/')
+# sys.path.append('/home/albert/github/DenseNet/')
+sys.path.insert(0, '/home/albert/research/DenseNet/')
+sys.path.insert(0, '/home/ubuntu/DenseNet/')
 from densenet import preprocess_input
 
 DENSENET_121_WEIGHTS_PATH = r'https://github.com/titu1994/DenseNet/' + \
                             'releases/download/v3.0/DenseNet-BC-121-32.h5'
 
-WEIGHTS_ROOT = '/home/albert/github/tensorflow/src/weights/'
+# WEIGHTS_ROOT = '/home/albert/github/tensorflow/src/weights/'
+WEIGHTS_ROOT = '/home/albert/research/vbranch/code/src/weights/'
 if not os.path.exists(WEIGHTS_ROOT):
     WEIGHTS_ROOT = '/home/ubuntu/albert/src/weights/'
 

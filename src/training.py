@@ -4,7 +4,7 @@ import os
 from keras.models import model_from_json
 
 def save_weights(model, root, it):
-    MODELS_ROOT = '/home/albert/github/tensorflow/models/'
+    MODELS_ROOT = '/home/albert/research/vbranch/models/'
     if not os.path.exists(MODELS_ROOT):
         MODELS_ROOT = '/home/ubuntu/albert/models/'
 

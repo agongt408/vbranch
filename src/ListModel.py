@@ -2,78 +2,12 @@ from keras.layers import *
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 from keras.layers.pooling import GlobalAveragePooling2D
 from keras.models import Model
-import keras.backend as K
 
 import numpy as np
 
-'''class ListModel:
-    def __init__(self, base):
-        self.config = ModelConfig()
-        self.config.from_model(base)
-        self.added_layers = {}
-
-    def insert(self, l, layer):
-        if l in self.added_layers.keys():
-            n = max(self.added_layers[l].keys()) + 1
-            self.added_layers[l][n] = layer
-        else:
-            self.added_layers[l][0] = layer
-
-    def amend_ib_n(name, outbound, remove):
-        l_ib_n = outbound.inbound_nodes.tolist()
-        if remove:
-            l_ib_n.pop(0)
-            remove = False
-        l_ib_n.append([[name, 0]])
-        outbound.inbound_nodes = np.array(l_ib_n)
-        return remove
-
-    def compile(self):
-
-
-    def reconstruct():
-        self.compile()
-        return self.config.reconstruct_model()[0]
-
-    def Branch(l, n_add, first_branch, branches, amend_inbound=True,
-            layer_names=False):
-
-        inbound = config.layers[l + n_add]
-        outbound = config.layers[l + 1 + n_add]
-
-        remove = True
-
-        if layer_names:
-            names_list = []
-
-        for b in range(branches):
-            ib_list = [[]]
-            n_add, name = Ip(l, n_add, masks[l][b], name='m')
-            ib_list[0].append([name, 0])
-
-            ib_list[0].append([inbound.name,
-                0 if first_branch <= branches else b])
-
-            func = lambda x : tf.multiply(x[0], x[1])
-            n_add, name = Lmda(l, n_add, func, ib_list, name='lmda')
-
-            if layer_names:
-                names_list.append(name)
-
-            if first_branch < branches:
-                first_branch += 1
-            if first_branch == branches:
-                first_branch += 1
-
-            if amend_inbound:
-                remove = amend_inbound_nodes(name, outbound,remove)
-        if layer_names:
-            return n_add, first_branch, names_list
-        else:
-            return n_add, first_branch'''
-
-
 class ModelConfig:
+    '''Model must be sequential'''
+
     def __init__(self, layers=[], input_layers=[], output_layers=[],
                 name='Model', weights=[]):
         self.layers = layers
@@ -143,15 +77,11 @@ class ModelConfig:
 
         if name is None:
             name = 'ip_' + str(n + 1)
-        else:
-            name = str(name) + '_' + str(n + 1)
 
         layer = Layer('Input', op, [[[]]], name)
         self.layers.insert(n + 1, layer)
 
         self.input_layers.append(name)
-
-        return name
 
     def set_output(self, n):
         '''sets the nth layer as the output, discard all following layers'''
@@ -173,8 +103,6 @@ class ModelConfig:
 
         if name is None:
             name = 'l_' + str(n + 1)
-        else:
-            name = str(name) + '_' + str(n + 1)
 
         if inbound_nodes:
             layer = Layer(class_name, op, np.array(inbound_nodes), name)
@@ -211,8 +139,6 @@ class ModelConfig:
         if outbound_nodes is None and next_layer is None:
             self.output_layers = [name]
 
-        return name
-
     def reconstruct_model(self, name='Model', init_weights=True,
                             output_idx=None):
         x_list = [{'tensor' : [self.layers[0].op.get_output_at(0)],
@@ -242,6 +168,7 @@ class ModelConfig:
                                     [int(layer.inbound_nodes[ib_n][ip][1])])
 
             print layer.name, inbound_tensor_list
+            # print 'here'
 
             if len(inbound_tensor_list) == 1:
                 if len(inbound_tensor_list[0]) == 0:
@@ -252,8 +179,6 @@ class ModelConfig:
                                         inbound_tensor_list[0][0])],
                                     'name' : layer.name})
                 else:
-                    for b in inbound_tensor_list:
-                        print layer.op(b).get_shape().as_list()
                     x_list.append({'tensor' : [layer.op(
                                         inbound_tensor_list[0])],
                                     'name' : layer.name})
@@ -309,17 +234,3 @@ class Layer:
         self.op = op
         self.inbound_nodes = inbound_nodes
         self.name = name
-
-'''class Ip(Layer):
-    def Ip(self, constant, dtype=tf.float32, name=None):
-        super(Ip, self).__init__() Input(tensor=K.constant(constant), dtype=dtype)
-        self.l = 0
-        self.n_add = 0
-
-class Lmda(Layer):
-    def Lmda(self, func, name=None):
-        drop_op = Lambda(func)
-        name = config.add_layer('Lambda', drop_op, l + n_add,
-                        inbound_list, [], name=name)
-        n_add += 1
-        return n_add, name'''

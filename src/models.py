@@ -251,7 +251,470 @@ def MergeNet_Dense(P_param=1, K_param=1, weights=None, shape=(256,128),
 
     return model
 
+"""
+def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
+                tile=False, comp=False):
+    '''
+    Generates compiled MergeNet-Drop model given a base model and
+    list of binary masks.
 
+    Args:
+        base: base model
+        masks: list of binary masks
+        ...
+        weights: path to model weights file (np array)
+        dense_only: if true, only apply masks to final dense block,
+            i.e., after global average pooling layer
+
+    Returns:
+        compiled keras model
+    '''
+
+    def get_nth_pool_layer(n, config):
+        n_pool = 0
+        pool_layer = 0
+        for l in range(len(config.layers) - 1):
+            if config.layers[l + 1].class_name.find('Pooling') > -1:
+                if n_pool == n:
+                    pool_layer = l + 1
+                    break
+                n_pool += 1
+
+        return pool_layer
+
+    def Branch(l, n_add, first_branch, branches, amend_inbound=True,
+            layer_names=False):
+
+        inbound = config.layers[l + n_add]
+        outbound = config.layers[l + 1 + n_add]
+
+        remove = True
+
+        if layer_names:
+            names_list = []
+
+        for b in range(branches):
+            ib_list = [[]]
+            # n_add, name = Ip(l, n_add, masks[l][b], name='m')
+            n_add, name = Ip(l, n_add, masks[l][b])
+            ib_list[0].append([name, 0])
+
+            ib_list[0].append([inbound.name,
+                0 if first_branch <= branches else b])
+
+            func = lambda x : tf.multiply(x[0], x[1])
+            # n_add, name = Lmda(l, n_add, func, ib_list, name='lmda')
+            n_add, name = Lmda(l, n_add, func, ib_list)
+
+            if layer_names:
+                names_list.append(name)
+
+            if first_branch < branches:
+                first_branch += 1
+            if first_branch == branches:
+                first_branch += 1
+
+            if amend_inbound:
+                remove = amend_inbound_nodes(name, outbound,remove)
+        if layer_names:
+            return n_add, first_branch, names_list
+        else:
+            return n_add, first_branch
+
+    def Ip(l, n_add, constant, dtype=tf.float32, name=None):
+        ip_op = Input(tensor=K.constant(constant, dtype=dtype))
+        name = config.add_input(ip_op, l + n_add, name=name)
+        n_add += 1
+        return n_add, name
+
+    def Lmda(l, n_add, func, inbound_list, name=None):
+        drop_op = Lambda(func)
+        name = config.add_layer('Lambda', drop_op, l + n_add,
+                        inbound_list, [], name=name)
+        n_add += 1
+        return n_add, name
+
+    def amend_inbound_nodes(name, outbound, remove):
+        l_ib_n = outbound.inbound_nodes.tolist()
+
+        if remove:
+            l_ib_n.pop(0)
+            remove = False
+
+        l_ib_n.append([[name, 0]])
+        outbound.inbound_nodes = np.array(l_ib_n)
+
+        return remove
+
+    def Gather(l, n_add, branches, masks):
+        def gather(indices, dim, x):
+            '''
+            Gather elements of 'tensor' according to 'indices'
+
+            Args:
+                tensor: Tensor to extract from
+                indices: list of indices with last dim equal to the
+                    rank of 'tensor'
+                l: value of last dim to reshape indexed tensor
+            '''
+            sl = tf.gather_nd(x, tf.cast(indices, tf.int32))
+            sl = tf.reshape(sl, (-1, tf.cast(dim, tf.int32)[0]))
+            return sl
+
+        def get_indices(mask):
+            indices = []
+            where = np.where(mask > 0)[0]
+            for i in range(P_param * K_param):
+                idx = where.reshape((where.shape[0],1))
+                idx = np.concatenate([np.ones((where.shape[0],1)) \
+                                    * i, idx], axis=1)
+                indices += idx.astype(np.int32).tolist()
+            return indices
+
+        inbound = config.layers[l + n_add]
+
+        for b in range(branches):
+            ib_n = [[]]
+            indices = get_indices(masks[-1][b])
+            n_add, name = Ip(l, n_add, indices, dtype=tf.int32)
+            ib_n[0].append([name, 0])
+
+            n_add, name = Ip(
+                l, n_add, [np.where(masks[-1][b] == 1)[0].shape[0]])
+            ib_n[0].append([name, 0])
+
+            ib_n[0].append([inbound.name, b])
+
+            n_add, _ = Lmda(l, n_add,
+                lambda x : gather(x[0], x[1], x[2]), ib_n)
+        return n_add
+
+    init_config = ModelConfig()
+    init_config.from_model(base)
+    # _, x_list = init_config.reconstruct_model()
+
+    # Reset config so that each layer starts with one output node
+    config = ModelConfig()
+    config.from_model(base)
+
+    n_add, first_branch, branches = 0, 0, len(masks[-1])
+    first_lambdas, first_concat = None, None
+
+    for l in range(len(masks) - 1):
+        if len(masks[l]) > 0:
+            inbound = config.layers[l + n_add]
+            outbound = config.layers[l + 1 + n_add]
+            remove = True
+            shape = (P_param*K_param,)+base.layers[l].output_shape[1:]
+
+            if outbound.class_name == 'Concatenate':
+                concat_ib_n = None
+                l_ib_n = outbound.inbound_nodes.tolist()
+
+                n_add, first_branch, names_list = Branch(
+                        l, n_add, first_branch, branches, False, True)
+
+                for b in range(branches):
+                    if remove:
+                        concat_ib_n = l_ib_n.pop(0)
+                        remove = False
+
+                    if first_branch <= 2* branches:
+                        l_ib_n.append(
+                            [concat_ib_n[0], [names_list[b], 0]])
+                        first_branch += 1
+                    else:
+                        l_ib_n.append([[concat_ib_n[0][0], b],
+                            [names_list[b], 0]])
+
+                outbound.inbound_nodes = np.array(l_ib_n)
+
+                if not first_concat:
+                    first_concat = outbound
+            else:
+                if not first_lambdas:
+                    n_add, first_branch, first_lambdas = Branch(
+                        l, n_add, first_branch, branches, True, True)
+                else:
+                    n_add, first_branch = Branch(
+                        l, n_add, first_branch, branches)
+
+                if config.layers[l + n_add].class_name == 'Concatenate':
+                    remove = True
+                    for b in range(branches):
+                        l_ib_n = outbound.inbound_nodes.tolist()
+
+                        if remove:
+                            l_ib_n.pop(0)
+                            remove = False
+
+                        l_ib_n.append([[config.layers[l + n_add].name, b]])
+                        outbound.inbound_nodes = np.array(l_ib_n)
+
+    # Gather embeddings from final layer
+    n_add = Gather(len(init_config.layers) - 1, n_add, branches, masks)
+
+    if first_concat and first_lambdas:
+        for b in range(branches):
+            first_concat.inbound_nodes[b][0][0] = first_lambdas[b]
+
+    # return config
+
+    output_idx = []
+    for b in range(branches - 1, -1, -1):
+        output_idx.append(-(3*b + 1))
+
+    model_rec, _ = config.reconstruct_model(
+                    output_idx=output_idx, name='MergeNet_Drop')
+
+    if len(model_rec.outputs) == 1:
+        model = Model(model_rec.input, model_rec.outputs)
+    else:
+        print model_rec.outputs
+        model = Model(model_rec.input, concatenate(model_rec.outputs, axis=1))
+
+    if weights is not None:
+        model.set_weights(np.load(weights))
+
+    if comp:
+        _compile(model, 'triplet_drop', P_param, K_param, masks[-1])
+
+    return model"""
+
+
+def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
+                tile=False, comp=False):
+    '''
+    Generates compiled MergeNet-Drop model given a base model and
+    list of binary masks.
+
+    Args:
+        base: base model
+        masks: list of binary masks
+        ...
+        weights: path to model weights file (np array)
+        dense_only: if true, only apply masks to final dense block,
+            i.e., after global average pooling layer
+
+    Returns:
+        compiled model
+    '''
+
+    def __get_nth_pool_layer(n, config):
+        n_pool = 0
+        pool_layer = 0
+        for l in range(len(config.layers) - 1):
+            if config.layers[l + 1].class_name.find('Pooling') > -1:
+                if n_pool == n:
+                    pool_layer = l + 1
+                    break
+                n_pool += 1
+
+        return pool_layer
+
+    def Branch(l, n_add, first_branch, branches, amend_ib_n=True):
+        inbound = config.layers[l + n_add]
+        outbound = config.layers[l + 1 + n_add]
+
+        remove = True
+
+        for b in range(branches):
+            if first_branch < branches:
+                # n_add = __add_mask_layer(l, n_add, masks, b)
+                n_add, name = Ip(l, n_add, masks[l][b])
+                # n_add = __add_drop_layer(l, n_add, inbound_name, 0)
+                n_add, _ = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
+                    [[[inbound.name, 0], [name, 0]]])
+                first_branch += 1
+            else:
+                # n_add = __add_mask_layer(l, n_add, masks, b)
+                n_add, name = Ip(l, n_add, masks[l][b])
+                # n_add = __add_drop_layer(l, n_add, inbound_name, b)
+                n_add, _ = Lmda(l, n_add, lambda x : tf.multiply(x[0], x[1]),
+                    [[[inbound.name, b], [name, 0]]])
+
+            if amend_ib_n:
+                remove = amend_inbound_nodes(l, n_add, outbound, remove)
+        return n_add, first_branch
+
+    def Ip(l, n_add, constant, dtype=tf.float32, name=None):
+        ip_op = Input(tensor=K.constant(constant, dtype=dtype))
+        name = config.add_input(ip_op, l + n_add, name=name)
+        n_add += 1
+        return n_add , name
+
+    '''def __add_mask_layer(l, n_add, masks, b):
+        ip_op = Input(tensor=K.constant(masks[l][b]))
+        config.add_input(ip_op, l + n_add)
+        n_add += 1
+        return n_add'''
+
+    def Lmda(l, n_add, func, inbound_list, name=None):
+        drop_op = Lambda(func)
+        name = config.add_layer('Lambda', drop_op, l + n_add,
+                        inbound_list, [], name=name)
+        n_add += 1
+        return n_add , name
+
+    '''def __add_drop_layer(l, n_add, inbound_name, ib_n):
+        drop_op = Lambda(lambda x : tf.multiply(x[0], x[1]))
+        config.add_layer('Lambda', drop_op, l + n_add,
+                        [[[inbound_name, ib_n],
+                        [config.layers[l + n_add].name, 0]]], [])
+        n_add += 1
+        return n_add'''
+
+    def amend_inbound_nodes(l, n_add, outbound, remove):
+        l_ib_n = outbound.inbound_nodes.tolist()
+
+        if remove:
+            l_ib_n.pop(0)
+            remove = False
+
+        l_ib_n.append([[config.layers[l + n_add].name, 0]])
+        outbound.inbound_nodes = np.array(l_ib_n)
+        # print outbound_layer.inbound_nodes
+
+        return remove
+
+    def Gather(l, n_add, branches, masks):
+        def gather(tensor, indices, l):
+            '''
+            Gather elements of 'tensor' according to 'indices'
+
+            Args:
+                tensor: Tensor to extract from
+                indices: list of indices with last dimension equal to the
+                    rank of 'tensor'
+                l: value of last dimension with which to reshape indexed tensor
+            '''
+            sl = tf.gather_nd(tensor, tf.cast(indices, tf.int32))
+            sl = tf.reshape(sl, (-1, tf.cast(l, tf.int32)[0]))
+
+            return sl
+
+        inbound = config.layers[l + n_add]
+
+        for b in range(branches):
+            indices = []
+            where = np.where(masks[-1][b] > 0)[0]
+            for i in range(P_param * K_param):
+                idx = where.reshape((where.shape[0],1))
+                idx = np.concatenate([np.ones((where.shape[0],1)) \
+                                    * i, idx], axis=1).\
+                                    astype(np.int32).tolist()
+                indices += idx
+
+            n_add, ip_name = Ip(l, n_add, indices)
+            # ip_op = Input(tensor=K.constant(indices, dtype=tf.int32))
+            # config.add_input(ip_op, l + n_add)
+            # n_add += 1
+
+            n_add, reshape_name = Ip(l, n_add,[where.shape[0]])
+            #reshape_op = Input(
+            #    tensor=K.variable([where.shape[0]]))
+            #config.add_input(reshape_op, l + n_add)
+            #n_add += 1
+
+            n_add, _ = Lmda(l, n_add, lambda x : gather(x[0], x[1], x[2]),
+                [[[inbound.name, b], [ip_name, 0], [reshape_name, 0]]])
+            # gather_op = Lambda(lambda x : gather(x[0], x[1], x[2]))
+            # config.add_layer('Lambda', gather_op, l + n_add,
+            #                [[[inbound_name, b],
+            #                [config.layers[l + n_add - 1].name, 0],
+            #                [config.layers[l + n_add].name, 0]]], [])
+            # n_add += 1
+        return n_add
+
+    init_config = ModelConfig()
+    init_config.from_model(base)
+
+    # Reset config so that each layer starts with one output node
+    config = ModelConfig()
+    config.from_model(base)
+
+    n_add = 0
+    first_branch = 0
+    branches = len(masks[-1])
+
+    for l in range(len(masks) - 1):
+        if len(masks[l]) > 0:
+            outbound = config.layers[l + 1 + n_add]
+            remove = True
+
+            if outbound.class_name == 'Concatenate':
+                inbound = config.layers[l + n_add] # Conv2D layer
+                concat_ib_n = None
+
+                for b in range(branches):
+                    # n_add = __add_mask_layer(l, n_add, masks, b)
+                    n_add, name = Ip(l, n_add, masks[l][b])
+                    # n_add = __add_drop_layer(l, n_add, inbound_name, b)
+                    n_add, name = Lmda(l, n_add,
+                        lambda x : tf.multiply(x[0], x[1]),
+                        [[[inbound.name, b], [name, 0]]])
+
+                    l_ib_n = outbound.inbound_nodes.tolist()
+
+                    if remove:
+                        concat_ib_n = l_ib_n.pop(0)
+                        remove = False
+
+                    if first_branch <= 2 * branches:
+                        l_ib_n.append([concat_ib_n[0],[name, 0]])
+                        first_branch += 1
+                    else:
+                        l_ib_n.append([[concat_ib_n[0][0], b], [name, 0]])
+                    outbound.inbound_nodes = np.array(l_ib_n)
+            else:
+                if config.layers[l + n_add].class_name != 'Concatenate':
+                    n_add, first_branch = Branch(
+                        l, n_add, first_branch, branches)
+                else:
+                    remove = True
+                    for b in range(branches):
+                        l_ib_n = outbound.inbound_nodes.tolist()
+
+                        if remove:
+                            l_ib_n.pop(0)
+                            remove = False
+
+                        l_ib_n.append([[config.layers[l + n_add].name, b]])
+                        outbound.inbound_nodes = np.array(l_ib_n)
+
+    # Gather embeddings from final layer
+    n_add = Gather(
+        len(init_config.layers) - 1, n_add, branches, masks)
+
+    if tile:
+        config.layers[359].inbound_nodes[0][0][0] = 'l_312'
+        config.layers[359].inbound_nodes[1][0][0] = 'l_314'
+        config.layers[359].inbound_nodes[2][0][0] = 'l_316'
+
+    # return config
+
+    output_idx = []
+    for b in range(branches - 1, -1, -1):
+        output_idx.append(-(3*b + 1))
+
+    model_rec, _ = config.reconstruct_model(
+                    output_idx=output_idx, name='MergeNet_Drop')
+
+    if len(model_rec.outputs) == 1:
+        model = Model(model_rec.input, model_rec.outputs)
+    else:
+        print model_rec.outputs
+        model = Model(model_rec.input, concatenate(model_rec.outputs, axis=1))
+
+    if weights is not None:
+        model.set_weights(np.load(weights))
+
+    if comp:
+        _compile(model, 'triplet_drop', P_param, K_param, masks[-1])
+
+    return model
+
+"""
 def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                 tile=False, comp=False):
     '''
@@ -419,12 +882,6 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     n_add = __gather_final(
         len(init_config.layers) - 1, n_add, branches, masks)
 
-    """if tile:
-        config.layers[360].inbound_nodes[0][0][0] = 'l_313'
-        config.layers[360].inbound_nodes[1][0][0] = 'l_315'
-        config.layers[360].inbound_nodes[2][0][0] = 'l_317'
-    """
-
     if tile:
         config.layers[359].inbound_nodes[0][0][0] = 'l_312'
         config.layers[359].inbound_nodes[1][0][0] = 'l_314'
@@ -451,7 +908,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     if comp:
         _compile(model, 'triplet_drop', P_param, K_param, masks[-1])
 
-    return model
+    return model"""
 
 
 def DenseNetDrop(P_param=1, K_param=1, branches=3, overlap=0,
@@ -827,8 +1284,7 @@ def transfer_stacked_weights(donor, recipient, l_start=311, l_end=None,
 
     print 'Stacked weights loaded successfully'
 
-
-def gather(tensor, indices, l):
+"""def gather(tensor, indices, l):
     '''
     Gather elements of 'tensor' according to 'indices'
 
@@ -841,7 +1297,7 @@ def gather(tensor, indices, l):
     sl = tf.gather_nd(tensor, tf.cast(indices, tf.int32))
     sl = tf.reshape(sl, (-1, tf.cast(l, tf.int32)[0]))
 
-    return sl
+    return sl"""
 
 
 def partition(dim, branches=1, overlap=0):

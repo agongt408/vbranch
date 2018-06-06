@@ -77,11 +77,15 @@ class ModelConfig:
 
         if name is None:
             name = 'ip_' + str(n + 1)
+        else:
+            name = str(name) + '_' + str(n + 1)
 
         layer = Layer('Input', op, [[[]]], name)
         self.layers.insert(n + 1, layer)
 
         self.input_layers.append(name)
+
+        return name
 
     def set_output(self, n):
         '''sets the nth layer as the output, discard all following layers'''
@@ -103,6 +107,8 @@ class ModelConfig:
 
         if name is None:
             name = 'l_' + str(n + 1)
+        else:
+            name = str(name) + '_' + str(n + 1)
 
         if inbound_nodes:
             layer = Layer(class_name, op, np.array(inbound_nodes), name)
@@ -139,6 +145,8 @@ class ModelConfig:
         if outbound_nodes is None and next_layer is None:
             self.output_layers = [name]
 
+        return name
+
     def reconstruct_model(self, name='Model', init_weights=True,
                             output_idx=None):
         x_list = [{'tensor' : [self.layers[0].op.get_output_at(0)],
@@ -167,7 +175,7 @@ class ModelConfig:
                                         append(x_list[l]['tensor']\
                                     [int(layer.inbound_nodes[ib_n][ip][1])])
 
-            print layer.name, inbound_tensor_list
+            # print layer.name, inbound_tensor_list
             # print 'here'
 
             if len(inbound_tensor_list) == 1:

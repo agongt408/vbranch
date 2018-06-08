@@ -366,8 +366,6 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return n_add
 
 
-
-
     def fill_regular(n, dim, shape, branches, n_part, gather_idx, pad):
         return func_str.fill % (
             n, shape, gather_idx, n_part, branches,
@@ -393,9 +391,6 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return np.stack(np.where(w == 0)).transpose()
 
 
-
-
-
     init_config = ModelConfig()
     init_config.from_model(base)
 
@@ -412,8 +407,8 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
             outbound = config.layers[l + 1 + n_add]
             remove = True
 
-            """if outbound.class_name == 'Conv2D' or \
-                    outbound.class_name == 'Dense':
+            if tile and (outbound.class_name == 'Conv2D' or \
+                    outbound.class_name == 'Dense'):
                 shape = (P_param*K_param,)+base.layers[l].output_shape[1:]
                 for b in range(branches):
                     if masks[l][0].shape[0] <= 512 or \
@@ -436,7 +431,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('n_add[0], name[0] = Lmda(l, n_add[0],\
                             lambda x : %s(x), \
                             [[[inbound.name, 0 if first_branch \
-                                <= branches else b]]]); print "name", name' % \
+                                < branches else b]]]); print "name", name' % \
                                 ('func_'+str(l+n_add[0]+1))) in locals()
                         n_add = n_add[0]
 
@@ -472,7 +467,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('n_add[0], name[0] = Lmda(l, n_add[0],\
                             lambda x : %s(x), \
                             [[[inbound.name, 0 if first_branch \
-                                <= branches else b]]]); print "name", name' % \
+                                < branches else b]]]); print "name", name' % \
                                 ('func_concat_'+str(l+n_add[0]+1))) in locals()
                         n_add = n_add[0]
 
@@ -480,9 +475,9 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('print name[0]; remove[0] = \
                             amend_inbound_nodes(name[0], outbound, \
                             remove[0])') in locals()
-                        remove = remove[0]"""
+                        remove = remove[0]
 
-            if outbound.class_name == 'Concatenate':
+            elif outbound.class_name == 'Concatenate':
                 # inbound = config.layers[l + n_add] # Conv2D layer
                 concat_ib_n = None
 
@@ -510,6 +505,16 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
             else:
                 if config.layers[l + n_add].class_name != 'Concatenate':
                     if not first_lambdas:
+                        if tile and inbound.name.find('average') > -1:
+                            shape = (P_param*K_param,)+base.layers[l].output_shape[1:]
+                            exec(func_str.reshape % (shape,)) in locals()
+                            n_add, name = Lmda(
+                                l, n_add, func_reshape, [[[inbound.name,
+                                0 if first_branch < branches else b]]],
+                                name='reshape')
+
+                            remove = amend_inbound_nodes(name, outbound, remove)
+
                         n_add, first_branch, first_lambdas = Branch(
                             l, n_add, first_branch, branches, True, True)
                     else:
@@ -671,7 +676,7 @@ def StackedDenseNet121Drop(P_param=1, K_param=1, branches=3,
 
     return model_drop
 
-
+'''
 def _get_regularizers(model, masks):
     branches = len(masks[-1])
     regularizers = []
@@ -700,7 +705,65 @@ def _get_regularizers(model, masks):
                     regularizers.append(None)
         except:
             continue
+    return regularizers'''
+
+
+def _get_regularizers(model, masks):
+    branches = len(masks[-1])
+    regularizers = []
+
+    for l in range(len(masks)):
+        try:
+            if model.layers[l].kernel_regularizer is not None:
+                if len(masks[l]) > 0:
+                    fill_masks = []
+
+                    for b in range(branches):
+                        prev = masks[l - 1][b].copy()
+
+                        pool = np.trim_zeros(prev[:512])
+                        pool = np.tile(pool, (branches,))[:512]
+                        ref = np.zeros((512,))
+                        ref[:pool.shape[0]] = pool
+                        pool = ref
+
+                        if prev.shape[0] > 512:
+                            conv = prev[512:].reshape((-1, 32))
+                            conv = conv[np.nonzero(conv)].\
+                                reshape((-1, np.where(conv[0] == 1)[0].shape[0]))
+                            conv = np.tile(conv, (1, branches,))[:, :32]
+                            ref = np.zeros((conv.shape[0], 32))
+                            ref[:conv.shape[0], :conv.shape[1]] = conv
+                            conv = ref.flatten()
+                        else:
+                            conv = np.array([])
+
+                        fill_masks.append(np.concatenate([pool, conv]))
+
+                    print 'fill_masks' , fill_masks
+
+                    w = np.ones((model.layers[l].get_weights()[0].shape))
+
+                    idx_list = []
+                    for b in range(branches):
+                        w = np.ones((model.layers[l].get_weights()[0].shape))
+
+                        for i in np.nditer(np.where(fill_masks[b] == 1)[0]):
+                            for j in np.nditer(np.where(masks[l][b] == 1)[0]):
+                                w[:, :, i, j] = 0
+
+                        idx_list.append(np.concatenate(
+                            np.where(w == 0)).reshape((4, -1)).transpose())
+
+                    idx_unique = np.unique(
+                        np.concatenate(idx_list, axis=0), axis=0)
+                    regularizers.append(l2(0.0001, idx=idx_unique))
+                else:
+                    regularizers.append(None)
+        except AttributeError:
+            continue
     return regularizers
+
 
 def _get_batch_norm_list(model, masks):
     batch_norm_list = []

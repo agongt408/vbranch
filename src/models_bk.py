@@ -274,18 +274,6 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
 
     def Branch(l, n_add, first_branch, branches, amend_ib_n=True,
         return_names=False):
-        '''
-        Branches layer with masks
-        Args:
-            - l: l-th layer of base model after which add branches
-            - n_add: # of layers previously added
-            - first_branch: used to determine first branched layer
-            - branches: # of branches
-            - amend_ib_n: change inbound nodes of previous outbound to
-                branch lambdas
-            - return_names: if true, return names of branch lambdas
-        '''
-
         inbound = config.layers[l + n_add]
         outbound = config.layers[l + 1 + n_add]
 
@@ -319,18 +307,12 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
             return n_add, first_branch
 
     def Ip(l, n_add, constant, dtype=tf.float32, name=None):
-        '''
-        Adds input tensor layer
-        '''
         ip_op = Input(tensor=K.constant(constant, dtype=dtype))
         name = config.add_input(ip_op, l + n_add, name=name)
         n_add += 1
         return n_add , name
 
     def Lmda(l, n_add, func, inbound_list, name=None):
-        '''
-        Adds Lambda layer given lambda func
-        '''
         drop_op = Lambda(func)
         name = config.add_layer('Lambda', drop_op, l + n_add,
                         inbound_list, [], name=name)
@@ -338,9 +320,6 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return n_add , name
 
     def amend_inbound_nodes(name, outbound, remove):
-        '''
-        change inbound nodes of previous outbound to include name
-        '''
         l_ib_n = outbound.inbound_nodes.tolist()
 
         if remove:
@@ -353,11 +332,16 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return remove
 
     def Gather(l, n_add, branches, masks):
-        '''
-        Gather slices along final branched layers in order to
-        construct final output
-        '''
         def gather(tensor, indices, l):
+            '''
+            Gather elements of 'tensor' according to 'indices'
+
+            Args:
+                tensor: Tensor to extract from
+                indices: list of indices with last dimension equal to the
+                    rank of 'tensor'
+                l: value of last dimension with which to reshape indexed tensor
+            '''
             sl = tf.gather_nd(tensor, tf.cast(indices, tf.int32))
             sl = tf.reshape(sl, (-1, tf.cast(l, tf.int32)[0]))
 
@@ -382,20 +366,15 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return n_add
 
 
+
+
     def fill_regular(n, dim, shape, branches, n_part, gather_idx, pad):
-        '''
-        Fill zero elements by tiling non-zero elements
-        Used before conv and dense layers to maximize parameter usage
-        '''
         return func_str.fill % (
             n, shape, gather_idx, n_part, branches,
             ':,'*len(shape)+':%d' % dim, '[0,0],'*len(shape)+'[0,%d]'%pad)
 
     def fill_concat(n, shape, branches, pool_part, conv_part, pool_idx,
             conv_idx, pool_pad, conv_pad):
-        '''
-        Fill before layers with concat masks
-        '''
         return func_str.fill_concat % (
             n, shape, pool_idx, pool_part, branches,
             ':,'*len(shape) + ':%d' % 512,
@@ -414,6 +393,9 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         return np.stack(np.where(w == 0)).transpose()
 
 
+
+
+
     init_config = ModelConfig()
     init_config.from_model(base)
 
@@ -422,8 +404,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     config.from_model(base)
 
     n_add, first_branch, branches = 0, 0, len(masks[-1])
-    first_lambdas, first_concat = [], []
-    n_avg = 0
+    first_lambdas, first_concat = None, None
 
     for l in range(len(masks) - 1):
         if len(masks[l]) > 0:
@@ -431,8 +412,8 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
             outbound = config.layers[l + 1 + n_add]
             remove = True
 
-            if tile and (outbound.class_name == 'Conv2D' or \
-                    outbound.class_name == 'Dense'):
+            '''if outbound.class_name == 'Conv2D' or \
+                    outbound.class_name == 'Dense':
                 shape = (P_param*K_param,)+base.layers[l].output_shape[1:]
                 for b in range(branches):
                     if masks[l][0].shape[0] <= 512 or \
@@ -455,7 +436,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('n_add[0], name[0] = Lmda(l, n_add[0],\
                             lambda x : %s(x), \
                             [[[inbound.name, 0 if first_branch \
-                                < branches else b]]]); print "name", name' % \
+                                <= branches else b]]]); print "name", name' % \
                                 ('func_'+str(l+n_add[0]+1))) in locals()
                         n_add = n_add[0]
 
@@ -491,7 +472,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('n_add[0], name[0] = Lmda(l, n_add[0],\
                             lambda x : %s(x), \
                             [[[inbound.name, 0 if first_branch \
-                                < branches else b]]]); print "name", name' % \
+                                <= branches else b]]]); print "name", name' % \
                                 ('func_concat_'+str(l+n_add[0]+1))) in locals()
                         n_add = n_add[0]
 
@@ -499,10 +480,12 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         exec('print name[0]; remove[0] = \
                             amend_inbound_nodes(name[0], outbound, \
                             remove[0])') in locals()
-                        remove = remove[0]
+                        remove = remove[0]'''
 
-            elif outbound.class_name == 'Concatenate':
+            if outbound.class_name == 'Concatenate':
+                # inbound = config.layers[l + n_add] # Conv2D layer
                 concat_ib_n = None
+
                 for b in range(branches):
                     n_add, name = Ip(l, n_add, masks[l][b])
                     n_add, name = Lmda(l, n_add,
@@ -522,27 +505,13 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
                         l_ib_n.append([[concat_ib_n[0][0], b], [name, 0]])
                     outbound.inbound_nodes = np.array(l_ib_n)
 
-                if len(first_concat) < n_avg:
-                    first_concat.append(outbound)
+                if not first_concat:
+                    first_concat = outbound
             else:
                 if config.layers[l + n_add].class_name != 'Concatenate':
-                    if inbound.name.find('average') > -1:
-                        n_avg += 1
-
-                    if len(first_lambdas) < n_avg:
-                        if tile and inbound.name.find('average') > -1:
-                            shape = (P_param*K_param,)+base.layers[l].output_shape[1:]
-                            exec(func_str.reshape % (shape,)) in locals()
-                            n_add, name = Lmda(
-                                l, n_add, func_reshape, [[[inbound.name,
-                                0 if first_branch < branches else b]]],
-                                name='reshape')
-
-                            remove = amend_inbound_nodes(name, outbound, remove)
-
-                        n_add, first_branch, name_list = Branch(
+                    if not first_lambdas:
+                        n_add, first_branch, first_lambdas = Branch(
                             l, n_add, first_branch, branches, True, True)
-                        first_lambdas.append(name_list)
                     else:
                         n_add, first_branch = Branch(
                             l, n_add, first_branch, branches)
@@ -563,15 +532,13 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         len(init_config.layers) - 1, n_add, branches, masks)
 
     if first_concat and first_lambdas:
-        for i in range(len(first_concat)):
-            for b in range(branches):
-                first_concat[i].inbound_nodes[b][0] = \
-                    [first_lambdas[i][b], 0]
+        for b in range(branches):
+            first_concat.inbound_nodes[b][0][0] = first_lambdas[b]
     else:
         raise ValueError, \
             'first_concat and first_lambdas must both not be None'
 
-    # return config
+    return config
 
     output_idx = []
     for b in range(branches - 1, -1, -1):
@@ -597,22 +564,17 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
 
 def DenseNetDrop(P_param=1, K_param=1, branches=3, overlap=0,
                     shape=(256,128), weights=None, blocks=4,
-                    diagnostic=False, tile=False, n_pool=-1):
+                    diagnostic=False, tile=False):
 
     base = TriNet(P_param, K_param, None, shape, blocks=blocks,
         output_dim=128*branches, diagnostic=diagnostic, comp=False)
 
-    l_start = _get_nth_pool_layer(n_pool, base)
+    l_start = _get_nth_pool_layer(-1, base)
     print 'l_start' , l_start
 
     masks = generate_model_masks(base, branches, l_start, overlap)
 
-    # return masks
-
-    if tile:
-        regularizers = get_regularizers_tile(base, masks)
-    else:
-        regularizers = _get_regularizers(base, masks)
+    regularizers = _get_regularizers(base, masks)
     batch_norm_list = _get_batch_norm_list(base, masks)
 
     #print regularizers
@@ -635,8 +597,7 @@ def DenseNetDrop(P_param=1, K_param=1, branches=3, overlap=0,
             np.tile(weights_model.layers[-1].get_weights()[1],
                     (np.minimum(branches, branches)))])'''
 
-    model_drop = MergeNet_Drop(
-        model, masks, P_param, K_param, comp=True, tile=tile)
+    model_drop = MergeNet_Drop(model, masks, P_param, K_param, comp=True, tile=tile)
 
     # _compile(model_drop, 'triplet_drop', P_param, K_param, [masks[-1][0]])
 
@@ -719,6 +680,8 @@ def _get_regularizers(model, masks):
         try:
             if model.layers[l].kernel_regularizer is not None:
                 if len(masks[l]) > 0:
+                    w = np.ones((model.layers[l].get_weights()[0].shape))
+
                     idx_list = []
                     for b in range(branches):
                         w = np.ones((model.layers[l].get_weights()[0].shape))
@@ -735,67 +698,9 @@ def _get_regularizers(model, masks):
                     regularizers.append(l2(0.0001, idx=idx_unique))
                 else:
                     regularizers.append(None)
-        except AttributeError:
+        except:
             continue
     return regularizers
-
-
-def get_regularizers_tile(model, masks):
-    branches = len(masks[-1])
-    regularizers = []
-
-    for l in range(len(masks)):
-        try:
-            if model.layers[l].kernel_regularizer is not None:
-                if len(masks[l]) > 0:
-                    fill_masks = []
-
-                    for b in range(branches):
-                        prev = masks[l - 1][b].copy()
-
-                        pool = np.trim_zeros(prev[:512])
-                        pool = np.tile(pool, (branches,))[:512]
-                        ref = np.zeros((512,))
-                        ref[:pool.shape[0]] = pool
-                        pool = ref
-
-                        if prev.shape[0] > 512:
-                            conv = prev[512:].reshape((-1, 32))
-                            conv = conv[np.nonzero(conv)].\
-                                reshape((-1, np.where(conv[0] == 1)[0].shape[0]))
-                            conv = np.tile(conv, (1, branches,))[:, :32]
-                            ref = np.zeros((conv.shape[0], 32))
-                            ref[:conv.shape[0], :conv.shape[1]] = conv
-                            conv = ref.flatten()
-                        else:
-                            conv = np.array([])
-
-                        fill_masks.append(np.concatenate([pool, conv]))
-
-                    print 'fill_masks' , fill_masks
-
-                    w = np.ones((model.layers[l].get_weights()[0].shape))
-
-                    idx_list = []
-                    for b in range(branches):
-                        w = np.ones((model.layers[l].get_weights()[0].shape))
-
-                        for i in np.nditer(np.where(fill_masks[b] == 1)[0]):
-                            for j in np.nditer(np.where(masks[l][b] == 1)[0]):
-                                w[:, :, i, j] = 0
-
-                        idx_list.append(np.concatenate(
-                            np.where(w == 0)).reshape((4, -1)).transpose())
-
-                    idx_unique = np.unique(
-                        np.concatenate(idx_list, axis=0), axis=0)
-                    regularizers.append(l2(0.0001, idx=idx_unique))
-                else:
-                    regularizers.append(None)
-        except AttributeError:
-            continue
-    return regularizers
-
 
 def _get_batch_norm_list(model, masks):
     batch_norm_list = []
@@ -871,7 +776,7 @@ def _stacked_dense_block(P_param=1, K_param=1, weights=None,
 
     return model
 
-"""
+
 def generate_model_masks(model, branches, l_start=311, overlap=0):
     '''
     Generate masks for MergeNet_Drop
@@ -937,76 +842,6 @@ def generate_model_masks(model, branches, l_start=311, overlap=0):
         else:
             masks.append([])
 
-    return masks"""
-
-
-def generate_model_masks(model, branches, l_start=311, overlap=0):
-    '''
-    Generate masks for MergeNet_Drop
-
-    Args:
-        branches: number of branches > 0
-        l_start: nth layer to start branching, all layers before l_start
-            have empty lists as masks, i.e., no branching applied
-        overlap: degree of overlap (0 to 1)
-
-    Returns:
-        list containing masks for each layer
-    '''
-
-    masks = []
-    concat_mask = [[] for b in range(branches)]
-    l_add_conv = 0
-
-    for l in range(len(model.layers)):
-        if l == l_start:
-            m = gen_layer_mask(model.layers[l].output_shape[-1],
-                                branches, overlap, value=1)
-            for b in range(branches):
-                concat_mask[b].append(m[b])
-            masks.append(m)
-
-        elif l > l_start:
-            if model.layers[l].name.find('conv') > -1:
-                i = gen_layer_mask(model.layers[l].output_shape[-1],
-                                            branches, overlap, value=1)
-                masks.append(i)
-                l_add_conv = l
-            elif model.layers[l].name.find('batch') > -1:
-                if model.layers[l - 1].name.find('concatenate') > -1:
-                    for b in range(branches):
-                        concat_mask[b].append(masks[l_add_conv][b])
-                    masks.append([np.concatenate(concat_mask[b], axis=0) \
-                                for b in range(branches)])
-                else:
-                    masks.append(gen_layer_mask(model.layers[l].output_shape[-1],
-                                                branches, overlap, value=1))
-            elif model.layers[l].name.find('act') > -1:
-                if model.layers[l - 2].name.find('concatenate') > -1:
-                    masks.append([np.concatenate(concat_mask[b], axis=0) \
-                                for b in range(branches)])
-                else:
-                    masks.append(gen_layer_mask(model.layers[l].output_shape[-1],
-                                branches, overlap, value=1))
-            elif model.layers[l].name.find('global') > -1:
-                masks.append([np.concatenate(concat_mask[b], axis=0) \
-                            for b in range(branches)])
-            elif model.layers[l].name.find('dense') > -1:
-                masks.append(gen_layer_mask(model.layers[l].output_shape[-1],
-                                            branches, overlap, value=1))
-            elif model.layers[l].name.find('average') > -1:
-                p = gen_layer_mask(model.layers[l].output_shape[-1],
-                                branches, overlap, value=1)
-                masks.append(p)
-                concat_mask = [[] for b in range(branches)]
-                for b in range(branches):
-                    concat_mask[b].append(p[b])
-            else:
-                x = gen_layer_mask(model.layers[l].output_shape[-1],
-                                            branches, 1, value=1)
-                masks.append(x)
-        else:
-            masks.append([])
     return masks
 
 

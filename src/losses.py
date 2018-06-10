@@ -4,11 +4,6 @@ import numpy as np
 
 from keras.losses import categorical_crossentropy
 
-P_param = 4
-K_param = 4
-input_output_dim = 128
-input_margin = 0.5
-
 def log1p(x):
     '''For soft margin triplet loss'''
     return K.log(1 + K.exp(x))

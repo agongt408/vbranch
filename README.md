@@ -19,9 +19,8 @@ Keras 2.0.8
 
 ### Notes
 Make the following changes to the Keras and Tensorflow source code:
-Kernel regularizer (Conv2D):
-    - Declare regularizers externally to have reference handles
-    to regularizer objects and include indices (idx) arg
+
+Kernel regularizer (Conv2D): Declare regularizers externally to have reference handles to regularizer objects and include indices (idx) arg
 
     - keras/regularizers.py
         __init__()
@@ -32,9 +31,7 @@ Kernel regularizer (Conv2D):
         get_config()
             mod: update config dict to show indices (line 61)
 
-Batch normalization:
-    - Do not apply moving average update to masked parameters:
-    estimated mean, estimated variance
+Batch normalization: Do not apply moving average update to masked parameters: estimated mean, estimated variance
 
     - keras/layers/normalization.py
         __init__()

@@ -2,7 +2,7 @@
 
 vbranch for person re-identification (re-ID) [arXiv paper](https://arxiv.org/pdf/1803.05872.pdf)
 
-Implemented in Keras. Using the `ModelConfig` class (see `ListModel.py`), a Keras model is converted into a list of Kears layers so that new layers can be added to construct the virtual branches.
+Implemented in Keras. Using the `ModelConfig` class (see `ModelConfig.py`), a Keras model is converted into a list of Kears layers so that new layers can be added to construct the virtual branches.
 
 Models constructed in `models.py`.
 

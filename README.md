@@ -13,9 +13,9 @@ Implementation for training on Market1501, CUHK03, and DukeMTMC-reID provided (`
 Only DenseNet implemenation so far (`dense.py`).
 
 ## Requirements
-Python 2.7
-Tensorflow 1.3.0
-Keras 2.0.8
+Python 2.7 <br>
+Tensorflow 1.3.0 <br>
+Keras 2.0.8 <br>
 
 ### Notes
 Make the following changes to the Keras and Tensorflow source code:

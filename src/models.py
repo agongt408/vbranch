@@ -12,15 +12,11 @@ import numpy as np
 import tensorflow as tf
 
 import sys
-# sys.path.append('/home/albert/github/DenseNet/')
-sys.path.insert(0, '/home/albert/research/DenseNet/')
-sys.path.insert(0, '/home/ubuntu/DenseNet/')
+sys.path.insert(0, '../DenseNet/')
 import densenet
 
-# sys.path.append('/home/albert/github/tensorflow/')
-sys.path.insert(0, '/home/albert/research/vbranch/')
-sys.path.insert(0, '/home/ubuntu/albert/')
-from dense import __dense_block
+sys.path.insert(0, '..')
+from dense import __dense_block, cam
 from src import ModelConfig, DenseNetBlockImageNet121, DenseNetImageNetB3
 import losses
 
@@ -255,7 +251,7 @@ def MergeNet_Dense(P_param=1, K_param=1, weights=None, shape=(256,128),
 
 
 def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
-                tile=False, comp=False):
+                tile=False, comp=False, return_config=False):
     '''
     Generates compiled MergeNet-Drop model given a base model and
     list of binary masks.
@@ -571,7 +567,8 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
         raise ValueError, \
             'first_concat and first_lambdas must both not be None'
 
-    # return config
+    if return_config:
+        return config
 
     output_idx = []
     for b in range(branches - 1, -1, -1):
@@ -583,7 +580,7 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
     if len(model_rec.outputs) == 1:
         model = Model(model_rec.input, model_rec.outputs)
     else:
-        print model_rec.outputs
+        # print model_rec.outputs
         model = Model(model_rec.input, concatenate(model_rec.outputs, axis=1))
 
     if weights is not None:
@@ -597,17 +594,16 @@ def MergeNet_Drop(base, masks, P_param=1, K_param=1, weights=None,
 
 def DenseNetDrop(P_param=1, K_param=1, branches=3, overlap=0,
                     shape=(256,128), weights=None, blocks=4,
-                    diagnostic=False, tile=False, n_pool=-1):
+                    diagnostic=False, tile=False, n_pool=-1,
+                    comp=True, return_config=False):
 
     base = TriNet(P_param, K_param, None, shape, blocks=blocks,
         output_dim=128*branches, diagnostic=diagnostic, comp=False)
 
     l_start = _get_nth_pool_layer(n_pool, base)
-    print 'l_start' , l_start
+    # print 'l_start' , l_start
 
     masks = generate_model_masks(base, branches, l_start, overlap)
-
-    # return masks
 
     if tile:
         regularizers = get_regularizers_tile(base, masks)
@@ -615,35 +611,97 @@ def DenseNetDrop(P_param=1, K_param=1, branches=3, overlap=0,
         regularizers = _get_regularizers(base, masks)
     batch_norm_list = _get_batch_norm_list(base, masks)
 
-    #print regularizers
-
     model = TriNet(P_param, K_param, weights, shape, blocks=blocks,
         output_dim=128*branches, diagnostic=diagnostic, comp=False,
         regularizers=regularizers, batch_norm_list=batch_norm_list)
 
-    '''if weights is not None:
-        weights_model = TriNet(P_param, K_param, weights, shape,
-            blocks=blocks, output_dim=128*branches, diagnostic=diagnostic,
-            comp=False)
-
-        for l in range(len(weights_model.layers) - 1):
-            model.layers[l].set_weights(
-                weights_model.layers[l].get_weights())
-        model.layers[-1].set_weights([
-            np.tile(weights_model.layers[-1].get_weights()[0],
-                    (1,np.minimum(branches, branches))),
-            np.tile(weights_model.layers[-1].get_weights()[1],
-                    (np.minimum(branches, branches)))])'''
-
-    model_drop = MergeNet_Drop(
-        model, masks, P_param, K_param, comp=True, tile=tile)
-
-    # _compile(model_drop, 'triplet_drop', P_param, K_param, [masks[-1][0]])
+    model_drop = MergeNet_Drop(model, masks, P_param, K_param,
+        comp=comp, tile=tile, return_config=return_config)
 
     if diagnostic:
         return model_drop, masks
 
     return model_drop
+
+
+def DenseNetDrop_Landmark(P_param=1, K_param=1, cam_dim=(8,4),
+        cam_weight=0.2, weights=None):
+
+    assert cam_dim is not None
+
+    base, masks = DenseNetDrop(P_param, K_param, branches=3, overlap=0,
+                    shape=(256,128), weights=weights, blocks=4,
+                    diagnostic=True, tile=False, n_pool=-1, comp=False)
+
+    for l in range(len(model.layers)):
+        if base.layers[l].find('global') > -1:
+            last_activation = l - 1
+        else:
+            raise ValueError, 'global average pooling layer not found'
+
+    cam_arr = []
+
+    for b in range(branches):
+        branch.name = 'branch_' + str(b)
+        output = Lambda(cam, arguments={'cam_dim' : cam_dim})\
+            (base.layers[l].get_output_at(b))
+        cam_arr.append(output)
+
+    model = Model(inputs=base.inputs, outputs=([base.output] + cam_arr))
+
+    model.compile(loss=([losses.triplet_drop(P_param=P_param,
+        K_param=K_param, masks=masks[-1])] + len(keypoints) * \
+        [losses.cam_loss]), loss_weights=([1.0] + branches * \
+        [cam_weight]),optimizer=Adam(lr=0.0003, beta_1=0.9,
+        beta_2=0.999, epsilon=1e-08, decay=0.0))
+
+    return model
+
+
+def DenseNetDrop_Orientation(P_param=1, K_param=1, weights=None):
+    config, masks = DenseNetDrop(P_param, K_param, branches=4, overlap=0,
+                    shape=(256,128), weights=weights, blocks=4,
+                    diagnostic=True, tile=False, n_pool=-1, comp=False,
+                    return_config=True)
+
+    config.layers[0].name = 'ipvar_0'
+    config.input_layers[0] = 'ipvar_0'
+    first_non_ip = config.layers[1]
+    first_non_ip.inbound_nodes[0, ..., 0] = config.layers[0].name
+
+    for l in range(1,311):
+        config.layers[l].inbound_nodes = \
+            np.tile(config.layers[l].inbound_nodes[0], (4,1,1))
+        for b in range(4):
+            config.layers[l].inbound_nodes[b, ..., -1] = b
+
+    for b in range(3):
+        name = config.add_input(Input(shape=(256,128,3)), b, name='ipvar')
+        first_non_ip.inbound_nodes[b + 1, 0] = [name, 0]
+
+    for b in range(4):
+        avg_pool = [315, 317, 319, 321]
+        config.layers[avg_pool[b]].inbound_nodes[...,0,-1] = b
+
+    # print config.input_layers
+    # return config
+
+    output_idx = []
+    for b in range(3, -1, -1):
+        output_idx.append(-(3*b + 1))
+
+    model_rec, _ = config.reconstruct_model(output_idx=output_idx,
+        name='DenseNetDrop_Orientation', ip_idx=range(4))
+
+    model = Model(model_rec.inputs, concatenate(model_rec.outputs, axis=1))
+
+    if weights is not None:
+        model.set_weights(np.load(weights))
+
+    _compile(model, 'triplet_drop', P_param, K_param, masks[-1])
+
+    return model
+
 
 
 def StackedDenseNet121Drop(P_param=1, K_param=1, branches=3,

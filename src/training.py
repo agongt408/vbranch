@@ -3,11 +3,9 @@ import os
 
 from keras.models import model_from_json
 
-def save_weights(model, root, it):
-    MODELS_ROOT = '/home/albert/research/vbranch/models/'
-    if not os.path.exists(MODELS_ROOT):
-        MODELS_ROOT = '/home/ubuntu/albert/models/'
+from config import *
 
+def save_weights(model, root, it):
     if os.path.exists(MODELS_ROOT) == False:
         os.system('mkdir ' + MODELS_ROOT)
 

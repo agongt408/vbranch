@@ -148,11 +148,26 @@ class ModelConfig:
         return name
 
     def reconstruct_model(self, name='Model', init_weights=True,
-                            output_idx=None):
-        x_list = [{'tensor' : [self.layers[0].op.get_output_at(0)],
-                    'name' : self.layers[0].name}]
+                            output_idx=None, ip_idx=None):
+        if ip_idx:
+            x_list = []
+            for i in ip_idx:
+                try:
+                    x_list.append({'tensor' : [self.layers[i].op.get_output_at(0)],
+                        'name' : self.layers[i].name})
+                except AttributeError:
+                    x_list.append({'tensor' : [self.layers[i].op],
+                        'name' : self.layers[i].name})
+        else:
+            x_list = [{'tensor' : [self.layers[0].op.get_output_at(0)],
+                        'name' : self.layers[0].name}]
 
-        for layer in self.layers[1:]:
+        if ip_idx:
+            begin = len(ip_idx)
+        else:
+            begin = 1
+
+        for layer in self.layers[begin:]:
             # Initialize inbound_tensor_list to have correct size
             inbound_tensor_list = [[] for i in layer.inbound_nodes]
 
@@ -166,9 +181,11 @@ class ModelConfig:
                                 self.layers[l].name:
                                 # If inbound node from InputLayer
                                 if layer.inbound_nodes[0][0][0].\
-                                    find('input') > -1:
+                                    find('input') > -1 or \
+                                    layer.inbound_nodes[0][0][0].\
+                                    find('ipvar') > -1:
                                     inbound_tensor_list[ib_n].\
-                                        append(x_list[0]['tensor'][ib_n])
+                                        append(x_list[l]['tensor'][0])
 
                                 elif layer.inbound_nodes[0][0][1] > -1:
                                     inbound_tensor_list[ib_n].\

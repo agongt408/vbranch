@@ -6,14 +6,15 @@ import os
 import sys
 
 import data
+from config import *
 
 input_shape = (256,128)
 input_preprocess = True
 
-# DATA_ROOT = '/home/albert/github/tensorflow/data/'
+"""# DATA_ROOT = '/home/albert/github/tensorflow/data/'
 DATA_ROOT = '/home/albert/research/vbranch/data/'
 if not os.path.exists(DATA_ROOT):
-    DATA_ROOT = '/home/ubuntu/albert/data/'
+    DATA_ROOT = '/home/ubuntu/albert/data/'"""
 
 # http://www.liangzheng.org/Project/project_reid.html
 # http://www.ee.cuhk.edu.hk/~xgwang/CUHK_identification.html

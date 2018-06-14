@@ -4,10 +4,10 @@ import numpy as np
 import cv2
 
 import sys
-sys.path.append('../../DenseNet/')
-sys.path.append('../DenseNet/')
-sys.path.append('./DenseNet/')
+sys.path.insert(0, '../DenseNet/')
 import densenet
+
+from config import *
 
 input_output_dim = 128
 input_shape = (256,128)
@@ -35,10 +35,10 @@ BODY_PARTS = [
     "LEar"
 ]
 
-# DATA_ROOT = '/home/albert/github/tensorflow/data/'
+"""# DATA_ROOT = '/home/albert/github/tensorflow/data/'
 DATA_ROOT = '/home/albert/research/vbranch/data/'
 if not os.path.exists(DATA_ROOT):
-    DATA_ROOT = '/home/ubuntu/albert/data/'
+    DATA_ROOT = '/home/ubuntu/albert/data/'"""
 
 def get_data(split, keypoints=None, dataset='market', cuhk03='detected'):
     files_dict = {}

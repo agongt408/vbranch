@@ -78,18 +78,21 @@ def triplet_drop(P_param=4, K_param=4, masks=[], margin=0.2):
         for s in range(len(size)):
             position.append(position[s] + size[s])
 
-        print position
+        # print position
 
         for b in range(len(masks)):
-            embeddings = tf.slice(y_pred, [0,position[b]], [P_param*K_param, position[b+1] - position[b]])
+            embeddings = tf.slice(y_pred, [0,position[b]],
+                [P_param*K_param, position[b+1] - position[b]])
             print embeddings.shape
 
             for i in range(P_param):
                 for a in range(K_param):
                     pred_anchor = embeddings[i*K_param + a]
-                    hard_pos = K.max(norm(pred_anchor, embeddings[i*K_param:(i + 1)*K_param]))
-                    hard_neg = K.min(norm(pred_anchor, K.concatenate([embeddings[0:i*K_param],
-                                                                    embeddings[(i + 1)*K_param:]], 0)))
+                    hard_pos = K.max(norm(pred_anchor,
+                        embeddings[i*K_param:(i + 1)*K_param]))
+                    hard_neg = K.min(norm(pred_anchor,
+                        K.concatenate([embeddings[0:i*K_param],
+                        embeddings[(i + 1)*K_param:]], 0)))
                     if margin == 'soft':
                         loss += log1p(hard_pos - hard_neg)
                     else:

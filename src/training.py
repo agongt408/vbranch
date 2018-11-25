@@ -3,9 +3,7 @@ import os
 
 from keras.models import model_from_json
 
-# from config import *
-
-MODELS_ROOT = '../../models'
+from config import *
 
 def save_weights(model, root, it):
     if os.path.exists(MODELS_ROOT) == False:
@@ -33,9 +31,7 @@ def set_gpu_memory_fraction(f):
     from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = f
-    sess = tf.Session(config=config)
-    set_session(sess)
-    return sess
+    set_session(tf.Session(config=config))
 
 def step_decay_cont(epochs, era, init_lr=0.0003, drop=0.5,
                     epochs_drop=10.0, t1=50.0):

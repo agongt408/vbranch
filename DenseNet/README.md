@@ -22,9 +22,9 @@ It features several improvements such as :
 The Bottleneck - Compressed DenseNets offer further performance benefits, such as reduced number of parameters, with similar or better performance. 
 
 - Take into consideration the DenseNet-100-12 model, with nearly 7 million parameters against with the DenseNet-BC-100-12, with just 0.8 million parameters.
-The BC model achieves 4.51 % error in comparison to the original models' 4.10 % error
+The BC model acheives 4.51 % error in comparison to the original models' 4.10 % error
 
-- The best original model, DenseNet-100-24 (27.2 million parameters) achieves 3.74 % error, whereas the DenseNet-BC-190-40 (25.6 million parameters) achieves
+- The best original model, DenseNet-100-24 (27.2 million parameters) acheives 3.74 % error, whereas the DenseNet-BC-190-40 (25.6 million parameters) acheives
 3.46 % error which is a new state of the art performance on CIFAR-10.
 
 Dense Nets have an architecture which can be shown in the following image from the paper: <br>
@@ -46,7 +46,7 @@ import densenet
 # 'th' dim-ordering or 'tf' dim-ordering
 image_dim = (3, 32, 32) or image_dim = (32, 32, 3)
 
-model = densenet.DenseNet(classes=10, input_shape=image_dim, depth=40, growth_rate=12, 
+model = densenet.DenseNet(nb_classes=10, img_dim=image_dim, depth=40, growth_rate=12, 
 			  bottleneck=True, reduction=0.5)
 ```
 
@@ -59,7 +59,7 @@ import densenet
 # 'th' dim-ordering or 'tf' dim-ordering
 image_dim = (3, 224, 224) or image_dim = (224, 224, 3)
 
-model = densenet.DenseNetImageNet121(input_shape=image_dim)
+model = densenet.DenseNetImageNet121(image_dim)
 ```
 
 Weights for the DenseNetImageNet121, DenseNetImageNet161 and DenseNetImageNet169 models are provided ([in the release tab](https://github.com/titu1994/DenseNet/releases)) and will be automatically downloaded when first called. They have been trained on ImageNet. The weights were ported from the repository https://github.com/flyyufelix/DenseNet-Keras.

@@ -5,119 +5,226 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
-from data import TestingDataGenerator
+import data
+from config import *
 
-from keras.utils import Progbar
+input_shape = (256,128)
+input_preprocess = True
 
-def get_score(model, dataset='market', cuhk03='detected', preprocess=True,
-        img_dim=(128,64,3), crop=False, flip=False, rank=[1,5], compute_mAP=True):
+"""# DATA_ROOT = '/home/albert/github/tensorflow/data/'
+DATA_ROOT = '/home/albert/research/vbranch/data/'
+if not os.path.exists(DATA_ROOT):
+    DATA_ROOT = '/home/ubuntu/albert/data/'"""
 
-    # if test_dict is None and test_files is None:
-    #     test_dict, test_files = _get_data('test', keypoints, dataset, cuhk03)
-    #
-    # if query_files is None:
-    #     _, query_files = _get_data('query', keypoints, dataset)
-
-    gallery_data = TestingDataGenerator(dataset, 'test', preprocess, img_dim, crop, flip)
-    query_data = TestingDataGenerator(dataset, 'query', preprocess, img_dim, crop, flip)
+# http://www.liangzheng.org/Project/project_reid.html
+# http://www.ee.cuhk.edu.hk/~xgwang/CUHK_identification.html
+def _get_data(split, keypoints=None, dataset='market', cuhk03='detected'):
+    files_dict = {}
+    files_arr = []
 
     if dataset == 'market' or dataset == 'duke':
-        gallery_embs, query_embs = _get_embeddings(model, gallery_data, query_data)
+        if split in ['train', 'test', 'query']:
+            img_dir = os.listdir(os.path.join(DATA_ROOT, dataset, split))
+        else:
+            raise ValueError, 'split must be either query, train, or test'
 
-        # start = time.time()
-        rank_score, mAP_score = _evaluate_metrics(gallery_embs, query_embs, gallery_data,
-            query_data, rank, compute_mAP):
-        # print('metric time: %f' % (time.time() - start))
+    elif dataset == 'cuhk03':
+        if split in ['train', 'test']:
+            img_dir = os.listdir(
+                os.path.join(DATA_ROOT, dataset, cuhk03, split))
+        else:
+            raise ValueError, 'split must be either train or test'
 
-    # elif dataset == 'cuhk03':
-    #     all_embs = _get_embeddings_cuhk03(model, test_files, shape,
-    #                                         input_preprocess, flip)
-    #
-    #     start = time.time()
-    #     metrics = _evaluate_metrics_cuhk03(all_embs, rank, mAP, n)
-    #     print('metric time: %f' % (time.time() - start))
-    #
-    # else:
-    #     raise ValueError('dataset must be either market or cuhk03')
+    else:
+        raise ValueError, 'dataset must be either market or cuhk03'
 
-    for i in range(len(rank)):
-        print("rank-{}: {:.2f}".format(rank[i], 100 * rank_score[i]))
-    print("mAP: {:.2f}".format(100 * mAP_score))
+    for f in img_dir:
+        if f[-4:] == '.jpg':
+            idt = int(f[0:f.index('_')])
+            if idt != -1:
+                if not any(idt == l for l in files_dict.keys()):
+                    files_dict[idt] = {}
 
-    return {'rank' : rank_score, 'mAP' : mAP_score}
+                if dataset == 'market' or dataset == 'duke':
+                    path = os.path.join(DATA_ROOT, dataset, split, f)
+                else:
+                    path = os.path.join(DATA_ROOT, dataset, cuhk03, split, f)
+
+                if dataset == 'market' or dataset == 'duke':
+                    camera = f[f.index('_') + 2 : f.index('_') + 3]
+                elif dataset == 'cuhk03':
+                    camera = f[len(f) - f[::-1].index('_'):-4]
+                else:
+                    raise ValueError, 'dataset must be either market or cuhk03'
+
+                if keypoints is None:
+                    files_arr.append([path, idt, int(camera)])
+                    try:
+                        files_dict[idt][int(camera)].append(path)
+                    except:
+                        files_dict[idt][int(camera)] = []
+                        files_dict[idt][int(camera)].append(path)
+                else:
+                    if data._exist_all_keypoints(path, keypoints, DATA_ROOT):
+                        files_arr.append([path, idt, int(camera)])
+                        try:
+                            files_dict[idt][int(camera)].append(path)
+                        except:
+                            files_dict[idt][int(camera)] = []
+                            files_dict[idt][int(camera)].append(path)
+
+    return files_dict, files_arr
 
 
-def _get_embeddings(model, gallery_iter, query_iter):
-    gallery_embs = []
+def _get_data_orientation(split, orientation='front'):
+    files_dict, files_arr = _get_data(
+        split, keypoints=['RShoulder', 'LShoulder', 'RHip', 'LHip'])
+
+    new_files_dict = {}
+    new_files_arr = []
+
+    for path, idt, camera in files_arr:
+        if not any(idt == l for l in new_files_dict.keys()):
+            new_files_dict[idt] = {}
+
+        theta = data._orientation_angle(path)
+        if orientation is 'front':
+            if theta < np.pi / 3:
+                new_files_arr.append([path, idt, camera])
+                try:
+                    new_files_dict[idt][int(camera)].append(path)
+                except:
+                    new_files_dict[idt][int(camera)] = []
+                    new_files_dict[idt][int(camera)].append(path)
+        elif orientation is 'side':
+            if theta >= np.pi / 3 and theta < 2 * np.pi / 3:
+                new_files_arr.append([path, idt, camera])
+                try:
+                    new_files_dict[idt][int(camera)].append(path)
+                except:
+                    new_files_dict[idt][int(camera)] = []
+                    new_files_dict[idt][int(camera)].append(path)
+        elif orientation is 'back':
+            if theta >= 2 * np.pi / 3:
+                new_files_arr.append([path, idt, camera])
+                try:
+                    new_files_dict[idt][int(camera)].append(path)
+                except:
+                    new_files_dict[idt][int(camera)] = []
+                    new_files_dict[idt][int(camera)].append(path)
+        else:
+            raise ValueError, \
+                'orientation must be either front, back, or side'
+            return None
+
+    return new_files_dict, new_files_arr
+
+
+def _get_embeddings(model, test_files=None, query_files=None,
+                    shape=input_shape, preprocess=input_preprocess,
+                    crop=False, flip=False, inputs=None):
+    if test_files is None or query_files is None:
+        _, test_files = _get_data('test')
+        _, query_files = _get_data('query')
+
+    all_embs = []
     query_embs = []
 
-    print('Computing gallery embeddings...')
-    gallery_progbar = Progbar(len(gallery_iter.files_arr))
+    for files_arr, emb_arr in [(test_files, all_embs), (query_files, query_embs)]:
+        s, z = time.time(), 0
 
-    for it in gallery_iter:
-        e = model.predict(it)
-        gallery_embs.append(e)
-        gallery_progbar.add(len(e))
+        for f, _, _ in files_arr:
+            # np.random.randint(0.125 * shape[1])
+            crop_x = int(0.125 * shape[1] / 2)
+            # np.random.randint(0.125 * shape[0])
+            crop_y = int(0.125 * shape[0] / 2)
 
-    print('Computing query embeddings...')
-    query_progbar = Progbar(len(query_iter.files_arr))
+            if crop:
+                img = data._imread_scale(f, (int(1.125 * shape[0]),
+                                            int(1.125 * shape[1])),
+                                            preprocess)[crop_y:crop_y+shape[0],
+                                                        crop_x:crop_x+shape[1]]
+            else:
+                img = data._imread_scale(f, shape, preprocess)
 
-    for it in query_iter:
-        e = model.predict(it)
-        query_embs.append(e)
-        query_progbar.add(len(e))
+            # img = data._imread_scale(f, shape, preprocess)
 
-    return np.stack(gallery_embs), np.stack(query_embs)
+            predict = []
+
+            aug = 2 if flip else 1
+
+            for i in range(aug):
+                input_batch = []
+                for ip in range(inputs if inputs else len(model.inputs)):
+                    input_batch.append(np.flip(img, axis=1).\
+                                        reshape(1,shape[0],shape[1],3) if i else \
+                                        reshape(1,shape[0],shape[1],3) if i else \
+                                        img.reshape(1,shape[0],shape[1],3))
+
+                if len(model.outputs) == 1:
+                    predict.append(model.predict(input_batch)[0])
+                else:
+                    predict.append(model.predict(input_batch)[0][0])
+
+            emb_arr.append(np.array(predict).reshape((1,aug,-1)).mean(axis=1))
+
+            z += 1
+            if z % 1000 == 0:
+                print z, time.time() - s
+
+    return np.concatenate(all_embs, axis=0), np.concatenate(query_embs, axis=0)
 
 # https://cysu.github.io/open-reid/notes/evaluation_metrics.html
-def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank, compute_mAP):
+def _evaluate_metrics(all_embs, query_embs,
+                    test_dict=None, test_files=None, query_files=None,
+                    rank=[1,5], mAP=True, dataset='market'):
 
-    # if test_dict is None or test_files is None or query_files is None:
-    #     test_dict, test_files = _get_data('test')
-    #     _, query_files = _get_data('query')
+    if test_dict is None or test_files is None or query_files is None:
+        test_dict, test_files = _get_data('test')
+        _, query_files = _get_data('query')
 
-    gallery_idts = np.array([p[1] for p in gallery_data.files_arr])
-    gallery_cams = np.array([p[2] for p in gallery_data.files_arr])
+    all_identities = np.array([p[1] for p in test_files])
+    all_camera = np.array([p[2] for p in test_files])
 
     if rank is not None:
         correct = np.array([0] * len(rank))
         test_iter = np.array([0] * len(rank))
 
-    AP = []
+    if mAP:
+        AP = []
 
-    progbar = Progbar(len(query_data.files_arr))
+    for q in range(len(query_files)):
+        idt, camera = int(query_files[q][1]), int(query_files[q][2])
 
-    for q in range(len(query_data.files_arr)):
-        idt, camera = int(query_data.files_arr[q][1]), int(query_data.files_arr[q][2])
-
-        b = np.logical_or(gallery_cams != camera, gallery_idts != idt)
+        b = np.logical_or(all_camera != camera, all_identities != idt)
 
         i = 0
-        for _, idt_t, cam_t in np.array(gallery_data.files_arr)[b]:
+        for _, idt_t, cam_t in np.array(test_files)[b]:
             if idt == int(idt_t) and camera != int(cam_t):
                 i += 1
         if i == 0:
-            print('missing')
+            print 'missing'
             continue
 
-        if len(gallery_data.files_dict[idt].keys()) > 1:
-            q_emb = query_embs[q]
-            distance_vectors = np.power(np.squeeze(np.abs(gallery_embs[b] - q_emb)), 2)
+        if len(test_dict[idt].keys()) > 1:
+            query_emb = query_embs[q]
+            distance_vectors = np.power(np.squeeze(np.abs(all_embs[b] - query_emb)), 2)
             distance = np.sqrt(np.sum(distance_vectors, axis=1))
 
             top_inds = distance.argsort()
-            output_classes = gallery_idts[b][top_inds]
+            output_classes = all_identities[b][top_inds]
 
             # Calculate rank
             for r in range(len(rank)):
                 r_top_inds = top_inds[:rank[r]]
-                r_output_classes = gallery_idts[b][r_top_inds]
+                r_output_classes = all_identities[b][r_top_inds]
 
                 if np.where(r_output_classes == idt)[0].shape[0] > 0:
                     correct[r] += 1
                 test_iter[r] += 1
 
-            if compute_mAP:
+            # Calculate mAP
+            if mAP:
                 precision = []
                 correct_old = 0
 
@@ -128,17 +235,13 @@ def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank, 
 
                 AP.append(np.mean(np.array(precision)))
 
-        progbar.add(1)
+    metrics = {}
+    if rank is not None:
+        metrics['rank'] = correct.astype(np.float32) / test_iter
+    if mAP:
+        metrics['mAP'] = np.array(AP).mean()
 
-    # metrics = {}
-    # if rank is not None:
-    #     metrics['rank'] = correct.astype(np.float32) / test_iter
-    # if mAP:
-    #     metrics['mAP'] = np.array(AP).mean()
-
-    rank_score = correct.astype(np.float32) / test_iter
-    mAP = np.mean(AP)
-    return rank_score, mAP
+    return metrics
 
 
 def _get_embeddings_cuhk03(model, test_files=None,
@@ -183,7 +286,7 @@ def _get_embeddings_cuhk03(model, test_files=None,
 
         z += 1
         if z % 500 == 0:
-            print(z, time.time() - s)
+            print z, time.time() - s
 
     return all_embs
 
@@ -251,3 +354,54 @@ def _evaluate_metrics_cuhk03(all_embs, rank=[1,5], mAP=True, n=1):
             metrics['mAP'] += np.mean(np.array(AP)) / n
 
     return metrics
+
+
+def get_score(model, hist=None, keypoints=None, dataset='market', cuhk03='detected',
+                preprocess=input_preprocess, shape=input_shape, crop=False, flip=False,
+                test_dict=None, test_files=None, query_files=None, rank=[1,5], mAP=True,
+                inputs=None, n=1):
+    score = {
+        'rank' : {},
+        'mAP' : 0,
+        'loss' : []
+    }
+
+    if test_dict is None and test_files is None:
+        test_dict, test_files = _get_data('test', keypoints, dataset, cuhk03)
+
+    if query_files is None:
+        _, query_files = _get_data('query', keypoints, dataset)
+
+    if dataset == 'market' or dataset == 'duke':
+        all_embs, query_embs = _get_embeddings(model, test_files, query_files,
+                                            shape, input_preprocess, crop, flip, inputs)
+
+        start = time.time()
+        metrics = _evaluate_metrics(all_embs, query_embs, test_dict,
+                                        test_files, query_files, rank, mAP, dataset)
+        print 'metric time: %f' % (time.time() - start)
+
+    elif dataset == 'cuhk03':
+        all_embs = _get_embeddings_cuhk03(model, test_files, shape,
+                                            input_preprocess, flip)
+
+        start = time.time()
+        metrics = _evaluate_metrics_cuhk03(all_embs, rank, mAP, n)
+        print 'metric time: %f' % (time.time() - start)
+
+    else:
+        raise ValueError, 'dataset must be either market or cuhk03'
+
+    if rank is not None:
+        for r in range(len(rank)):
+            score['rank']['r' + str(rank[r])] = np.around(
+                metrics['rank'], decimals=4).tolist()[r]
+    if mAP:
+        score['mAP'] = np.around(metrics['mAP'], decimals=4)
+
+    try:
+        score['loss'] += hist.history['loss']
+    except AttributeError:
+        pass
+
+    return score

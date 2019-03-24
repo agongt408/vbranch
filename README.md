@@ -19,3 +19,11 @@ http://leemon.com/papers/2009scsb.pdf
 
 Net2Net:
 https://arxiv.org/pdf/1511.05641.pdf
+
+TF QueueRunners:
+https://adventuresinmachinelearning.com/introduction-tensorflow-queuing/
+
+https://blog.metaflow.fr/tensorflow-how-to-optimise-your-input-pipeline-with-queues-and-multi-threading-e7c3874157e0
+
+TF Dataset API:
+https://towardsdatascience.com/how-to-use-dataset-in-tensorflow-c758ef9e4428

@@ -44,8 +44,8 @@ class Sequential(object):
 def simple_fcn(input_tensor, *layers_spec):
     model = Sequential(input_tensor)
 
-    for i in range(len(layers_spec)):
-        model.add(Dense(layers_spec[i], 'fc'+str(i + 1)))
+    for i, units in enumerate(layers_spec):
+        model.add(Dense(units, 'fc'+str(i + 1)))
         model.add(BatchNormalization('bn'+str(i + 1)))
         model.add(Activation('relu', 'relu'+str(i + 1)))
 
@@ -64,6 +64,6 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
             model.add(AveragePooling2D((2,2), 'avg_pool2d_'+str(i + 1)))
         else:
             model.add(GlobalAveragePooling2D('global_avg_pool2d'))
-            model.add(Dense(num_classes, 'output_layer'))
+            model.add(Dense(num_classes, 'pred'))
 
     return model

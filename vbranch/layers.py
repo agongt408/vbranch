@@ -47,9 +47,9 @@ class Dense(Layer):
 
         if self.use_bias:
             self.b = tf.get_variable(self.name + '_b', shape=[self.units])
-            output = tf.nn.xw_plus_b(x, self.w, self.b)
+            output = tf.nn.xw_plus_b(x, self.w, self.b, name=self.name)
         else:
-            output = tf.matmul(x, self.w)
+            output = tf.matmul(x, self.w, name=self.name)
 
         return output
 
@@ -76,7 +76,7 @@ class BatchNormalization(Layer):
         self.scale = tf.get_variable(self.name+'_scale', initializer=tf.ones([n_out]))
         self.beta = tf.get_variable(self.name+'_beta', initializer=tf.zeros([n_out]))
         output = tf.nn.batch_normalization(x, batch_mean, batch_var,
-            self.beta, self.scale, self.epsilon)
+            self.beta, self.scale, self.epsilon, name=self.name)
 
         return output
 
@@ -132,12 +132,14 @@ class Conv2D(Layer):
             self.kernel_size, channels_in, self.filters])
 
         strides = (1, self.strides, self.strides, 1)
-        output = tf.nn.conv2d(x, self.f, strides, self.padding.upper(), name=self.name)
 
         if self.use_bias:
+            output = tf.nn.conv2d(x, self.f, strides, self.padding.upper())
             self.b = tf.get_variable(self.name + '_b', initializer=tf.zeros([self.filters]))
             b = tf.reshape(self.b, [-1, 1, 1, self.filters])
-            output += b # tf.tile(b, shape_in[:-1] + [1,])
+            output = tf.add(output, b, name=self.name)
+        else:
+            output = tf.nn.conv2d(x, self.f, strides, self.padding.upper(), name=self.name)
 
         return output
 
@@ -169,7 +171,7 @@ class AveragePooling2D(Layer):
         else:
             strides = (1, self.strides[0], self.strides[1], 1)
 
-        output = tf.nn.avg_pool(x, ksize, strides, self.padding.upper())
+        output = tf.nn.avg_pool(x, ksize, strides, self.padding.upper(), name=self.name)
         self.output_shape = output.get_shape().as_list()
         return output
 

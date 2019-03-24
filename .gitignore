@@ -1,4 +1,5 @@
 .DS_Store
 .ipynb_checkpoints
-vbranch/__pycache__/*
+*.pyc
 models/*
+omniglot-images/

@@ -1,0 +1,3 @@
+[submodule "omniglot"]
+	path = omniglot
+	url = git@github.com:brendenlake/omniglot.git

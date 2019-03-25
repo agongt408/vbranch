@@ -16,30 +16,39 @@ class Sequential(object):
         self.output = layer(self.output)
 
     def summary(self):
-        def print_line(s1, s2, s3, s4):
-            print('{:<4}{:<20}{:>20}{:>20}'.format(str(s1),str(s2),str(s3),str(s4)))
-            print('-' * 64)
+        def print_line(i, name, output_shape, param_shapes, num_params):
+            str_f = '{:<4}'.format(str(i))
+            str_f += '{:<20}'.format(str(name))
+            str_f += '{:<20}'.format(str(output_shape))
+            str_f += '{:<30}'.format(str(param_shapes))
+            str_f += '{:<10}'.format(str(num_params))
 
-        print_line('i', 'Layer name', 'Output shape', 'Parameters')
+            print(str_f)
+            print('-' * len(str_f))
+
+        print_line('i','Layer name','Output shape','Parameters','Num param')
         total_num_params = 0
 
         # Input spec
-        print_line('', 'Input', self.input.get_shape().as_list(), '')
+        print_line('', 'Input', str(self.input.get_shape().as_list()).\
+            replace(' ', ''), '', '')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
             name = config['name']
-            output_shape = config['output_shape']
+            output_shape = str(config['output_shape']).replace(' ', '')
 
             num_params = 0
+            param_shapes = ''
             if 'weights' in config.keys():
                 for weight in config['weights']:
                     num_params += np.prod(weight.shape)
+                    param_shapes += str(weight.shape).replace(' ', '') + ' '
 
-            print_line(i, name, output_shape, num_params)
+            print_line(i, name, output_shape, param_shapes, num_params)
             total_num_params += num_params
 
-        print('Parameters: {:d}'.format(total_num_params))
+        print('Total parameters: {:d}'.format(total_num_params))
 
 def simple_fcn(input_tensor, *layers_spec):
     model = Sequential(input_tensor)

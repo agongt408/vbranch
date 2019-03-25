@@ -34,6 +34,10 @@ class Layer(object):
             return output
         return call
 
+    # Return empty list for layers without weights
+    def get_weights(self):
+        return []
+
 class Dense(Layer):
     def __init__(self, units, name, use_bias=True):
         super().__init__(name)

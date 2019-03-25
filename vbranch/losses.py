@@ -11,16 +11,21 @@ def triplet(pred, P, K, margin=0.2, name=None):
     Returns:
         loss"""
 
-    assert margin == 'soft' or margin > 0, 'invalid margin={}'.format(margin)
+    assert margin == 'soft' or margin >= 0, 'invalid margin={}'.format(margin)
 
     loss = tf.Variable(0, dtype='float32', name=name)
 
     for i in range(P):
         for a in range(K):
             pred_anchor = pred[i * K + a]
-            hard_pos = tf.reduce_max(norm(pred_anchor, pred[i*K:(i + 1)*K]))
-            hard_neg = tf.reduce_min(norm(pred_anchor, tf.concat([pred[0:i*K],
-                pred[(i + 1)*K:]], 0)))
+
+            pos = norm(pred_anchor, pred[i*K:(i + 1)*K])
+            # print(pos.get_shape().as_list())
+            hard_pos = tf.reduce_max(pos)
+
+            neg = norm(pred_anchor, tf.concat([pred[0:i*K], pred[(i + 1)*K:]], 0))
+            # print(neg.get_shape().as_list())
+            hard_neg = tf.reduce_min(neg)
 
             if margin == 'soft':
                 loss = loss + log1p(hard_pos - hard_neg)

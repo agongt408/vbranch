@@ -69,10 +69,18 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
             model.add(BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
             model.add(Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
 
+            # model.add(BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
+            # model.add(Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
+            # model.add(Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
+
         if i < len(layers_spec) - 1:
             model.add(AveragePooling2D((2,2), 'avg_pool2d_'+str(i + 1)))
         else:
             model.add(GlobalAveragePooling2D('global_avg_pool2d'))
+
+            model.add(Dense(layers_spec[-1], 'fc1'))
+            model.add(BatchNormalization('bn_fc1'))
+            model.add(Activation('relu', 'relu_fc1'))
             model.add(Dense(num_classes, 'output'))
 
     return model

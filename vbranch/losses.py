@@ -13,25 +13,24 @@ def triplet(pred, P, K, margin=0.2, name=None):
 
     assert margin == 'soft' or margin >= 0, 'invalid margin={}'.format(margin)
 
-    loss = tf.Variable(0, dtype='float32', name=name)
+    batch_losses = []
 
     for i in range(P):
         for a in range(K):
             pred_anchor = pred[i * K + a]
 
             pos = norm(pred_anchor, pred[i*K:(i + 1)*K])
-            # print(pos.get_shape().as_list())
             hard_pos = tf.reduce_max(pos)
 
             neg = norm(pred_anchor, tf.concat([pred[0:i*K], pred[(i + 1)*K:]], 0))
-            # print(neg.get_shape().as_list())
             hard_neg = tf.reduce_min(neg)
 
             if margin == 'soft':
-                loss = loss + log1p(hard_pos - hard_neg)
+                batch_losses.append(log1p(hard_pos - hard_neg))
             else:
-                loss = loss + tf.maximum(margin + hard_pos - hard_neg, 0.0)
+                batch_losses.append(tf.maximum(margin + hard_pos - hard_neg, 0.0))
 
+    loss = tf.reduce_sum(batch_losses, name=name)
     return loss
 
 def triplet_omniglot(pred, A, P, K, name, margin=0.2):

@@ -73,6 +73,6 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
             model.add(AveragePooling2D((2,2), 'avg_pool2d_'+str(i + 1)))
         else:
             model.add(GlobalAveragePooling2D('global_avg_pool2d'))
-            model.add(Dense(num_classes, 'pred'))
+            model.add(Dense(num_classes, 'output'))
 
     return model

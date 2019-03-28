@@ -193,7 +193,3 @@ class GlobalAveragePooling2D(Layer):
         output = tf.reduce_mean(x, axis=[1, 2], name=self.name)
         self.output_shape = output.get_shape().as_list()
         return output
-
-    def get_config(self):
-        config = {'name':self.name, 'output_shape':self.output_shape}
-        return config

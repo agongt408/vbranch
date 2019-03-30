@@ -2,30 +2,30 @@
 
 import tensorflow as tf
 
+def eval_params(func):
+    """
+    Decorator to evaluate the parameters returned by get_weights method
+    using a tf session. Initializes variables if needed."""
+
+    def inner(layer):
+        if layer.output_shape is None:
+            return []
+
+        variables = func(layer)
+        with tf.Session() as sess:
+            try:
+                weights = sess.run(variables)
+            except tf.errors.FailedPreconditionError:
+                sess.run(tf.global_variables_initializer())
+                weights = sess.run(variables)
+
+        return weights
+    return inner
+
 class Layer(object):
     def __init__(self, name):
         self.name = name
         self.output_shape = None
-
-    def get_config(self):
-        config = {'name':self.name, 'output_shape':self.output_shape}
-        return config
-
-    def eval_params(func):
-        def inner(layer):
-            if layer.output_shape is None:
-                return []
-
-            variables = func(layer)
-            with tf.Session() as sess:
-                try:
-                    weights = sess.run(variables)
-                except tf.errors.FailedPreconditionError:
-                    sess.run(tf.global_variables_initializer())
-                    weights = sess.run(variables)
-
-            return weights
-        return inner
 
     def set_output_shape(func):
         def call(self, x):
@@ -34,9 +34,13 @@ class Layer(object):
             return output
         return call
 
-    # Return empty list for layers without weights
+    # By default, return empty list for weights
     def get_weights(self):
         return []
+
+    def get_config(self):
+        config = {'name':self.name, 'output_shape':self.output_shape}
+        return config
 
 class Dense(Layer):
     def __init__(self, units, name, use_bias=True):
@@ -63,7 +67,7 @@ class Dense(Layer):
         config['weights'] = self.get_weights()
         return config
 
-    @Layer.eval_params
+    @eval_params
     def get_weights(self):
         return self.w, self.b
 
@@ -90,7 +94,7 @@ class BatchNormalization(Layer):
         config['weights'] = self.get_weights()
         return config
 
-    @Layer.eval_params
+    @eval_params
     def get_weights(self):
         return self.beta, self.scale
 
@@ -154,7 +158,7 @@ class Conv2D(Layer):
             'output_shape':self.output_shape, 'weights':self.get_weights()}
         return config
 
-    @Layer.eval_params
+    @eval_params
     def get_weights(self):
         return self.f, self.b
 

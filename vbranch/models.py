@@ -5,6 +5,22 @@ from .layers import *
 import tensorflow as tf
 import numpy as np
 
+class PrintLine(object):
+    """
+    Helper class used to print each line of model summaries"""
+
+    def __init__(self, *widths):
+        self.widths = widths
+
+    def __call__(self, *items, show_line=True):
+        str_f = ''
+        for i in range(len(items)):
+            str_f += ('{:<' + str(self.widths[i]) + '}').format(str(items[i]))
+        print(str_f)
+
+        if show_line:
+            print('-' * len(str_f))
+
 class Sequential(object):
     def __init__(self, input_tensor):
         self.input = input_tensor
@@ -16,17 +32,9 @@ class Sequential(object):
         self.output = layer(self.output)
 
     def summary(self):
-        def print_line(i, name, output_shape, param_shapes, num_params):
-            str_f = '{:<4}'.format(str(i))
-            str_f += '{:<20}'.format(str(name))
-            str_f += '{:<20}'.format(str(output_shape))
-            str_f += '{:<30}'.format(str(param_shapes))
-            str_f += '{:<10}'.format(str(num_params))
-
-            print(str_f)
-            print('-' * len(str_f))
-
+        print_line = PrintLine(4, 20, 20, 30, 10)
         print_line('i','Layer name','Output shape','Parameters','Num param')
+
         total_num_params = 0
 
         # Input spec
@@ -50,13 +58,65 @@ class Sequential(object):
 
         print('Total parameters: {:d}'.format(total_num_params))
 
+class SequentialVB(object):
+    def __init__(self, input_tensor):
+        self.input = input_tensor
+        self.layers = []
+        self.output = input_tensor
+
+    def add(self, layer):
+        self.layers.append(layer)
+        self.output = layer(self.output)
+
+    def summary(self):
+        print_line = PrintLine(4, 20, 20, 30, 10)
+        print_line('i', 'Layer name', 'Output shapes', 'Shared units', 'Num param')
+
+        total_num_params = 0
+
+        # Input spec
+        if type(self.input) is list:
+            for ip in self.input:
+                print_line('', 'Input', str(ip.get_shape().as_list()).\
+                    replace(' ', ''), '', '')
+        else:
+            print_line('', 'Input', str(self.input.get_shape().as_list()).\
+                replace(' ', ''), '', '')
+
+        for i, l in enumerate(self.layers):
+            config = l.get_config()
+            name = config['name']
+
+            for b in range(config['n_branches']):
+                if b == 0:
+
+                    print_line('', '', str(config['output_shapes'][b]).\
+                        replace(' ', ''), '', '')
+                else:
+                    print_line('', '', str(config['output_shapes'][b]).\
+                        replace(' ', ''), '', '')
+
+            num_params = 0
+            param_shapes = ''
+            if 'weights' in config.keys():
+                for weight in config['weights']:
+                    num_params += np.prod(weight.shape)
+                    param_shapes += str(weight.shape).replace(' ', '') + ' '
+
+            print_line(i, name, output_shape, param_shapes, num_params)
+            total_num_params += num_params
+
+        print('Total parameters: {:d}'.format(total_num_params))
+
 def simple_fcn(input_tensor, *layers_spec):
     model = Sequential(input_tensor)
 
     for i, units in enumerate(layers_spec):
         model.add(Dense(units, 'fc'+str(i + 1)))
         model.add(BatchNormalization('bn'+str(i + 1)))
-        model.add(Activation('relu', 'relu'+str(i + 1)))
+
+        activation_name = 'relu' if i < len(layers_spec) - 1 else 'output'
+        model.add(Activation('relu', activation_name))
 
     return model
 

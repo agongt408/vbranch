@@ -8,9 +8,6 @@ def eval_params(func):
     using a tf session. Initializes variables if needed."""
 
     def inner(layer):
-        if layer.output_shape is None:
-            return []
-
         variables = func(layer)
         with tf.Session() as sess:
             try:

@@ -1,5 +1,11 @@
 import tensorflow as tf
 
+def softmax_cross_entropy_with_logits(labels, logits, name=None):
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels,
+                                                                logits=logits)
+    loss = tf.reduce_mean(cross_entropy, name=name)
+    return loss
+
 def triplet(pred, P, K, margin=0.2, name=None):
     """
     Define triplet loss (batch-hard variant)

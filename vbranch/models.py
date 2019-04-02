@@ -112,7 +112,7 @@ def simple_fcn(input_tensor, *layers_spec):
         model.add(L.Dense(units, 'fc'+str(i + 1)))
         model.add(L.BatchNormalization('bn'+str(i + 1)))
 
-        activation_name = 'relu' if i < len(layers_spec) - 1 else 'output'
+        activation_name = 'relu'+str(i + 1) if i < len(layers_spec) - 1 else 'output'
         model.add(L.Activation('relu', activation_name))
 
     return model
@@ -145,11 +145,13 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
 def vbranch_fcn(input_tensor, *layers_spec, branches=1):
     model = SequentialVB(input_tensor)
 
-    for i, units_list in enumerate(layers_spec):
-        model.add(VBL.Dense(units_list, branches, 'fc'+str(i + 1)))
+    for i, (units_list, shared_units) in enumerate(layers_spec):
+        model.add(VBL.Dense(units_list,branches,'fc'+str(i + 1), shared_units))
         model.add(VBL.BatchNormalization(branches, 'bn'+str(i + 1)))
-        model.add(VBL.Activation('relu', branches, 'relu'))
 
-    model.add(VBL.Average(branches, 'output'))
+        activation_name = 'relu'+str(i + 1) if i < len(layers_spec) - 1 else 'output'
+        model.add(VBL.Activation('relu', branches, activation_name))
+
+    # model.add(VBL.Average(branches, 'output'))
 
     return model

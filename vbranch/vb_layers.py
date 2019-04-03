@@ -1,4 +1,4 @@
-# Build Virtual Branching layers
+# Virtual branching version of layers
 
 from . import layers as L
 
@@ -18,7 +18,8 @@ class Layer(object):
     def expand_input(call_func):
         def inner(layer, x):
             if type(x) is list:
-                assert len(x) == layer.n_branches, 'len(x) != n_branches'
+                assert len(x) == layer.n_branches, \
+                    '{} != {}'.format(len(x), layer.n_branches)
                 x_list = x
             else:
                 x_list = [x] * layer.n_branches
@@ -41,9 +42,9 @@ class Layer(object):
                 if type(o) is list:
                     out_shared = o[0].get_shape().as_list()
                     out_unique = o[1].get_shape().as_list()
-                    out_shape = out_shared[:-1] + [out_shared[-1] + out_unique[-1]]
+                    out_shape = [out_shared, out_unique]
                 else:
-                    out_shape = o.get_shape().as_list()
+                    out_shape = [o.get_shape().as_list()]
                 self.output_shapes.append(out_shape)
 
             return output
@@ -137,7 +138,7 @@ class Dense(Layer):
         return output_list
 
     @L.eval_params
-    def get_weights(self):
+    def get_weights(self, eval_weights=True):
         # Get weights for shared branch
         if self.shared_branch is None:
             weights = [[], []]
@@ -156,10 +157,10 @@ class Dense(Layer):
 
         return weights
 
-    def get_config(self):
+    def get_config(self, eval_weights=False):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'shared_units':self.shared_units, 'output_shapes':self.output_shapes,
-            'units_list':self.units_list, 'weights':self.get_weights()}
+            'units_list':self.units_list, 'weights':self.get_weights(eval_weights)}
         return config
 
 class BatchNormalization(Layer):
@@ -204,7 +205,7 @@ class BatchNormalization(Layer):
         return output_list
 
     @L.eval_params
-    def get_weights(self):
+    def get_weights(self, eval_weights=True):
         # Get weights for shared branch
         if self.shared_branch is None:
             weights = [[], []]
@@ -217,10 +218,10 @@ class BatchNormalization(Layer):
 
         return weights
 
-    def get_config(self):
+    def get_config(self, eval_weights=False):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'epsilon':self.epsilon, 'output_shapes':self.output_shapes,
-            'weights':self.get_weights()}
+            'weights':self.get_weights(eval_weights)}
         return config
 
 class Activation(Layer):
@@ -329,3 +330,144 @@ class MergeSharedUnique(Layer):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'output_shapes':self.output_shapes}
         return config
+
+class Conv2D(Layer):
+    def __init__(self, filters_list, kernel_size, n_branches, name,
+            shared_filters=0, strides=1, padding='valid'):
+        super().__init__(name, n_branches)
+
+        assert n_branches == len(filters_list), 'n_branches != len(filters_list)'
+        self.filters_list = filters_list
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
+        self.shared_filters = shared_filters
+        self.shared_branch = None
+
+    @Layer.set_output_shapes
+    @Layer.expand_input
+    def __call__(self, x_list):
+        self.branches = []
+        output_list = []
+
+        if self.shared_filters == 0:
+            for i in range(self.n_branches):
+                layer = L.Conv2D(self.filters_list[i], self.kernel_size,
+                    self.name+'_vb'+str(i+1), strides=self.strides,
+                    padding=self.padding)
+
+                if type(x_list[i]) is list:
+                    input_ = tf.concat(x_list[i], -1)
+                else:
+                    input_ = x_list[i]
+
+                x_out = layer(input_)
+                self.branches.append(layer)
+                output_list.append(x_out)
+
+            return output_list
+
+        # For efficiency, only apply computation to shared_in ONCE
+        self.shared_branch = L.Conv2D(self.shared_filters, self.kernel_size,
+            self.name+'_shared_to_shared',strides=self.strides,padding=self.padding)
+
+        for i in range(self.n_branches):
+            assert self.filters_list[i] > self.shared_filters, 'filters <= shared_filters'
+            unique_filters = self.filters_list[i] - self.shared_filters
+
+            # Operations to build the rest of the layer
+            shared_to_unique = L.Conv2D(self.shared_filters, self.kernel_size,
+                self.name+'_vb'+str(i+1)+'_shared_to_unique',strides=self.strides,
+                padding=self.padding)
+            unique_to_shared = L.Conv2D(self.shared_filters, self.kernel_size,
+                self.name+'_vb'+str(i+1)+'_unique_to_shared',strides=self.strides,
+                padding=self.padding)
+            unique_to_unique = L.Conv2D(self.shared_filters, self.kernel_size,
+                self.name+'_vb'+str(i+1)+'_unique_to_unique',strides=self.strides,
+                padding=self.padding)
+
+            if type(x_list[i]) is list:
+                shared_in = x_list[i][0]
+                unique_in = x_list[i][1]
+
+                shared_out = self.shared_branch(shared_in) + unique_to_shared(unique_in)
+                unique_out = shared_to_unique(shared_in) + unique_to_unique(unique_in)
+            else:
+                shared_out = self.shared_branch(x_list[i])
+                unique_out = shared_to_unique(x_list[i])
+
+            cross_weights = CrossWeights(shared_to_unique=shared_to_unique,
+                unique_to_shared=unique_to_shared,
+                unique_to_unique=unique_to_unique)
+
+            self.branches.append(cross_weights)
+            output_list.append([shared_out, unique_out])
+
+        return output_list
+
+    @L.eval_params
+    def get_weights(self, eval_weights=True):
+        # Get weights for shared branch
+        if self.shared_branch is None:
+            weights = [[], []]
+        else:
+            weights = [self.shared_branch.f, self.shared_branch.b]
+
+        # Get unique weights
+        if self.shared_filters == 0:
+            for layer in self.branches:
+                weights += [layer.f, layer.b]
+        else:
+            for layer in self.branches:
+                weights += [layer.shared_to_unique.f, layer.shared_to_unique.b,
+                    layer.unique_to_shared.f, layer.unique_to_shared.b,
+                    layer.unique_to_unique.f, layer.unique_to_unique.b]
+
+        return weights
+
+    def get_config(self, eval_weights=False):
+        config = {'name':self.name, 'n_branches':self.n_branches,
+            'shared_filters':self.shared_filters, 'output_shapes':self.output_shapes,
+            'filters_list':self.filters_list, 'weights':self.get_weights(eval_weights)}
+        return config
+
+class Pooling(Layer):
+    def __init__(self, name, n_branches, layer):
+        super().__init__(name, n_branches)
+        self.layer = layer
+
+    @Layer.set_output_shapes
+    @Layer.expand_input
+    def __call__(self, x_list):
+        output_list = []
+
+        for i in range(self.n_branches):
+            if type(x_list[i]) is list:
+                shared_out = self.layer(x_list[i][0])
+                unique_out = self.layer(x_list[i][1])
+                output_list.append([shared_out, unique_out])
+            else:
+                output_list.append(self.layer(x_list[i]))
+
+        return output_list
+
+class AveragePooling2D(Pooling):
+    def __init__(self, pool_size, n_branches, name, strides=None, padding='valid'):
+        layer = L.AveragePooling2D(pool_size, name, strides, padding)
+
+        super().__init__(name, n_branches, layer)
+
+        self.pool_size = pool_size
+        self.strides = strides
+        self.padding = padding
+
+    def get_config(self):
+        config = {'name':self.name, 'n_branches':self.n_branches,
+            'output_shapes':self.output_shapes, 'pool_size':self.pool_size,
+            'strides':self.strides, 'padding':self.padding}
+        return config
+
+class GlobalAveragePooling2D(Pooling):
+    def __init__(self, n_branches, name):
+        layer = L.GlobalAveragePooling2D(name)
+        super().__init__(name, n_branches, layer)

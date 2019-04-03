@@ -7,14 +7,18 @@ def eval_params(func):
     Decorator to evaluate the parameters returned by get_weights method
     using a tf session. Initializes variables if needed."""
 
-    def inner(layer):
+    def inner(layer, eval_vars):
         variables = func(layer)
-        with tf.Session() as sess:
-            try:
-                weights = sess.run(variables)
-            except tf.errors.FailedPreconditionError:
-                sess.run(tf.global_variables_initializer())
-                weights = sess.run(variables)
+
+        if eval_vars:
+            with tf.Session() as sess:
+                try:
+                    weights = sess.run(variables)
+                except tf.errors.FailedPreconditionError:
+                    sess.run(tf.global_variables_initializer())
+                    weights = sess.run(variables)
+        else:
+            weights = variables
 
         return weights
     return inner
@@ -60,14 +64,14 @@ class Dense(Layer):
 
         return output
 
-    def get_config(self):
-        config = {'name':self.name, 'units':self.units, 'use_bias':self.use_bias}
-        config['output_shape'] = self.output_shape
-        config['weights'] = self.get_weights()
+    def get_config(self, eval_weights=True):
+        config = {'name':self.name, 'units':self.units,
+            'use_bias':self.use_bias, 'output_shape':self.output_shape,
+            'weights':self.get_weights(eval_weights)}
         return config
 
     @eval_params
-    def get_weights(self):
+    def get_weights(self, eval_weights=True):
         return self.w, self.b
 
 class BatchNormalization(Layer):
@@ -89,14 +93,14 @@ class BatchNormalization(Layer):
 
         return output
 
-    def get_config(self):
-        config = {'name':self.name, 'epsilon':self.epsilon}
-        config['output_shape'] = self.output_shape
-        config['weights'] = self.get_weights()
+    def get_config(self, eval_weights=False):
+        config = {'name':self.name, 'epsilon':self.epsilon,
+            'output_shape':self.output_shape,
+            'weights':self.get_weights(eval_weights)}
         return config
 
     @eval_params
-    def get_weights(self):
+    def get_weights(self, eval_weights=True):
         return self.beta, self.scale
 
 class Activation(Layer):
@@ -129,6 +133,8 @@ class Conv2D(Layer):
         self.strides = strides
         self.padding = padding
         self.use_bias = use_bias
+        self.f = []
+        self.b = []
 
     @Layer.set_output_shape
     def __call__(self, x):
@@ -150,15 +156,16 @@ class Conv2D(Layer):
 
         return output
 
-    def get_config(self):
+    def get_config(self, eval_weights=False):
         config = {'name':self.name, 'filters':self.filters,
             'kernel_size':self.kernel_size, 'strides':self.strides,
             'padding':self.padding, 'use_bias':self.use_bias,
-            'output_shape':self.output_shape, 'weights':self.get_weights()}
+            'output_shape':self.output_shape,
+            'weights':self.get_weights(eval_weights)}
         return config
 
     @eval_params
-    def get_weights(self):
+    def get_weights(self, eval_weights=True):
         return self.f, self.b
 
 class AveragePooling2D(Layer):

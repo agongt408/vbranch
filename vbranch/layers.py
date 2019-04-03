@@ -44,6 +44,8 @@ class Dense(Layer):
         super().__init__(name)
         self.units = units
         self.use_bias = use_bias
+        self.w = []
+        self.b = []
 
     @Layer.set_output_shape
     def __call__(self, x):
@@ -72,6 +74,8 @@ class BatchNormalization(Layer):
     def __init__(self, name, epsilon=1e-8):
         super().__init__(name)
         self.epsilon = epsilon
+        self.beta = []
+        self.scale = []
 
     @Layer.set_output_shape
     def __call__(self, x):
@@ -107,8 +111,6 @@ class Activation(Layer):
     def __call__(self, x):
         if self.activation == 'linear':
             return x
-        elif self.activation == 'softmax':
-            return tf.nn.softmax(x, name=self.name)
         elif self.activation == 'relu':
             return tf.nn.relu(x, name=self.name)
         else:

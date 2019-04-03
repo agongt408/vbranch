@@ -91,7 +91,7 @@ class SequentialVB(object):
             num_params = 0
             if 'weights' in config.keys():
                 for weight in config['weights']:
-                    num_params += np.prod(weight.shape)
+                    num_params += np.prod(np.array(weight).shape)
             total_num_params += num_params
 
             num_outputs = len(config['output_shapes'])
@@ -149,9 +149,12 @@ def vbranch_fcn(input_tensor, *layers_spec, branches=1):
         model.add(VBL.Dense(units_list,branches,'fc'+str(i + 1), shared_units))
         model.add(VBL.BatchNormalization(branches, 'bn'+str(i + 1)))
 
-        activation_name = 'relu'+str(i + 1) if i < len(layers_spec) - 1 else 'output'
+        activation_name = 'relu'+str(i + 1) if (i < len(layers_spec) - 1 or \
+            layers_spec[-1][-1] > 0) else 'output'
         model.add(VBL.Activation('relu', branches, activation_name))
 
-    # model.add(VBL.Average(branches, 'output'))
+    # If using shared params
+    if layers_spec[-1][-1] > 0:
+        model.add(VBL.MergeSharedUnique(branches, 'output'))
 
     return model

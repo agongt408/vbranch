@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # MNIST FCN with Virtual Branching
 
 import vbranch as vb
@@ -11,6 +8,7 @@ import os
 from scipy.special import softmax
 import matplotlib.pyplot as plt
 import argparse
+import time
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -30,6 +28,16 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
 parser.add_argument('--test', action='store_true',
                     help='test model')
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 # Load and preprocess data
 def load_data(architecture, num_classes):
@@ -80,11 +88,11 @@ def build_model(architecture, inputs, num_classes, num_branches, model_id):
     with tf.variable_scope('model_' + str(model_id), reuse=tf.AUTO_REUSE):
         if architecture == 'fcn':
             model = vb.models.vbranch_fcn(inputs,
-                ([128]*num_branches, 64), ([10]*num_branches, 0),
+                ([128]*num_branches, 0), ([10]*num_branches, 0),
                 branches=num_branches)
         elif architecture == 'cnn':
             model = vb.models.vbranch_cnn(inputs, num_classes,
-                ([16]*num_branches, 8), ([32]*num_branches, 16),
+                ([16]*num_branches, 0), ([32]*num_branches, 0),
                 branches=num_branches)
         else:
             raise ValueError('Invalid architecture')
@@ -172,7 +180,8 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
-            progbar = tf.keras.utils.Progbar(steps_per_epoch)
+            # progbar = tf.keras.utils.Progbar(steps_per_epoch)
+            start = time.time()
 
             sess.run(train_init_ops, feed_dict={batch_size: BATCH_SIZE})
 
@@ -180,9 +189,9 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
                 _, train_losses, train_accs = sess.run([train_ops, losses,
                     train_acc_ops])
 
-                prog_vals = [('loss_'+str(b+1),train_losses[b]) \
-                        for b in range(num_branches)] + \
-                    [('acc_'+str(b+1),train_accs[b]) for b in range(num_branches)]
+                # prog_vals = [('loss_'+str(b+1),train_losses[b]) \
+                #         for b in range(num_branches)] + \
+                #     [('acc_'+str(b+1),train_accs[b]) for b in range(num_branches)]
 
                 for b in range(num_branches):
                     train_loss_hist[b].append(train_losses[b])
@@ -195,14 +204,26 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
 
                     val_loss = np.mean(val_losses)
 
-                    prog_vals += [('val_loss',val_loss),('val_acc',val_acc)] +\
-                        [('ind_acc_'+str(b+1), indiv_accs[b]) \
-                        for b in range(num_branches)]
+                    # prog_vals += [('val_loss',val_loss),('val_acc',val_acc)] +\
+                    #     [('ind_acc_'+str(b+1), indiv_accs[b]) \
+                    #     for b in range(num_branches)]
 
                     val_loss_hist.append(val_loss)
                     val_acc_hist.append(val_acc)
 
-                progbar.update(i+1, values=prog_vals)
+                # progbar.update(i+1, values=prog_vals)
+
+            str_log = 'Time={:.0f}, '.format(time.time() - start)
+            for b in range(num_branches):
+                mean_train_loss = np.mean(train_loss_hist[b][-5:])
+                mean_train_acc = np.mean(train_acc_hist[b][-5:])
+                str_log += 'Loss {}={:.4f}, Acc {}={:.4f}, '.\
+                    format(b+1, mean_train_loss, b+1, mean_train_acc)
+                str_log += 'Val Loss {}={:.4f}, Val Acc {}={:.4f}, '.\
+                    format(b+1, val_losses[b], b+1, indiv_accs[b])
+
+            str_log += 'Val Loss={:.4f}, Val Acc={:.4f}'.format(val_loss,val_acc)
+            print(str_log)
 
         saver = tf.train.Saver()
         path = os.path.join(model_path, 'ckpt')
@@ -216,7 +237,7 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
     model_path = './models/vb-mnist-{}-B{:d}_{:d}'.\
         format(architecture, num_branches, model_id)
 
-    print('Save model path:', model_path)
+    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
@@ -253,7 +274,11 @@ def test(architecture, num_branches, model_id):
     model_path = './models/vb-mnist-{}-B{:d}_{:d}'.\
         format(architecture, num_branches, model_id)
 
-    print('Load model path:', model_path)
+    print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
+
+    # Load data from MNIST
+    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
+        load_data(architecture, 10)
 
     test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
     losses = ['loss_'+str(i+1)+':0' for i in range(num_branches)]
@@ -270,7 +295,8 @@ def test(architecture, num_branches, model_id):
 
         val_losses, val_acc, indiv_accs = sess.run([losses,'test_acc:0',train_acc_ops])
 
-    print('Loss:', np.mean(val_losses))
+    val_loss = np.mean(val_losses)
+    print('Loss:', val_loss)
     print('Acc:', val_acc)
     print('Indiv accs:', indiv_accs)
 
@@ -280,8 +306,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
+        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
         test(args.architecture, args.num_branches, args.model_id)
     else:
+        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
         train(args.architecture, args.num_branches, args.model_id, 10,
             args.epochs, args.steps_per_epoch, args.batch_size)
 

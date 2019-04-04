@@ -55,7 +55,7 @@ class Sequential(object):
             param_shapes = ''
             if 'weights' in config.keys():
                 for weight in config['weights']:
-                    num_params += np.prod(weight.shape)
+                    num_params += np.prod(weight.get_shape().as_list())
                     param_shapes += str(weight.shape).replace(' ', '') + ' '
 
             print_line(i, name, output_shape, param_shapes, num_params)

@@ -64,7 +64,7 @@ class Dense(Layer):
 
         return output
 
-    def get_config(self, eval_weights=True):
+    def get_config(self, eval_weights=False):
         config = {'name':self.name, 'units':self.units,
             'use_bias':self.use_bias, 'output_shape':self.output_shape,
             'weights':self.get_weights(eval_weights)}

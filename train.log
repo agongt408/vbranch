@@ -42,23 +42,535 @@ i   Layer name          Output shapes                           Num param
 --------------------------------------------------------------------------
 Total parameters: 408184
 Epoch 1/10
-Time=31, Loss 1=0.8327, Acc 1=0.8188, Val Loss 1=0.6894, Val Acc 1=0.8982, Loss 2=0.7409, Acc 2=0.8687, Val Loss 2=0.6812, Val Acc 2=0.8986, Loss 3=0.7453, Acc 3=0.8875, Val Loss 3=0.7032, Val Acc 3=0.8935, Loss 4=0.8358, Acc 4=0.8313, Val Loss 4=0.6855, Val Acc 4=0.9000, Val Loss=0.6898, Val Acc=0.9121
+Time=6, Loss 1=0.7641, Acc 1=0.8875, Val Loss 1=0.6857, Val Acc 1=0.9012, Loss 2=0.7098, Acc 2=0.9062, Val Loss 2=0.6938, Val Acc 2=0.8964, Loss 3=0.7614, Acc 3=0.8875, Val Loss 3=0.7019, Val Acc 3=0.8945, Loss 4=0.8044, Acc 4=0.8625, Val Loss 4=0.6828, Val Acc 4=0.8960, Val Loss=0.6910, Val Acc=0.9111
 Epoch 2/10
-Time=1, Loss 1=0.6177, Acc 1=0.8875, Val Loss 1=0.5389, Val Acc 1=0.9189, Loss 2=0.5618, Acc 2=0.9250, Val Loss 2=0.5318, Val Acc 2=0.9195, Loss 3=0.5245, Acc 3=0.9563, Val Loss 3=0.5444, Val Acc 3=0.9158, Loss 4=0.6415, Acc 4=0.8750, Val Loss 4=0.5353, Val Acc 4=0.9181, Val Loss=0.5376, Val Acc=0.9292
+Time=0, Loss 1=0.5536, Acc 1=0.9250, Val Loss 1=0.5363, Val Acc 1=0.9194, Loss 2=0.6577, Acc 2=0.8938, Val Loss 2=0.5362, Val Acc 2=0.9168, Loss 3=0.5807, Acc 3=0.9000, Val Loss 3=0.5454, Val Acc 3=0.9130, Loss 4=0.5530, Acc 4=0.9187, Val Loss 4=0.5354, Val Acc 4=0.9197, Val Loss=0.5383, Val Acc=0.9265
 Epoch 3/10
-Time=1, Loss 1=0.5246, Acc 1=0.9062, Val Loss 1=0.4556, Val Acc 1=0.9250, Loss 2=0.6436, Acc 2=0.8562, Val Loss 2=0.4492, Val Acc 2=0.9285, Loss 3=0.4742, Acc 3=0.9500, Val Loss 3=0.4556, Val Acc 3=0.9252, Loss 4=0.5012, Acc 4=0.9187, Val Loss 4=0.4552, Val Acc 4=0.9283, Val Loss=0.4539, Val Acc=0.9373
+Time=1, Loss 1=0.5082, Acc 1=0.9000, Val Loss 1=0.4523, Val Acc 1=0.9264, Loss 2=0.4517, Acc 2=0.9438, Val Loss 2=0.4592, Val Acc 2=0.9247, Loss 3=0.6036, Acc 3=0.8625, Val Loss 3=0.4637, Val Acc 3=0.9248, Loss 4=0.5423, Acc 4=0.8750, Val Loss 4=0.4536, Val Acc 4=0.9265, Val Loss=0.4572, Val Acc=0.9364
 Epoch 4/10
-Time=1, Loss 1=0.3537, Acc 1=0.9625, Val Loss 1=0.3984, Val Acc 1=0.9357, Loss 2=0.4408, Acc 2=0.9375, Val Loss 2=0.4017, Val Acc 2=0.9303, Loss 3=0.4135, Acc 3=0.9438, Val Loss 3=0.3946, Val Acc 3=0.9317, Loss 4=0.3998, Acc 4=0.9375, Val Loss 4=0.4075, Val Acc 4=0.9282, Val Loss=0.4005, Val Acc=0.9408
+Time=0, Loss 1=0.4800, Acc 1=0.8813, Val Loss 1=0.3995, Val Acc 1=0.9325, Loss 2=0.3845, Acc 2=0.9563, Val Loss 2=0.3995, Val Acc 2=0.9332, Loss 3=0.3706, Acc 3=0.9625, Val Loss 3=0.4015, Val Acc 3=0.9312, Loss 4=0.4183, Acc 4=0.9375, Val Loss 4=0.3983, Val Acc 4=0.9335, Val Loss=0.3997, Val Acc=0.9402
 Epoch 5/10
-Time=1, Loss 1=0.3411, Acc 1=0.9750, Val Loss 1=0.3642, Val Acc 1=0.9339, Loss 2=0.3361, Acc 2=0.9688, Val Loss 2=0.3550, Val Acc 2=0.9363, Loss 3=0.3312, Acc 3=0.9625, Val Loss 3=0.3653, Val Acc 3=0.9352, Loss 4=0.4444, Acc 4=0.9312, Val Loss 4=0.3593, Val Acc 4=0.9348, Val Loss=0.3609, Val Acc=0.9452
+Time=0, Loss 1=0.4159, Acc 1=0.9250, Val Loss 1=0.3588, Val Acc 1=0.9375, Loss 2=0.3953, Acc 2=0.9563, Val Loss 2=0.3512, Val Acc 2=0.9376, Loss 3=0.3633, Acc 3=0.9312, Val Loss 3=0.3635, Val Acc 3=0.9356, Loss 4=0.4243, Acc 4=0.9375, Val Loss 4=0.3651, Val Acc 4=0.9339, Val Loss=0.3596, Val Acc=0.9441
 Epoch 6/10
-Time=1, Loss 1=0.2908, Acc 1=0.9563, Val Loss 1=0.3421, Val Acc 1=0.9347, Loss 2=0.3847, Acc 2=0.9250, Val Loss 2=0.3269, Val Acc 2=0.9389, Loss 3=0.3736, Acc 3=0.9375, Val Loss 3=0.3287, Val Acc 3=0.9382, Loss 4=0.3074, Acc 4=0.9563, Val Loss 4=0.3323, Val Acc 4=0.9377, Val Loss=0.3325, Val Acc=0.9451
+Time=0, Loss 1=0.2718, Acc 1=0.9688, Val Loss 1=0.3229, Val Acc 1=0.9416, Loss 2=0.3113, Acc 2=0.9500, Val Loss 2=0.3213, Val Acc 2=0.9418, Loss 3=0.2575, Acc 3=0.9688, Val Loss 3=0.3251, Val Acc 3=0.9399, Loss 4=0.3143, Acc 4=0.9500, Val Loss 4=0.3296, Val Acc 4=0.9393, Val Loss=0.3247, Val Acc=0.9487
 Epoch 7/10
-Time=1, Loss 1=0.2886, Acc 1=0.9563, Val Loss 1=0.3012, Val Acc 1=0.9440, Loss 2=0.3105, Acc 2=0.9563, Val Loss 2=0.3038, Val Acc 2=0.9411, Loss 3=0.2885, Acc 3=0.9563, Val Loss 3=0.3048, Val Acc 3=0.9390, Loss 4=0.3452, Acc 4=0.9250, Val Loss 4=0.3089, Val Acc 4=0.9403, Val Loss=0.3047, Val Acc=0.9489
+Time=0, Loss 1=0.2716, Acc 1=0.9563, Val Loss 1=0.3040, Val Acc 1=0.9430, Loss 2=0.2623, Acc 2=0.9875, Val Loss 2=0.3048, Val Acc 2=0.9438, Loss 3=0.2527, Acc 3=0.9688, Val Loss 3=0.3084, Val Acc 3=0.9399, Loss 4=0.3242, Acc 4=0.9563, Val Loss 4=0.3143, Val Acc 4=0.9392, Val Loss=0.3079, Val Acc=0.9495
 Epoch 8/10
-Time=1, Loss 1=0.2801, Acc 1=0.9625, Val Loss 1=0.2875, Val Acc 1=0.9438, Loss 2=0.2923, Acc 2=0.9688, Val Loss 2=0.2840, Val Acc 2=0.9436, Loss 3=0.2550, Acc 3=0.9688, Val Loss 3=0.2878, Val Acc 3=0.9400, Loss 4=0.2368, Acc 4=0.9750, Val Loss 4=0.2903, Val Acc 4=0.9407, Val Loss=0.2874, Val Acc=0.9506
+Time=1, Loss 1=0.2478, Acc 1=0.9688, Val Loss 1=0.2896, Val Acc 1=0.9405, Loss 2=0.2390, Acc 2=0.9750, Val Loss 2=0.2880, Val Acc 2=0.9421, Loss 3=0.2188, Acc 3=0.9625, Val Loss 3=0.2786, Val Acc 3=0.9435, Loss 4=0.3469, Acc 4=0.9250, Val Loss 4=0.3074, Val Acc 4=0.9383, Val Loss=0.2909, Val Acc=0.9501
 Epoch 9/10
-Time=1, Loss 1=0.2812, Acc 1=0.9500, Val Loss 1=0.2698, Val Acc 1=0.9466, Loss 2=0.2594, Acc 2=0.9750, Val Loss 2=0.2690, Val Acc 2=0.9460, Loss 3=0.3043, Acc 3=0.9500, Val Loss 3=0.2686, Val Acc 3=0.9437, Loss 4=0.2523, Acc 4=0.9625, Val Loss 4=0.2788, Val Acc 4=0.9426, Val Loss=0.2715, Val Acc=0.9511
+Time=1, Loss 1=0.2362, Acc 1=0.9688, Val Loss 1=0.2647, Val Acc 1=0.9468, Loss 2=0.2260, Acc 2=0.9750, Val Loss 2=0.2685, Val Acc 2=0.9442, Loss 3=0.2001, Acc 3=0.9750, Val Loss 3=0.2693, Val Acc 3=0.9423, Loss 4=0.2039, Acc 4=0.9812, Val Loss 4=0.2756, Val Acc 4=0.9425, Val Loss=0.2696, Val Acc=0.9536
 Epoch 10/10
-Time=1, Loss 1=0.1766, Acc 1=0.9812, Val Loss 1=0.2606, Val Acc 1=0.9446, Loss 2=0.2642, Acc 2=0.9625, Val Loss 2=0.2551, Val Acc 2=0.9443, Loss 3=0.1735, Acc 3=0.9937, Val Loss 3=0.2610, Val Acc 3=0.9425, Loss 4=0.2591, Acc 4=0.9563, Val Loss 4=0.2668, Val Acc 4=0.9442, Val Loss=0.2609, Val Acc=0.9513
+Time=1, Loss 1=0.1931, Acc 1=0.9750, Val Loss 1=0.2612, Val Acc 1=0.9438, Loss 2=0.2205, Acc 2=0.9688, Val Loss 2=0.2628, Val Acc 2=0.9461, Loss 3=0.1500, Acc 3=0.9937, Val Loss 3=0.2614, Val Acc 3=0.9433, Loss 4=0.2042, Acc 4=0.9812, Val Loss 4=0.2635, Val Acc 4=0.9448, Val Loss=0.2622, Val Acc=0.9540
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/vb-mnist-fcn-B4_2[0m
+i   Layer name          Output shapes                           Num param 
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+0   fc1                 [None,128]                              401920    
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+1   bn1                 [None,128]                              1024      
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+2   relu1               [None,128]                              0         
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+3   fc2                 [None,10]                               5160      
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+4   bn2                 [None,10]                               80        
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+5   output              [None,10]                               0         
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+Total parameters: 408184
+Epoch 1/10
+Time=5, Loss 1=0.7860, Acc 1=0.9000, Val Loss 1=0.7089, Val Acc 1=0.8960, Loss 2=0.6995, Acc 2=0.8938, Val Loss 2=0.7160, Val Acc 2=0.8880, Loss 3=0.8877, Acc 3=0.8500, Val Loss 3=0.6853, Val Acc 3=0.9038, Loss 4=0.8124, Acc 4=0.8438, Val Loss 4=0.6972, Val Acc 4=0.8956, Val Loss=0.7019, Val Acc=0.9104
+Epoch 2/10
+Time=0, Loss 1=0.6055, Acc 1=0.9062, Val Loss 1=0.5518, Val Acc 1=0.9165, Loss 2=0.7378, Acc 2=0.8438, Val Loss 2=0.5454, Val Acc 2=0.9160, Loss 3=0.5913, Acc 3=0.9438, Val Loss 3=0.5324, Val Acc 3=0.9245, Loss 4=0.6231, Acc 4=0.8875, Val Loss 4=0.5533, Val Acc 4=0.9153, Val Loss=0.5457, Val Acc=0.9291
+Epoch 3/10
+Time=0, Loss 1=0.4933, Acc 1=0.9375, Val Loss 1=0.4642, Val Acc 1=0.9273, Loss 2=0.5221, Acc 2=0.9125, Val Loss 2=0.4537, Val Acc 2=0.9299, Loss 3=0.4781, Acc 3=0.9375, Val Loss 3=0.4510, Val Acc 3=0.9301, Loss 4=0.4936, Acc 4=0.9125, Val Loss 4=0.4567, Val Acc 4=0.9286, Val Loss=0.4564, Val Acc=0.9371
+Epoch 4/10
+Time=0, Loss 1=0.4451, Acc 1=0.9375, Val Loss 1=0.4010, Val Acc 1=0.9305, Loss 2=0.3842, Acc 2=0.9688, Val Loss 2=0.4118, Val Acc 2=0.9310, Loss 3=0.4209, Acc 3=0.9250, Val Loss 3=0.3969, Val Acc 3=0.9365, Loss 4=0.4233, Acc 4=0.9563, Val Loss 4=0.3971, Val Acc 4=0.9337, Val Loss=0.4017, Val Acc=0.9419
+Epoch 5/10
+Time=0, Loss 1=0.3522, Acc 1=0.9563, Val Loss 1=0.3612, Val Acc 1=0.9371, Loss 2=0.4234, Acc 2=0.9375, Val Loss 2=0.3624, Val Acc 2=0.9361, Loss 3=0.4870, Acc 3=0.8875, Val Loss 3=0.3526, Val Acc 3=0.9388, Loss 4=0.3478, Acc 4=0.9563, Val Loss 4=0.3568, Val Acc 4=0.9380, Val Loss=0.3582, Val Acc=0.9453
+Epoch 6/10
+Time=0, Loss 1=0.4225, Acc 1=0.9375, Val Loss 1=0.3276, Val Acc 1=0.9394, Loss 2=0.3337, Acc 2=0.9688, Val Loss 2=0.3333, Val Acc 2=0.9377, Loss 3=0.3322, Acc 3=0.9500, Val Loss 3=0.3238, Val Acc 3=0.9432, Loss 4=0.3179, Acc 4=0.9625, Val Loss 4=0.3359, Val Acc 4=0.9377, Val Loss=0.3301, Val Acc=0.9472
+Epoch 7/10
+Time=0, Loss 1=0.2312, Acc 1=0.9937, Val Loss 1=0.3058, Val Acc 1=0.9403, Loss 2=0.3193, Acc 2=0.9563, Val Loss 2=0.3061, Val Acc 2=0.9411, Loss 3=0.3238, Acc 3=0.9625, Val Loss 3=0.3130, Val Acc 3=0.9420, Loss 4=0.2920, Acc 4=0.9312, Val Loss 4=0.3051, Val Acc 4=0.9424, Val Loss=0.3075, Val Acc=0.9509
+Epoch 8/10
+Time=0, Loss 1=0.3036, Acc 1=0.9375, Val Loss 1=0.2925, Val Acc 1=0.9403, Loss 2=0.2360, Acc 2=0.9688, Val Loss 2=0.2817, Val Acc 2=0.9443, Loss 3=0.2448, Acc 3=0.9750, Val Loss 3=0.2879, Val Acc 3=0.9475, Loss 4=0.2189, Acc 4=0.9875, Val Loss 4=0.2873, Val Acc 4=0.9432, Val Loss=0.2874, Val Acc=0.9519
+Epoch 9/10
+Time=0, Loss 1=0.2455, Acc 1=0.9750, Val Loss 1=0.2680, Val Acc 1=0.9445, Loss 2=0.2744, Acc 2=0.9563, Val Loss 2=0.2677, Val Acc 2=0.9452, Loss 3=0.2018, Acc 3=0.9875, Val Loss 3=0.2646, Val Acc 3=0.9471, Loss 4=0.2552, Acc 4=0.9563, Val Loss 4=0.2718, Val Acc 4=0.9445, Val Loss=0.2680, Val Acc=0.9532
+Epoch 10/10
+Time=0, Loss 1=0.2238, Acc 1=0.9750, Val Loss 1=0.2583, Val Acc 1=0.9453, Loss 2=0.2002, Acc 2=0.9937, Val Loss 2=0.2591, Val Acc 2=0.9452, Loss 3=0.2070, Acc 3=0.9875, Val Loss 3=0.2590, Val Acc 3=0.9485, Loss 4=0.2376, Acc 4=0.9750, Val Loss 4=0.2564, Val Acc 4=0.9447, Val Loss=0.2582, Val Acc=0.9530
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/vb-mnist-fcn-B4_3[0m
+i   Layer name          Output shapes                           Num param 
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+0   fc1                 [None,128]                              401920    
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+1   bn1                 [None,128]                              1024      
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+2   relu1               [None,128]                              0         
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+3   fc2                 [None,10]                               5160      
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+4   bn2                 [None,10]                               80        
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+5   output              [None,10]                               0         
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+Total parameters: 408184
+Epoch 1/10
+Time=5, Loss 1=0.7203, Acc 1=0.8875, Val Loss 1=0.6959, Val Acc 1=0.8970, Loss 2=0.8357, Acc 2=0.8562, Val Loss 2=0.6930, Val Acc 2=0.8978, Loss 3=0.7755, Acc 3=0.8438, Val Loss 3=0.6921, Val Acc 3=0.8954, Loss 4=0.7519, Acc 4=0.8938, Val Loss 4=0.7041, Val Acc 4=0.8958, Val Loss=0.6963, Val Acc=0.9080
+Epoch 2/10
+Time=0, Loss 1=0.6876, Acc 1=0.8500, Val Loss 1=0.5479, Val Acc 1=0.9130, Loss 2=0.6632, Acc 2=0.9062, Val Loss 2=0.5448, Val Acc 2=0.9167, Loss 3=0.5764, Acc 3=0.9312, Val Loss 3=0.5513, Val Acc 3=0.9164, Loss 4=0.6561, Acc 4=0.8875, Val Loss 4=0.5527, Val Acc 4=0.9163, Val Loss=0.5492, Val Acc=0.9262
+Epoch 3/10
+Time=0, Loss 1=0.4771, Acc 1=0.9125, Val Loss 1=0.4552, Val Acc 1=0.9231, Loss 2=0.4757, Acc 2=0.9563, Val Loss 2=0.4545, Val Acc 2=0.9268, Loss 3=0.5300, Acc 3=0.9187, Val Loss 3=0.4541, Val Acc 3=0.9277, Loss 4=0.5139, Acc 4=0.9187, Val Loss 4=0.4673, Val Acc 4=0.9241, Val Loss=0.4578, Val Acc=0.9356
+Epoch 4/10
+Time=0, Loss 1=0.4435, Acc 1=0.9187, Val Loss 1=0.3979, Val Acc 1=0.9303, Loss 2=0.4724, Acc 2=0.9312, Val Loss 2=0.3983, Val Acc 2=0.9338, Loss 3=0.3805, Acc 3=0.9438, Val Loss 3=0.3911, Val Acc 3=0.9337, Loss 4=0.3846, Acc 4=0.9375, Val Loss 4=0.4018, Val Acc 4=0.9312, Val Loss=0.3973, Val Acc=0.9409
+Epoch 5/10
+Time=0, Loss 1=0.3538, Acc 1=0.9500, Val Loss 1=0.3535, Val Acc 1=0.9364, Loss 2=0.4792, Acc 2=0.9062, Val Loss 2=0.3574, Val Acc 2=0.9358, Loss 3=0.3430, Acc 3=0.9625, Val Loss 3=0.3579, Val Acc 3=0.9355, Loss 4=0.4024, Acc 4=0.9438, Val Loss 4=0.3655, Val Acc 4=0.9334, Val Loss=0.3586, Val Acc=0.9440
+Epoch 6/10
+Time=0, Loss 1=0.2734, Acc 1=0.9812, Val Loss 1=0.3244, Val Acc 1=0.9411, Loss 2=0.3925, Acc 2=0.9312, Val Loss 2=0.3296, Val Acc 2=0.9391, Loss 3=0.3116, Acc 3=0.9688, Val Loss 3=0.3282, Val Acc 3=0.9402, Loss 4=0.3084, Acc 4=0.9500, Val Loss 4=0.3271, Val Acc 4=0.9400, Val Loss=0.3273, Val Acc=0.9477
+Epoch 7/10
+Time=0, Loss 1=0.2925, Acc 1=0.9625, Val Loss 1=0.3005, Val Acc 1=0.9425, Loss 2=0.3163, Acc 2=0.9500, Val Loss 2=0.3034, Val Acc 2=0.9440, Loss 3=0.2833, Acc 3=0.9500, Val Loss 3=0.3037, Val Acc 3=0.9446, Loss 4=0.3165, Acc 4=0.9375, Val Loss 4=0.3057, Val Acc 4=0.9413, Val Loss=0.3033, Val Acc=0.9501
+Epoch 8/10
+Time=0, Loss 1=0.2035, Acc 1=0.9937, Val Loss 1=0.2912, Val Acc 1=0.9419, Loss 2=0.2223, Acc 2=0.9750, Val Loss 2=0.2829, Val Acc 2=0.9466, Loss 3=0.2938, Acc 3=0.9563, Val Loss 3=0.2809, Val Acc 3=0.9435, Loss 4=0.3717, Acc 4=0.9500, Val Loss 4=0.2820, Val Acc 4=0.9445, Val Loss=0.2843, Val Acc=0.9514
+Epoch 9/10
+Time=0, Loss 1=0.2710, Acc 1=0.9563, Val Loss 1=0.2692, Val Acc 1=0.9456, Loss 2=0.2218, Acc 2=0.9750, Val Loss 2=0.2698, Val Acc 2=0.9443, Loss 3=0.2771, Acc 3=0.9688, Val Loss 3=0.2719, Val Acc 3=0.9450, Loss 4=0.2090, Acc 4=0.9812, Val Loss 4=0.2681, Val Acc 4=0.9467, Val Loss=0.2698, Val Acc=0.9525
+Epoch 10/10
+Time=0, Loss 1=0.1497, Acc 1=1.0000, Val Loss 1=0.2600, Val Acc 1=0.9478, Loss 2=0.1920, Acc 2=0.9937, Val Loss 2=0.2610, Val Acc 2=0.9458, Loss 3=0.2235, Acc 3=0.9875, Val Loss 3=0.2551, Val Acc 3=0.9470, Loss 4=0.2694, Acc 4=0.9438, Val Loss 4=0.2589, Val Acc 4=0.9448, Val Loss=0.2588, Val Acc=0.9535
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/vb-mnist-fcn-B4_4[0m
+i   Layer name          Output shapes                           Num param 
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+    Input               [None,784]                                        
+--------------------------------------------------------------------------
+0   fc1                 [None,128]                              401920    
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+1   bn1                 [None,128]                              1024      
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+2   relu1               [None,128]                              0         
+                        [None,128]                                        
+                        [None,128]                                        
+                        [None,128]                                        
+--------------------------------------------------------------------------
+3   fc2                 [None,10]                               5160      
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+4   bn2                 [None,10]                               80        
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+5   output              [None,10]                               0         
+                        [None,10]                                         
+                        [None,10]                                         
+                        [None,10]                                         
+--------------------------------------------------------------------------
+Total parameters: 408184
+Epoch 1/10
+Time=5, Loss 1=0.7753, Acc 1=0.8438, Val Loss 1=0.6810, Val Acc 1=0.8999, Loss 2=0.7931, Acc 2=0.8375, Val Loss 2=0.6850, Val Acc 2=0.8998, Loss 3=0.7546, Acc 3=0.8938, Val Loss 3=0.6945, Val Acc 3=0.8969, Loss 4=0.7440, Acc 4=0.8625, Val Loss 4=0.6879, Val Acc 4=0.9019, Val Loss=0.6871, Val Acc=0.9123
+Epoch 2/10
+Time=1, Loss 1=0.5389, Acc 1=0.9250, Val Loss 1=0.5417, Val Acc 1=0.9172, Loss 2=0.5630, Acc 2=0.9187, Val Loss 2=0.5443, Val Acc 2=0.9160, Loss 3=0.6693, Acc 3=0.8813, Val Loss 3=0.5398, Val Acc 3=0.9207, Loss 4=0.5589, Acc 4=0.9250, Val Loss 4=0.5374, Val Acc 4=0.9190, Val Loss=0.5408, Val Acc=0.9268
+Epoch 3/10
+Time=0, Loss 1=0.6105, Acc 1=0.8875, Val Loss 1=0.4518, Val Acc 1=0.9263, Loss 2=0.4525, Acc 2=0.9375, Val Loss 2=0.4588, Val Acc 2=0.9266, Loss 3=0.4529, Acc 3=0.9563, Val Loss 3=0.4559, Val Acc 3=0.9260, Loss 4=0.5176, Acc 4=0.9250, Val Loss 4=0.4595, Val Acc 4=0.9263, Val Loss=0.4565, Val Acc=0.9350
+Epoch 4/10
+Time=0, Loss 1=0.4011, Acc 1=0.9312, Val Loss 1=0.3918, Val Acc 1=0.9342, Loss 2=0.3745, Acc 2=0.9563, Val Loss 2=0.3990, Val Acc 2=0.9331, Loss 3=0.4162, Acc 3=0.9438, Val Loss 3=0.4014, Val Acc 3=0.9301, Loss 4=0.4786, Acc 4=0.9187, Val Loss 4=0.3999, Val Acc 4=0.9317, Val Loss=0.3980, Val Acc=0.9404
+Epoch 5/10
+Time=0, Loss 1=0.3731, Acc 1=0.9438, Val Loss 1=0.3566, Val Acc 1=0.9375, Loss 2=0.3978, Acc 2=0.9500, Val Loss 2=0.3619, Val Acc 2=0.9343, Loss 3=0.4253, Acc 3=0.9375, Val Loss 3=0.3573, Val Acc 3=0.9373, Loss 4=0.3897, Acc 4=0.9500, Val Loss 4=0.3543, Val Acc 4=0.9366, Val Loss=0.3575, Val Acc=0.9455
+Epoch 6/10
+Time=0, Loss 1=0.3596, Acc 1=0.9500, Val Loss 1=0.3307, Val Acc 1=0.9365, Loss 2=0.3621, Acc 2=0.9438, Val Loss 2=0.3285, Val Acc 2=0.9397, Loss 3=0.3375, Acc 3=0.9500, Val Loss 3=0.3283, Val Acc 3=0.9401, Loss 4=0.2943, Acc 4=0.9688, Val Loss 4=0.3309, Val Acc 4=0.9367, Val Loss=0.3296, Val Acc=0.9476
+Epoch 7/10
+Time=0, Loss 1=0.2388, Acc 1=0.9750, Val Loss 1=0.3006, Val Acc 1=0.9415, Loss 2=0.2361, Acc 2=0.9812, Val Loss 2=0.3063, Val Acc 2=0.9393, Loss 3=0.2819, Acc 3=0.9625, Val Loss 3=0.2993, Val Acc 3=0.9442, Loss 4=0.3529, Acc 4=0.9500, Val Loss 4=0.3030, Val Acc 4=0.9410, Val Loss=0.3023, Val Acc=0.9495
+Epoch 8/10
+Time=0, Loss 1=0.2815, Acc 1=0.9625, Val Loss 1=0.2823, Val Acc 1=0.9443, Loss 2=0.2687, Acc 2=0.9625, Val Loss 2=0.2835, Val Acc 2=0.9418, Loss 3=0.2699, Acc 3=0.9500, Val Loss 3=0.2946, Val Acc 3=0.9423, Loss 4=0.3069, Acc 4=0.9375, Val Loss 4=0.2940, Val Acc 4=0.9416, Val Loss=0.2886, Val Acc=0.9506
+Epoch 9/10
+Time=0, Loss 1=0.2030, Acc 1=0.9875, Val Loss 1=0.2729, Val Acc 1=0.9430, Loss 2=0.2182, Acc 2=0.9812, Val Loss 2=0.2837, Val Acc 2=0.9398, Loss 3=0.1714, Acc 3=0.9937, Val Loss 3=0.2661, Val Acc 3=0.9442, Loss 4=0.2697, Acc 4=0.9563, Val Loss 4=0.2661, Val Acc 4=0.9477, Val Loss=0.2722, Val Acc=0.9515
+Epoch 10/10
+Time=0, Loss 1=0.2350, Acc 1=0.9688, Val Loss 1=0.2635, Val Acc 1=0.9445, Loss 2=0.1747, Acc 2=0.9937, Val Loss 2=0.2594, Val Acc 2=0.9429, Loss 3=0.2013, Acc 3=0.9812, Val Loss 3=0.2615, Val Acc 3=0.9453, Loss 4=0.2568, Acc 4=0.9500, Val Loss 4=0.2588, Val Acc 4=0.9442, Val Loss=0.2608, Val Acc=0.9514
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_1[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8606, Acc=0.8562, Val Loss=0.7700, Val Acc=0.8855
+Epoch 2/10
+Time=0, Loss=0.6595, Acc=0.9250, Val Loss=0.6291, Val Acc=0.9129
+Epoch 3/10
+Time=0, Loss=0.6421, Acc=0.9187, Val Loss=0.5437, Val Acc=0.9246
+Epoch 4/10
+Time=0, Loss=0.5467, Acc=0.9250, Val Loss=0.4838, Val Acc=0.9273
+Epoch 5/10
+Time=0, Loss=0.4601, Acc=0.9375, Val Loss=0.4350, Val Acc=0.9329
+Epoch 6/10
+Time=0, Loss=0.3981, Acc=0.9563, Val Loss=0.4005, Val Acc=0.9366
+Epoch 7/10
+Time=0, Loss=0.4655, Acc=0.9000, Val Loss=0.3705, Val Acc=0.9366
+Epoch 8/10
+Time=0, Loss=0.3445, Acc=0.9625, Val Loss=0.3511, Val Acc=0.9388
+Epoch 9/10
+Time=0, Loss=0.2828, Acc=0.9812, Val Loss=0.3317, Val Acc=0.9409
+Epoch 10/10
+Time=0, Loss=0.3456, Acc=0.9563, Val Loss=0.3091, Val Acc=0.9429
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_2[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8707, Acc=0.8375, Val Loss=0.7544, Val Acc=0.8954
+Epoch 2/10
+Time=0, Loss=0.6202, Acc=0.9375, Val Loss=0.6271, Val Acc=0.9093
+Epoch 3/10
+Time=0, Loss=0.6481, Acc=0.8938, Val Loss=0.5389, Val Acc=0.9245
+Epoch 4/10
+Time=0, Loss=0.4849, Acc=0.9438, Val Loss=0.4836, Val Acc=0.9271
+Epoch 5/10
+Time=0, Loss=0.3722, Acc=0.9625, Val Loss=0.4370, Val Acc=0.9312
+Epoch 6/10
+Time=0, Loss=0.3455, Acc=0.9688, Val Loss=0.4027, Val Acc=0.9355
+Epoch 7/10
+Time=0, Loss=0.3152, Acc=0.9688, Val Loss=0.3729, Val Acc=0.9378
+Epoch 8/10
+Time=0, Loss=0.3233, Acc=0.9750, Val Loss=0.3474, Val Acc=0.9409
+Epoch 9/10
+Time=0, Loss=0.3652, Acc=0.9500, Val Loss=0.3280, Val Acc=0.9402
+Epoch 10/10
+Time=0, Loss=0.2645, Acc=0.9500, Val Loss=0.3103, Val Acc=0.9423
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_3[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.9196, Acc=0.8188, Val Loss=0.7541, Val Acc=0.8946
+Epoch 2/10
+Time=0, Loss=0.6096, Acc=0.9250, Val Loss=0.6190, Val Acc=0.9136
+Epoch 3/10
+Time=0, Loss=0.6470, Acc=0.9000, Val Loss=0.5446, Val Acc=0.9228
+Epoch 4/10
+Time=0, Loss=0.4681, Acc=0.9625, Val Loss=0.4825, Val Acc=0.9290
+Epoch 5/10
+Time=0, Loss=0.4706, Acc=0.9438, Val Loss=0.4413, Val Acc=0.9303
+Epoch 6/10
+Time=0, Loss=0.4331, Acc=0.9500, Val Loss=0.4030, Val Acc=0.9347
+Epoch 7/10
+Time=0, Loss=0.4236, Acc=0.9062, Val Loss=0.3761, Val Acc=0.9360
+Epoch 8/10
+Time=0, Loss=0.3514, Acc=0.9500, Val Loss=0.3436, Val Acc=0.9396
+Epoch 9/10
+Time=0, Loss=0.2814, Acc=0.9750, Val Loss=0.3248, Val Acc=0.9427
+Epoch 10/10
+Time=0, Loss=0.2883, Acc=0.9750, Val Loss=0.3033, Val Acc=0.9429
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_4[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.7941, Acc=0.8687, Val Loss=0.7585, Val Acc=0.8947
+Epoch 2/10
+Time=0, Loss=0.7139, Acc=0.9125, Val Loss=0.6223, Val Acc=0.9151
+Epoch 3/10
+Time=0, Loss=0.6302, Acc=0.8938, Val Loss=0.5358, Val Acc=0.9260
+Epoch 4/10
+Time=0, Loss=0.5843, Acc=0.9125, Val Loss=0.4803, Val Acc=0.9307
+Epoch 5/10
+Time=0, Loss=0.4655, Acc=0.9438, Val Loss=0.4311, Val Acc=0.9348
+Epoch 6/10
+Time=0, Loss=0.4909, Acc=0.9000, Val Loss=0.4023, Val Acc=0.9406
+Epoch 7/10
+Time=0, Loss=0.2789, Acc=0.9937, Val Loss=0.3653, Val Acc=0.9410
+Epoch 8/10
+Time=0, Loss=0.4147, Acc=0.9187, Val Loss=0.3418, Val Acc=0.9431
+Epoch 9/10
+Time=0, Loss=0.2665, Acc=0.9875, Val Loss=0.3271, Val Acc=0.9409
+Epoch 10/10
+Time=0, Loss=0.2461, Acc=0.9688, Val Loss=0.3055, Val Acc=0.9432
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_5[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8911, Acc=0.8625, Val Loss=0.7709, Val Acc=0.8889
+Epoch 2/10
+Time=0, Loss=0.6554, Acc=0.9125, Val Loss=0.6340, Val Acc=0.9111
+Epoch 3/10
+Time=0, Loss=0.5625, Acc=0.9250, Val Loss=0.5423, Val Acc=0.9208
+Epoch 4/10
+Time=0, Loss=0.4901, Acc=0.9625, Val Loss=0.4838, Val Acc=0.9309
+Epoch 5/10
+Time=0, Loss=0.4978, Acc=0.9062, Val Loss=0.4342, Val Acc=0.9356
+Epoch 6/10
+Time=0, Loss=0.4237, Acc=0.9438, Val Loss=0.4007, Val Acc=0.9387
+Epoch 7/10
+Time=0, Loss=0.3041, Acc=0.9750, Val Loss=0.3689, Val Acc=0.9399
+Epoch 8/10
+Time=0, Loss=0.3835, Acc=0.9312, Val Loss=0.3478, Val Acc=0.9398
+Epoch 9/10
+Time=0, Loss=0.2548, Acc=0.9750, Val Loss=0.3281, Val Acc=0.9407
+Epoch 10/10
+Time=0, Loss=0.2135, Acc=0.9937, Val Loss=0.3153, Val Acc=0.9426
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_6[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8181, Acc=0.8562, Val Loss=0.7515, Val Acc=0.8890
+Epoch 2/10
+Time=0, Loss=0.6466, Acc=0.9187, Val Loss=0.6235, Val Acc=0.9102
+Epoch 3/10
+Time=0, Loss=0.5709, Acc=0.9187, Val Loss=0.5365, Val Acc=0.9230
+Epoch 4/10
+Time=0, Loss=0.4871, Acc=0.9500, Val Loss=0.4764, Val Acc=0.9268
+Epoch 5/10
+Time=0, Loss=0.4608, Acc=0.9312, Val Loss=0.4361, Val Acc=0.9311
+Epoch 6/10
+Time=0, Loss=0.3478, Acc=0.9688, Val Loss=0.3971, Val Acc=0.9354
+Epoch 7/10
+Time=0, Loss=0.3268, Acc=0.9750, Val Loss=0.3641, Val Acc=0.9396
+Epoch 8/10
+Time=0, Loss=0.3232, Acc=0.9438, Val Loss=0.3421, Val Acc=0.9417
+Epoch 9/10
+Time=0, Loss=0.2481, Acc=0.9750, Val Loss=0.3279, Val Acc=0.9411
+Epoch 10/10
+Time=0, Loss=0.2432, Acc=0.9812, Val Loss=0.3121, Val Acc=0.9418
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_7[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8666, Acc=0.8625, Val Loss=0.7691, Val Acc=0.8919
+Epoch 2/10
+Time=0, Loss=0.7674, Acc=0.8813, Val Loss=0.6273, Val Acc=0.9103
+Epoch 3/10
+Time=0, Loss=0.5948, Acc=0.8938, Val Loss=0.5479, Val Acc=0.9217
+Epoch 4/10
+Time=0, Loss=0.5349, Acc=0.9250, Val Loss=0.4880, Val Acc=0.9283
+Epoch 5/10
+Time=0, Loss=0.5083, Acc=0.9312, Val Loss=0.4464, Val Acc=0.9310
+Epoch 6/10
+Time=0, Loss=0.4130, Acc=0.9438, Val Loss=0.4028, Val Acc=0.9364
+Epoch 7/10
+Time=0, Loss=0.4754, Acc=0.9250, Val Loss=0.3751, Val Acc=0.9369
+Epoch 8/10
+Time=0, Loss=0.3739, Acc=0.9500, Val Loss=0.3478, Val Acc=0.9402
+Epoch 9/10
+Time=0, Loss=0.2546, Acc=0.9688, Val Loss=0.3321, Val Acc=0.9395
+Epoch 10/10
+Time=0, Loss=0.2288, Acc=0.9875, Val Loss=0.3070, Val Acc=0.9431
+Finished!
+[95mMODE: TRAIN[0m
+[95mSave model path: ./models/mnist-fcn_8[0m
+i   Layer name          Output shape        Parameters                    Num param 
+------------------------------------------------------------------------------------
+    Input               [None,784]                                                  
+------------------------------------------------------------------------------------
+0   fc1                 [None,128]          (784,128) (128,)              100480    
+------------------------------------------------------------------------------------
+1   bn1                 [None,128]          (128,) (128,)                 256       
+------------------------------------------------------------------------------------
+2   relu1               [None,128]                                        0         
+------------------------------------------------------------------------------------
+3   fc2                 [None,10]           (128,10) (10,)                1290      
+------------------------------------------------------------------------------------
+4   bn2                 [None,10]           (10,) (10,)                   20        
+------------------------------------------------------------------------------------
+5   output              [None,10]                                         0         
+------------------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/10
+Time=1, Loss=0.8857, Acc=0.8562, Val Loss=0.7660, Val Acc=0.8921
+Epoch 2/10
+Time=0, Loss=0.6848, Acc=0.9000, Val Loss=0.6286, Val Acc=0.9125
+Epoch 3/10
+Time=0, Loss=0.6169, Acc=0.9250, Val Loss=0.5400, Val Acc=0.9246
+Epoch 4/10
+Time=0, Loss=0.5588, Acc=0.8875, Val Loss=0.4822, Val Acc=0.9304
+Epoch 5/10
+Time=0, Loss=0.4637, Acc=0.9438, Val Loss=0.4358, Val Acc=0.9328
+Epoch 6/10
+Time=0, Loss=0.4897, Acc=0.9125, Val Loss=0.4113, Val Acc=0.9340
+Epoch 7/10
+Time=0, Loss=0.3218, Acc=0.9750, Val Loss=0.3769, Val Acc=0.9369
+Epoch 8/10
+Time=0, Loss=0.3059, Acc=0.9625, Val Loss=0.3453, Val Acc=0.9396
+Epoch 9/10
+Time=0, Loss=0.3156, Acc=0.9500, Val Loss=0.3273, Val Acc=0.9425
+Epoch 10/10
+Time=0, Loss=0.2265, Acc=0.9812, Val Loss=0.3089, Val Acc=0.9417
 Finished!

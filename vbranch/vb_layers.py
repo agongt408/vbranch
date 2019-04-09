@@ -376,13 +376,13 @@ class Conv2D(Layer):
             unique_filters = self.filters_list[i] - self.shared_filters
 
             # Operations to build the rest of the layer
-            shared_to_unique = L.Conv2D(self.shared_filters, self.kernel_size,
+            shared_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 self.name+'_vb'+str(i+1)+'_shared_to_unique',strides=self.strides,
                 padding=self.padding)
             unique_to_shared = L.Conv2D(self.shared_filters, self.kernel_size,
                 self.name+'_vb'+str(i+1)+'_unique_to_shared',strides=self.strides,
                 padding=self.padding)
-            unique_to_unique = L.Conv2D(self.shared_filters, self.kernel_size,
+            unique_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 self.name+'_vb'+str(i+1)+'_unique_to_unique',strides=self.strides,
                 padding=self.padding)
 

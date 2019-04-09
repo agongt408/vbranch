@@ -1,4 +1,4 @@
-# Understanding Virtual Branching
+# Virtual Branching
 
 - Random Forest (simple ensemble)
 - Multiple branches (same data)
@@ -7,8 +7,8 @@
 
 Datasets:
 - MNIST
-- SVHN
-- Person Re-ID
+- Omnigloat
+- Person Re-ID (future)
 
 ## Related Papers
 http://openaccess.thecvf.com/content_cvpr_2018/papers/Rebuffi_Efficient_Parametrization_of_CVPR_2018_paper.pdf

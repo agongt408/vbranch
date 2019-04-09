@@ -24,10 +24,11 @@ parser.add_argument('--model_id', action='store', default=1, nargs='?',
                     type=int, help='model id of checkpoint')
 parser.add_argument('--num_branches', action='store', default=2, nargs='?',
                     type=int, help='number of virtual branches')
+parser.add_argument('--shared_frac', action='store', default=0, nargs='?',
+                    type=float, help='fraction of layer to share weights [0,1)')
 parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
-parser.add_argument('--test', action='store_true',
-                    help='test model')
+parser.add_argument('--test', action='store_true', help='test model')
 
 class bcolors:
     HEADER = '\033[95m'
@@ -84,15 +85,17 @@ def get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE):
 
     return inputs, labels_one_hot, train_init_ops, test_init_ops, batch_size
 
-def build_model(architecture, inputs, num_classes, num_branches, model_id):
+def build_model(architecture,inputs,num_classes,num_branches,model_id,shared_frac):
     with tf.variable_scope('model_' + str(model_id), reuse=tf.AUTO_REUSE):
         if architecture == 'fcn':
             model = vb.models.vbranch_fcn(inputs,
-                ([128]*num_branches, 0), ([10]*num_branches, 0),
+                ([128]*num_branches, int(128*shared_frac)),
+                ([10]*num_branches, int(10*shared_frac)),
                 branches=num_branches)
         elif architecture == 'cnn':
             model = vb.models.vbranch_cnn(inputs, num_classes,
-                ([16]*num_branches, 0), ([32]*num_branches, 0),
+                ([16]*num_branches, int(16*shared_frac)),
+                ([32]*num_branches, int(32*shared_frac)),
                 branches=num_branches)
         else:
             raise ValueError('Invalid architecture')
@@ -232,10 +235,10 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
     return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
 
 def train(architecture, num_branches, model_id, num_classes, epochs,
-        steps_per_epoch, BATCH_SIZE):
+        steps_per_epoch, BATCH_SIZE, shared_frac):
 
-    model_path = './models/vb-mnist-{}-B{:d}_{:d}'.\
-        format(architecture, num_branches, model_id)
+    model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
+        format(architecture, num_branches, shared_frac, model_id)
 
     print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
@@ -251,7 +254,8 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
     inputs, labels_one_hot, train_init_ops, test_init_ops, batch_size = \
         get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE)
 
-    model = build_model(architecture,inputs,num_classes,num_branches,model_id)
+    model = build_model(architecture, inputs, num_classes, num_branches,
+        model_id, shared_frac)
     model.summary()
 
     # Declare training ops
@@ -270,9 +274,9 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
 
     return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
 
-def test(architecture, num_branches, model_id):
-    model_path = './models/vb-mnist-{}-B{:d}_{:d}'.\
-        format(architecture, num_branches, model_id)
+def test(architecture, num_branches, model_id, shared_frac):
+    model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
+        format(architecture, num_branches, shared_frac, model_id)
 
     print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
 
@@ -293,7 +297,7 @@ def test(architecture, num_branches, model_id):
 
         sess.run(test_init_ops, feed_dict={'batch_size:0': len(X_test)})
 
-        val_losses, val_acc, indiv_accs = sess.run([losses,'test_acc:0',train_acc_ops])
+        val_losses,val_acc,indiv_accs = sess.run([losses,'test_acc:0',train_acc_ops])
 
     val_loss = np.mean(val_losses)
     print('Loss:', val_loss)
@@ -307,10 +311,10 @@ if __name__ == '__main__':
 
     if args.test:
         print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
-        test(args.architecture, args.num_branches, args.model_id)
+        test(args.architecture,args.num_branches,args.model_id,args.shared_frac)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
         train(args.architecture, args.num_branches, args.model_id, 10,
-            args.epochs, args.steps_per_epoch, args.batch_size)
+            args.epochs,args.steps_per_epoch,args.batch_size,args.shared_frac)
 
     print('Finished!')

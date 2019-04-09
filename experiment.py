@@ -184,7 +184,7 @@ def compute_acc(pred, labels_one_hot, num_classes):
     pred_max = tf.keras.utils.to_categorical(np.argmax(pred, axis=-1), num_classes)
     return np.mean(np.sum(labels_one_hot*pred_max, axis=1))
 
-def test(architecture, model_id_list):
+def test(architecture, model_id_list, num_classes):
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
         load_data(architecture, num_classes)
@@ -198,7 +198,7 @@ def test(architecture, model_id_list):
         sess = tf.Session(graph=graph)
 
         with sess.as_default(), graph.as_default():
-            model_path = './models/mnist-{}_{:d}'.format(architecture, id)
+            model_path = './models/mnist-{}_{}'.format(architecture, id)
             meta_path = os.path.join(model_path, 'ckpt.meta')
             ckpt = tf.train.get_checkpoint_state(model_path)
 
@@ -207,7 +207,7 @@ def test(architecture, model_id_list):
 
             sess.run('test_init_op', feed_dict={'batch_size:0': len(X_test)})
 
-            output, loss, acc = sess.run(['model_%d'%(i+1)+'/'+'output:0',
+            output, loss, acc = sess.run(['model_%s'%id+'/'+'output:0',
                 'loss:0', 'acc:0'])
 
             test_outputs.append(output)
@@ -216,11 +216,11 @@ def test(architecture, model_id_list):
 
     # Average predictions before softmax
     before_mean_output = softmax(np.array(test_outputs).mean(axis=0), axis=-1)
-    before_mean_acc = compute_acc(before_mean_output, y_test_one_hot)
+    before_mean_acc = compute_acc(before_mean_output,y_test_one_hot,num_classes)
 
     # Average predictions after softmax
     after_mean_output = softmax(np.array(test_outputs), axis=-1).mean(axis=0)
-    after_mean_acc = compute_acc(after_mean_output, y_test_one_hot)
+    after_mean_acc = compute_acc(after_mean_output,y_test_one_hot,num_classes)
 
     print('Before mean acc:', before_mean_acc)
     print('After mean acc:', after_mean_acc)
@@ -232,7 +232,7 @@ if __name__ == '__main__':
 
     if args.test:
         print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
-        test(args.architecture, args.test)
+        test(args.architecture, args.test, 10)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
         train(args.architecture, args.model_id, 10, args.epochs,

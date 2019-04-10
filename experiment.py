@@ -9,6 +9,8 @@ from scipy.special import softmax
 import matplotlib.pyplot as plt
 import argparse
 import time
+import pandas as pd
+from glob import glob
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -20,12 +22,13 @@ parser.add_argument('--batch_size', action='store', default=32, nargs='?',
                     type=int, help='batch size')
 parser.add_argument('--epochs', action='store', default=10, nargs='?',
                     type=int, help='number of epochs to train model')
-parser.add_argument('--model_id', action='store', default=1, nargs='?',
-                    type=int, help='model id of checkpoint')
+parser.add_argument('--model_id', action='store', nargs='*', type=int,
+                    help='list of checkpoint model ids')
 parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
-parser.add_argument('--test', action='store', nargs='*',
-                    help='model ids of stored models to test in ensemble')
+parser.add_argument('--test', action='store_true', help='testing mode')
+parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
+                    help='number of trials to perform, if 1, then model_id used')
 
 class bcolors:
     HEADER = '\033[95m'
@@ -110,7 +113,6 @@ def run_train_ops(epochs, steps_per_epoch, batch_size,
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
-            # progbar = tf.keras.utils.Progbar(steps_per_epoch)
             start = time.time()
 
             sess.run(train_init_op, feed_dict={batch_size: BATCH_SIZE})
@@ -118,28 +120,21 @@ def run_train_ops(epochs, steps_per_epoch, batch_size,
             for i in range(steps_per_epoch):
                 _, train_loss, train_acc = sess.run([train_op, loss, acc])
 
-                # prog_vals = [("loss", train_loss), ("acc", train_acc)]
-
-                train_loss_hist.append(train_loss)
-                train_acc_hist.append(train_acc)
-
                 if i == steps_per_epoch - 1:
-                    sess.run(test_init_op, feed_dict={batch_size: TEST_BATCH_SIZE})
+                    sess.run(test_init_op, feed_dict={batch_size:TEST_BATCH_SIZE})
+
                     val_loss, val_acc = sess.run([loss, acc])
 
-                    # prog_vals += [("val_loss", val_loss), ("val_acc", val_acc)]
-
+                    train_loss_hist.append(train_loss)
+                    train_acc_hist.append(train_acc)
                     val_loss_hist.append(val_loss)
                     val_acc_hist.append(val_acc)
 
-                # progbar.update(i+1, values=prog_vals)
-
             epoch_time = time.time() - start
-            mean_train_loss = np.mean(train_loss_hist[-5:])
-            mean_train_acc = np.mean(train_acc_hist[-5:])
 
-            print('Time={:.0f}, Loss={:.4f}, Acc={:.4f}, Val Loss={:.4f}, Val Acc={:.4f}'.\
-                format(epoch_time, mean_train_loss, mean_train_acc, val_loss, val_acc))
+            print(('Time={:.0f}, Loss={:.4f}, Acc={:.4f}, ' + \
+                'Val Loss={:.4f}, Val Acc={:.4f}').format(epoch_time,
+                train_loss_hist[-1], train_acc_hist[-1], val_loss, val_acc))
 
         saver = tf.train.Saver()
         path = os.path.join(model_path, 'ckpt')
@@ -148,7 +143,8 @@ def run_train_ops(epochs, steps_per_epoch, batch_size,
     return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
 
 def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
-    model_path = './models/mnist-{}_{:d}'.format(architecture, model_id)
+    model_name = 'mnist-{}_{:d}'.format(architecture, model_id)
+    model_path = os.path.join('models', model_name)
 
     print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
@@ -173,46 +169,55 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
     acc = get_acc_ops(labels_one_hot, model.output, num_classes)
 
     # Run training ops
-    train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist = \
-        run_train_ops(epochs, steps_per_epoch, batch_size,
-            train_init_op, test_init_op, train_op, loss, acc, model_path,
-            BATCH_SIZE, len(X_test))
+    train_losses, train_accs, val_losses, val_accs = run_train_ops(epochs,
+        steps_per_epoch, batch_size, train_init_op, test_init_op, train_op,
+        loss, acc, model_path, BATCH_SIZE, len(X_test))
 
-    return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
+    # Store loss/acc values as csv
+    results = pd.DataFrame(data={'train_loss':train_losses,'train_acc':train_accs,
+        'val_loss':val_losses, 'val_acc':val_accs})
+
+    results.to_csv(os.path.join('results',model_name+'-train.csv'),
+        index_label='epoch')
 
 def compute_acc(pred, labels_one_hot, num_classes):
     pred_max = tf.keras.utils.to_categorical(np.argmax(pred, axis=-1), num_classes)
     return np.mean(np.sum(labels_one_hot*pred_max, axis=1))
 
-def test(architecture, model_id_list, num_classes):
+def test(architecture, model_id_list, num_classes, output_dict={}, acc_dict={}):
+    print(model_id_list)
+
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
         load_data(architecture, num_classes)
 
     test_outputs = []
-    test_losses = []
     test_accs = []
 
     for id in model_id_list:
-        graph = tf.Graph()
-        sess = tf.Session(graph=graph)
+        if id in output_dict.keys():
+            output = output_dict[id]
+            acc = acc_dict[id]
+        else:
+            graph = tf.Graph()
+            sess = tf.Session(graph=graph)
 
-        with sess.as_default(), graph.as_default():
-            model_path = './models/mnist-{}_{}'.format(architecture, id)
-            meta_path = os.path.join(model_path, 'ckpt.meta')
-            ckpt = tf.train.get_checkpoint_state(model_path)
+            with sess.as_default(), graph.as_default():
+                model_path = 'models/mnist-{}_{}'.format(architecture, id)
+                meta_path = os.path.join(model_path, 'ckpt.meta')
+                ckpt = tf.train.get_checkpoint_state(model_path)
 
-            imported_graph = tf.train.import_meta_graph(meta_path)
-            imported_graph.restore(sess, ckpt.model_checkpoint_path)
+                imported_graph = tf.train.import_meta_graph(meta_path)
+                imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
-            sess.run('test_init_op', feed_dict={'batch_size:0': len(X_test)})
+                sess.run('test_init_op',feed_dict={'batch_size:0':len(X_test)})
+                output, acc = sess.run(['model_%s'%id+'/'+'output:0','acc:0'])
 
-            output, loss, acc = sess.run(['model_%s'%id+'/'+'output:0',
-                'loss:0', 'acc:0'])
+            output_dict[id] = output
+            acc_dict[id] = acc
 
-            test_outputs.append(output)
-            test_losses.append(loss)
-            test_accs.append(acc)
+        test_outputs.append(output)
+        test_accs.append(acc)
 
     # Average predictions before softmax
     before_mean_output = softmax(np.array(test_outputs).mean(axis=0), axis=-1)
@@ -222,20 +227,55 @@ def test(architecture, model_id_list, num_classes):
     after_mean_output = softmax(np.array(test_outputs), axis=-1).mean(axis=0)
     after_mean_acc = compute_acc(after_mean_output,y_test_one_hot,num_classes)
 
+    print('Individual accs:', test_accs)
     print('Before mean acc:', before_mean_acc)
     print('After mean acc:', after_mean_acc)
 
-    return before_mean_acc, after_mean_acc
+    results_dict = {}
+    for i, id in enumerate(model_id_list):
+        results_dict['acc_'+str(id)] = test_accs[i]
+    results_dict['before_mean_acc'] = before_mean_acc
+    results_dict['after_mean_acc'] = after_mean_acc
+
+    csv_path = pd.DataFrame(data=results_dict, index=[0]).to_csv(os.path.join(
+        'results', 'mnist-{}-test.csv'.format(architecture)), mode='a')
+
+    return output_dict, acc_dict
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
         print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
-        test(args.architecture, args.test, 10)
+
+        if args.trials == 1:
+            # args.model_id is a list of model ids
+            test(args.architecture, args.model_id, 10)
+        else:
+            output_dict = {}
+            acc_dict = {}
+
+            avail_runs = glob('models/mnist-{}_*'.format(args.architecture))
+            avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
+
+            for i in range(args.trials):
+                model_ids = np.random.choice(avail_ids, len(args.model_id),
+                    replace=False)
+                model_ids.sort()
+                output_dict, acc_dict = test(args.architecture, model_ids, 10,
+                    output_dict, acc_dict)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
-        train(args.architecture, args.model_id, 10, args.epochs,
-            args.steps_per_epoch, args.batch_size)
+
+        if args.trials == 1:
+            for id in args.model_id:
+                # Run trial with specified model id
+                train(args.architecture,id,10,args.epochs,args.steps_per_epoch,
+                    args.batch_size)
+        else:
+            # Run n trials with model id from 1 to args.trials
+            for i in range(args.trials):
+                train(args.architecture,i+1,10,args.epochs,args.steps_per_epoch,
+                    args.batch_size)
 
     print('Finished!')

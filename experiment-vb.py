@@ -9,6 +9,7 @@ from scipy.special import softmax
 import matplotlib.pyplot as plt
 import argparse
 import time
+import pandas as pd
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -20,8 +21,8 @@ parser.add_argument('--batch_size', action='store', default=32, nargs='?',
                     type=int, help='batch size')
 parser.add_argument('--epochs', action='store', default=10, nargs='?',
                     type=int, help='number of epochs to train model')
-parser.add_argument('--model_id', action='store', default=1, nargs='?',
-                    type=int, help='model id of checkpoint')
+parser.add_argument('--model_id',action='store',nargs='*',type=int,default=[1],
+                    help='list of checkpoint model ids')
 parser.add_argument('--num_branches', action='store', default=2, nargs='?',
                     type=int, help='number of virtual branches')
 parser.add_argument('--shared_frac', action='store', default=0, nargs='?',
@@ -29,6 +30,9 @@ parser.add_argument('--shared_frac', action='store', default=0, nargs='?',
 parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
 parser.add_argument('--test', action='store_true', help='test model')
+parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
+                    help='number of trials to perform, if 1, then model_id used')
+parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
 class bcolors:
     HEADER = '\033[95m'
@@ -183,7 +187,6 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
-            # progbar = tf.keras.utils.Progbar(steps_per_epoch)
             start = time.time()
 
             sess.run(train_init_ops, feed_dict={batch_size: BATCH_SIZE})
@@ -192,36 +195,23 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
                 _, train_losses, train_accs = sess.run([train_ops, losses,
                     train_acc_ops])
 
-                # prog_vals = [('loss_'+str(b+1),train_losses[b]) \
-                #         for b in range(num_branches)] + \
-                #     [('acc_'+str(b+1),train_accs[b]) for b in range(num_branches)]
-
-                for b in range(num_branches):
-                    train_loss_hist[b].append(train_losses[b])
-                    train_acc_hist[b].append(train_accs[b])
-
                 if i == steps_per_epoch - 1:
-                    sess.run(test_init_ops, feed_dict={batch_size: TEST_BATCH_SIZE})
+                    sess.run(test_init_ops,feed_dict={batch_size:TEST_BATCH_SIZE})
                     val_losses, val_acc, indiv_accs = \
                         sess.run([losses, test_acc_op, train_acc_ops])
 
+                    for b in range(num_branches):
+                        train_loss_hist[b].append(train_losses[b])
+                        train_acc_hist[b].append(train_accs[b])
+
                     val_loss = np.mean(val_losses)
-
-                    # prog_vals += [('val_loss',val_loss),('val_acc',val_acc)] +\
-                    #     [('ind_acc_'+str(b+1), indiv_accs[b]) \
-                    #     for b in range(num_branches)]
-
                     val_loss_hist.append(val_loss)
                     val_acc_hist.append(val_acc)
 
-                # progbar.update(i+1, values=prog_vals)
-
             str_log = 'Time={:.0f}, '.format(time.time() - start)
             for b in range(num_branches):
-                mean_train_loss = np.mean(train_loss_hist[b][-5:])
-                mean_train_acc = np.mean(train_acc_hist[b][-5:])
                 str_log += 'Loss {}={:.4f}, Acc {}={:.4f}, '.\
-                    format(b+1, mean_train_loss, b+1, mean_train_acc)
+                    format(b+1,train_loss_hist[b][-1],b+1,train_acc_hist[b][-1])
                 str_log += 'Val Loss {}={:.4f}, Val Acc {}={:.4f}, '.\
                     format(b+1, val_losses[b], b+1, indiv_accs[b])
 
@@ -237,8 +227,9 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
 def train(architecture, num_branches, model_id, num_classes, epochs,
         steps_per_epoch, BATCH_SIZE, shared_frac):
 
-    model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(architecture, num_branches, shared_frac, model_id)
+    model_name = 'vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.format(architecture,
+        num_branches, shared_frac, model_id)
+    model_path = os.path.join('models', model_name)
 
     print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
@@ -272,9 +263,18 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
             train_init_ops, test_init_ops, train_ops, losses, train_acc_ops,
             test_acc_op, model_path, BATCH_SIZE, len(X_test))
 
-    return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
+    # Store loss/acc values as csv
+    results_dict = {}
+    for i in range(num_branches):
+        results_dict['train_loss_'+str(i+1)] = train_loss_hist[i]
+        results_dict['train_acc_'+str(i+1)] = train_acc_hist[i]
+    results_dict['val_loss'] = val_loss_hist
+    results_dict['val_acc'] = val_acc_hist
 
-def test(architecture, num_branches, model_id, shared_frac):
+    csv_path = pd.DataFrame(data=results_dict).to_csv(os.path.join('results',
+        model_name+'-train.csv'))
+
+def test(architecture, num_branches, model_id, shared_frac, message):
     model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
         format(architecture, num_branches, shared_frac, model_id)
 
@@ -296,7 +296,6 @@ def test(architecture, num_branches, model_id, shared_frac):
         imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
         sess.run(test_init_ops, feed_dict={'batch_size:0': len(X_test)})
-
         val_losses,val_acc,indiv_accs = sess.run([losses,'test_acc:0',train_acc_ops])
 
     val_loss = np.mean(val_losses)
@@ -304,17 +303,33 @@ def test(architecture, num_branches, model_id, shared_frac):
     print('Acc:', val_acc)
     print('Indiv accs:', indiv_accs)
 
-    return val_loss, val_acc, indiv_accs
+    results_dict = {}
+    for i in range(num_branches):
+        results_dict['acc_'+str(i+1)] = indiv_accs[i]
+    results_dict['ensemble_acc'] = val_acc
+    results_dict['message'] = message
+
+    csv_path = pd.DataFrame(data=results_dict, index=[0]).to_csv(os.path.join(
+        'results', 'vb-mnist-{}-test.csv'.format(architecture)), mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
         print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
-        test(args.architecture,args.num_branches,args.model_id,args.shared_frac)
+
+        for id in args.model_id:
+            test(args.architecture,args.num_branches,id,args.shared_frac,args.m)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
-        train(args.architecture, args.num_branches, args.model_id, 10,
-            args.epochs,args.steps_per_epoch,args.batch_size,args.shared_frac)
+
+        if args.trials == 1:
+            for id in args.model_id:
+                train(args.architecture, args.num_branches, id, 10,args.epochs,
+                    args.steps_per_epoch,args.batch_size,args.shared_frac)
+        else:
+            for i in range(args.trials):
+                train(args.architecture, args.num_branches, i+1, 10,args.epochs,
+                    args.steps_per_epoch,args.batch_size,args.shared_frac)
 
     print('Finished!')

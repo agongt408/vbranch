@@ -22,7 +22,7 @@ parser.add_argument('--batch_size', action='store', default=32, nargs='?',
                     type=int, help='batch size')
 parser.add_argument('--epochs', action='store', default=10, nargs='?',
                     type=int, help='number of epochs to train model')
-parser.add_argument('--model_id', action='store', nargs='*', type=int,
+parser.add_argument('--model_id',action='store',nargs='*',type=int,default=[1],
                     help='list of checkpoint model ids')
 parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
@@ -176,7 +176,6 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
     # Store loss/acc values as csv
     results = pd.DataFrame(data={'train_loss':train_losses,'train_acc':train_accs,
         'val_loss':val_losses, 'val_acc':val_accs})
-
     results.to_csv(os.path.join('results',model_name+'-train.csv'),
         index_label='epoch')
 

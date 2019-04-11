@@ -136,16 +136,17 @@ def get_train_ops(labels,logits,num_branches,optimizer,shared_vars,unshared_vars
 
         # Compute gradients of shared vars for each branch (but don't apply)
         if len(shared_vars) > 0:
-            shared_grads.append(optimizer.compute_gradients(loss, var_list=shared_vars))
+            shared_grads.append(optimizer.compute_gradients(loss,var_list=shared_vars))
 
         # Apply gradients for unshared vars for each branch
-        unshared_train_ops.append(optimizer.minimize(loss, var_list=unshared_vars[i]))
+        if len(unshared_vars[i]) > 0:
+            unshared_train_ops.append(optimizer.minimize(loss,var_list=unshared_vars[i]))
 
     # Take average of the gradients over each branch
     mean_shared_grads = []
 
     for v, var in enumerate(shared_vars):
-        grad = tf.reduce_mean([shared_grads[i][v][0] for i in range(num_branches)], [0])
+        grad = tf.reduce_mean([shared_grads[i][v][0] for i in range(num_branches)],[0])
         mean_shared_grads.append((grad, var))
 
     if len(shared_vars) > 0:

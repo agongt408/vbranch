@@ -31,7 +31,10 @@ class Layer(object):
     def set_output_shape(func):
         def call(self, x):
             output = func(self, x)
-            self.output_shape = output.get_shape().as_list()
+            if output == []:
+                self.output_shape = []
+            else:
+                self.output_shape = output.get_shape().as_list()
             return output
         return call
 
@@ -43,6 +46,13 @@ class Layer(object):
         config = {'name':self.name, 'output_shape':self.output_shape}
         return config
 
+    def catch_empty(func):
+        def call(self, x):
+            if x == []:
+                return []
+            return func(self, x)
+        return call
+
 class Dense(Layer):
     def __init__(self, units, name, use_bias=True):
         super().__init__(name)
@@ -52,7 +62,12 @@ class Dense(Layer):
         self.b = []
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
+        # Return empty output for empty layer
+        if self.units == 0:
+            return []
+
         n_in = x.get_shape().as_list()[-1]
         self.w = tf.get_variable(self.name + '_w', shape=[n_in, self.units])
 
@@ -82,6 +97,7 @@ class BatchNormalization(Layer):
         self.scale = []
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
         n_out = x.get_shape().as_list()[-1]
 
@@ -112,6 +128,7 @@ class Activation(Layer):
         self.activation = activation
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
         if self.activation == 'linear':
             return x
@@ -137,7 +154,12 @@ class Conv2D(Layer):
         self.b = []
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
+        # Return empty output for empty layer
+        if self.filters == 0:
+            return []
+
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]
 
@@ -176,6 +198,7 @@ class AveragePooling2D(Layer):
         self.padding = padding
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
         shape_in = x.get_shape().as_list()
         ksize = (1, self.pool_size[0], self.pool_size[1], 1)
@@ -199,6 +222,7 @@ class GlobalAveragePooling2D(Layer):
         super().__init__(name)
 
     @Layer.set_output_shape
+    @Layer.catch_empty
     def __call__(self, x):
         output = tf.reduce_mean(x, axis=[1, 2], name=self.name)
         self.output_shape = output.get_shape().as_list()

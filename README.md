@@ -10,6 +10,18 @@ Datasets:
 - Omnigloat
 - Person Re-ID (future)
 
+## Results
+
+![figs/fcn-results.png](fcn-results)
+
+FCN = 784 units, 128 units, 10 units; batch norm, relu; softmax; 30 epochs;
+learning rate = 0.001
+
+![figs/cnn-results.png](cnn-results)
+
+CNN = 1 -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
+learning rate = 0.001
+
 ## Related Papers
 http://openaccess.thecvf.com/content_cvpr_2018/papers/Rebuffi_Efficient_Parametrization_of_CVPR_2018_paper.pdf
 

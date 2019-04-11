@@ -183,7 +183,7 @@ def compute_acc(pred, labels_one_hot, num_classes):
     pred_max = tf.keras.utils.to_categorical(np.argmax(pred, axis=-1), num_classes)
     return np.mean(np.sum(labels_one_hot*pred_max, axis=1))
 
-def test(architecture, model_id_list, num_classes, output_dict={}, acc_dict={}):
+def test(architecture,model_id_list,num_classes,output_dict={},acc_dict={},loss_dict={}):
     print(model_id_list)
 
     # Load data from MNIST
@@ -192,11 +192,13 @@ def test(architecture, model_id_list, num_classes, output_dict={}, acc_dict={}):
 
     test_outputs = []
     test_accs = []
+    test_losses = []
 
     for id in model_id_list:
         if id in output_dict.keys():
             output = output_dict[id]
             acc = acc_dict[id]
+            loss = loss_dict[id]
         else:
             graph = tf.Graph()
             sess = tf.Session(graph=graph)
@@ -210,13 +212,16 @@ def test(architecture, model_id_list, num_classes, output_dict={}, acc_dict={}):
                 imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
                 sess.run('test_init_op',feed_dict={'batch_size:0':len(X_test)})
-                output, acc = sess.run(['model_%s'%id+'/'+'output:0','acc:0'])
+                output,acc,loss = sess.run(['model_%s'%id+'/'+'output:0',
+                                            'acc:0', 'loss:0'])
 
             output_dict[id] = output
             acc_dict[id] = acc
+            loss_dict[id] = loss
 
         test_outputs.append(output)
         test_accs.append(acc)
+        test_losses.append(loss)
 
     # Average predictions before softmax
     before_mean_output = softmax(np.array(test_outputs).mean(axis=0), axis=-1)
@@ -233,13 +238,14 @@ def test(architecture, model_id_list, num_classes, output_dict={}, acc_dict={}):
     results_dict = {}
     for i, id in enumerate(model_id_list):
         results_dict['acc_'+str(id)] = test_accs[i]
+        results_dict['loss_'+str(id)] = test_losses[i]
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
     csv_path = pd.DataFrame(data=results_dict, index=[0]).to_csv(os.path.join(
         'results', 'mnist-{}-test.csv'.format(architecture)), mode='a')
 
-    return output_dict, acc_dict
+    return output_dict, acc_dict, loss_dict
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -251,8 +257,10 @@ if __name__ == '__main__':
             # args.model_id is a list of model ids
             test(args.architecture, args.model_id, 10)
         else:
+            # Store output, acc, and dict in case need to be reused
             output_dict = {}
             acc_dict = {}
+            loss_dict = {}
 
             avail_runs = glob('models/mnist-{}_*'.format(args.architecture))
             avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
@@ -261,8 +269,8 @@ if __name__ == '__main__':
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
                 model_ids.sort()
-                output_dict, acc_dict = test(args.architecture, model_ids, 10,
-                    output_dict, acc_dict)
+                output_dict,acc_dict,loss_dict = test(args.architecture,
+                            model_ids, 10, output_dict, acc_dict, loss_dict)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 

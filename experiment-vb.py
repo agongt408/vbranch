@@ -97,7 +97,7 @@ def build_model(architecture,inputs,num_classes,num_branches,model_id,shared_fra
                 ([10]*num_branches, int(10*shared_frac)),
                 branches=num_branches)
         elif architecture == 'cnn':
-            model = vb.models.vbranch_cnn(inputs, num_classes,
+            model = vb.models.vbranch_cnn(inputs, (num_classes, 0),
                 ([16]*num_branches, int(16*shared_frac)),
                 ([32]*num_branches, int(32*shared_frac)),
                 branches=num_branches)
@@ -180,7 +180,8 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
 
     train_loss_hist = [[] for i in range(num_branches)]
     train_acc_hist = [[] for i in range(num_branches)]
-    val_loss_hist = []
+    indiv_accs_hist = [[] for i in range(num_branches)]
+    val_loss_hist = [[] for i in range(num_branches)]
     val_acc_hist = []
 
     with tf.Session() as sess:
@@ -204,9 +205,10 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
                     for b in range(num_branches):
                         train_loss_hist[b].append(train_losses[b])
                         train_acc_hist[b].append(train_accs[b])
+                        indiv_accs_hist[b].append(indiv_accs[b])
+                        val_loss_hist[b].append(val_losses[b])
 
                     val_loss = np.mean(val_losses)
-                    val_loss_hist.append(val_loss)
                     val_acc_hist.append(val_acc)
 
             str_log = 'Time={:.0f}, '.format(time.time() - start)
@@ -223,7 +225,7 @@ def run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
         path = os.path.join(model_path, 'ckpt')
         saver.save(sess, path)
 
-    return train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist
+    return train_loss_hist,train_acc_hist,val_loss_hist,val_acc_hist,indiv_accs_hist
 
 def train(architecture, num_branches, model_id, num_classes, epochs,
         steps_per_epoch, BATCH_SIZE, shared_frac):
@@ -259,7 +261,7 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
         num_branches, num_classes)
 
     # Run training ops
-    train_loss_hist, train_acc_hist, val_loss_hist, val_acc_hist = \
+    train_losses, train_accs, val_losses, val_accs, indiv_accs = \
         run_train_ops(epochs, steps_per_epoch, batch_size, num_branches,
             train_init_ops, test_init_ops, train_ops, losses, train_acc_ops,
             test_acc_op, model_path, BATCH_SIZE, len(X_test))
@@ -267,10 +269,11 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
     # Store loss/acc values as csv
     results_dict = {}
     for i in range(num_branches):
-        results_dict['train_loss_'+str(i+1)] = train_loss_hist[i]
-        results_dict['train_acc_'+str(i+1)] = train_acc_hist[i]
-    results_dict['val_loss'] = val_loss_hist
-    results_dict['val_acc'] = val_acc_hist
+        results_dict['train_loss_'+str(i+1)] = train_losses[i]
+        results_dict['train_acc_'+str(i+1)] = train_accs[i]
+        results_dict['val_loss_'+str(i+1)] = val_losses[i]
+        results_dict['val_acc_'+str(i+1)] = indiv_accs[i]
+    results_dict['val_acc'] = val_accs
 
     csv_path = pd.DataFrame(data=results_dict).to_csv(os.path.join('results',
         model_name+'-train.csv'))

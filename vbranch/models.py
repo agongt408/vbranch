@@ -138,13 +138,13 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
 
     for i, filters in enumerate(layers_spec):
         for l in range(2):
-            # model.add(Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
-            # model.add(BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
-            # model.add(Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
-
+            model.add(L.Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
             model.add(L.BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
             model.add(L.Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
-            model.add(L.Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
+
+            # model.add(L.BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
+            # model.add(L.Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
+            # model.add(L.Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
 
         if i < len(layers_spec) - 1:
             model.add(L.AveragePooling2D((2,2), 'avg_pool2d_'+str(i + 1)))

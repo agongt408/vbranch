@@ -12,12 +12,12 @@ Datasets:
 
 ## Results
 
-![figs/fcn-results.png](fcn-results)
+![fcn-results](figs/fcn-results.png)
 
 FCN = 784 units, 128 units, 10 units; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001
 
-![figs/cnn-results.png](cnn-results)
+![cnn-results](figs/cnn-results.png)
 
 CNN = 1 -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001

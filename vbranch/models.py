@@ -177,19 +177,33 @@ def vbranch_fcn(inputs, *layers_spec, branches=1):
 
     return model
 
-def vbranch_cnn(inputs, num_classes, *layers_spec, branches=1):
-    # NOTE: inputs can be single Tensor or list of Tensors
+def vbranch_cnn(inputs, final_spec, *layers_spec, branches=1):
+    """
+    CNN model for classification and one-shot learning
+    Args:
+        - inputs: single Tensor or list of Tensors
+        - final_spec: tuple of (num_classes, shared_units)
+        - layers_spec: tuple(s) of (filters_list, shared_filters)
+        - branches: number of branches
+    """
+
     model = SequentialVB(inputs)
 
     for i, (filters_list, shared_filters) in enumerate(layers_spec):
         for l in range(2):
-            model.add(VBL.BatchNormalization(branches,'bn_%d_%d' % (i + 1, l+1)))
-            model.add(VBL.Activation('relu',branches,'relu_%d_%d' % (i+1, l+1)))
             model.add(VBL.Conv2D(filters_list,3,branches,
                 'conv2d_%d_%d'%(i+1,l+1),shared_filters))
+            model.add(VBL.BatchNormalization(branches,'bn_%d_%d' % (i+1, l+1)))
+            model.add(VBL.Activation('relu',branches,'relu_%d_%d' % (i+1, l+1)))
+
+            # # Preactivation
+            # model.add(VBL.BatchNormalization(branches,'bn_%d_%d' % (i + 1, l+1)))
+            # model.add(VBL.Activation('relu',branches,'relu_%d_%d' % (i+1, l+1)))
+            # model.add(VBL.Conv2D(filters_list,3,branches,
+            #     'conv2d_%d_%d'%(i+1,l+1),shared_filters))
 
         if i < len(layers_spec) - 1:
-            model.add(VBL.AveragePooling2D((2,2),branches,'avg_pool2d_'+str(i + 1)))
+            model.add(VBL.AveragePooling2D((2,2),branches,'avg_pool2d_'+str(i+1)))
         else:
             model.add(VBL.GlobalAveragePooling2D(branches,'global_avg_pool2d'))
 
@@ -197,7 +211,14 @@ def vbranch_cnn(inputs, num_classes, *layers_spec, branches=1):
             model.add(VBL.Dense(layers_spec[-1][0],branches,'fc1',layers_spec[-1][1]))
             model.add(VBL.BatchNormalization(branches, 'bn_fc1'))
             model.add(VBL.Activation('relu', branches, 'relu_fc1'))
-            # Final embedding FC layer has no shared units
-            model.add(VBL.Dense([num_classes]*branches, branches,'output', 0))
+
+            # If using shared params
+            if final_spec[1] > 0:
+                model.add(VBL.Dense([final_spec[0]]*branches,branches,'fc2',
+                                    final_spec[1]))
+                model.add(VBL.MergeSharedUnique(branches, 'output'))
+            else:
+                model.add(VBL.Dense([final_spec[0]]*branches,branches,'output',
+                                    final_spec[1]))
 
     return model

@@ -29,6 +29,12 @@ class Layer(object):
 
     # Decorator for setting output shape after calling the layer
     def set_output_shapes(func):
+        def get_shape(x):
+            if x == []:
+                return []
+            else:
+                return x.get_shape().as_list()
+
         def call(self, x_list):
             output = func(self, x_list)
 
@@ -40,11 +46,9 @@ class Layer(object):
             self.output_shapes = []
             for o in output_list:
                 if type(o) is list:
-                    out_shared = o[0].get_shape().as_list()
-                    out_unique = o[1].get_shape().as_list()
-                    out_shape = [out_shared, out_unique]
+                    out_shape = [get_shape(o[0]), get_shape(o[1])]
                 else:
-                    out_shape = [o.get_shape().as_list()]
+                    out_shape = [get_shape(o)]
                 self.output_shapes.append(out_shape)
 
             return output
@@ -91,7 +95,7 @@ class Dense(Layer):
                 layer = L.Dense(self.units_list[i],self.name+'_vb'+str(i+1))
 
                 if type(x_list[i]) is list:
-                    input_ = tf.concat(x_list[i], -1)
+                    input_ = smart_concat(x_list[i], -1)
                 else:
                     input_ = x_list[i]
 
@@ -105,7 +109,7 @@ class Dense(Layer):
         self.shared_branch = L.Dense(self.shared_units,self.name+'_shared_to_shared')
 
         for i in range(self.n_branches):
-            assert self.units_list[i] > self.shared_units, 'units <= shared_units'
+            assert self.units_list[i] >= self.shared_units, 'units < shared_units'
             unique_units = self.units_list[i] - self.shared_units
 
             # Operations to build the rest of the layer
@@ -120,8 +124,10 @@ class Dense(Layer):
                 shared_in = x_list[i][0]
                 unique_in = x_list[i][1]
 
-                shared_out = self.shared_branch(shared_in) + unique_to_shared(unique_in)
-                unique_out = shared_to_unique(shared_in) + unique_to_unique(unique_in)
+                shared_out = smart_add(self.shared_branch(shared_in),
+                    unique_to_shared(unique_in))
+                unique_out = shared_to_unique(shared_in) + \
+                    unique_to_unique(unique_in)
             else:
                 shared_out = self.shared_branch(x_list[i])
                 unique_out = shared_to_unique(x_list[i])
@@ -129,10 +135,8 @@ class Dense(Layer):
             cross_weights = CrossWeights(shared_to_unique=shared_to_unique,
                 unique_to_shared=unique_to_shared,
                 unique_to_unique=unique_to_unique)
-            # output = tf.concat([shared_out, unique_out], -1, name=self.name+'_vb'+str(i+1))
 
             self.branches.append(cross_weights)
-            # output_list.append(output)
             output_list.append([shared_out, unique_out])
 
         return output_list
@@ -262,7 +266,7 @@ class Add(Layer):
     @Layer.expand_input
     def __call__(self, x_list):
         if type(x_list[0]) is list:
-            input_ = tf.concat(x_list, -1)
+            input_ = smart_concat(x_list, -1)
         else:
             input_ = x_list
 
@@ -282,7 +286,7 @@ class Average(Layer):
     @Layer.expand_input
     def __call__(self, x_list):
         if type(x_list[0]) is list:
-            input_ = tf.concat(x_list, -1)
+            input_ = smart_concat(x_list, -1)
         else:
             input_ = x_list
 
@@ -302,7 +306,7 @@ class Concatenate(Layer):
     @Layer.expand_input
     def __call__(self, x_list):
         if type(x_list[0]) is list:
-            input_ = tf.concat(x_list, -1)
+            input_ = smart_concat(x_list, -1)
         else:
             input_ = x_list
 
@@ -323,7 +327,7 @@ class MergeSharedUnique(Layer):
     def __call__(self, x_list):
         output = []
         for i in range(self.n_branches):
-            output.append(tf.concat(x_list[i], -1, name=self.name+'_'+str(i+1)))
+            output.append(smart_concat(x_list[i], -1, self.name+'_'+str(i+1)))
         return output
 
     def get_config(self):
@@ -357,7 +361,7 @@ class Conv2D(Layer):
                     padding=self.padding)
 
                 if type(x_list[i]) is list:
-                    input_ = tf.concat(x_list[i], -1)
+                    input_ = smart_concat(x_list[i], -1)
                 else:
                     input_ = x_list[i]
 
@@ -372,7 +376,7 @@ class Conv2D(Layer):
             self.name+'_shared_to_shared',strides=self.strides,padding=self.padding)
 
         for i in range(self.n_branches):
-            assert self.filters_list[i] > self.shared_filters, 'filters <= shared_filters'
+            assert self.filters_list[i] >= self.shared_filters, 'filters < shared_filters'
             unique_filters = self.filters_list[i] - self.shared_filters
 
             # Operations to build the rest of the layer
@@ -390,8 +394,9 @@ class Conv2D(Layer):
                 shared_in = x_list[i][0]
                 unique_in = x_list[i][1]
 
-                shared_out = self.shared_branch(shared_in) + unique_to_shared(unique_in)
-                unique_out = shared_to_unique(shared_in) + unique_to_unique(unique_in)
+                shared_out = smart_add(self.shared_branch(shared_in),
+                    unique_to_shared(unique_in))
+                unique_out = shared_to_unique(shared_in)+unique_to_unique(unique_in)
             else:
                 shared_out = self.shared_branch(x_list[i])
                 unique_out = shared_to_unique(x_list[i])
@@ -471,3 +476,18 @@ class GlobalAveragePooling2D(Pooling):
     def __init__(self, n_branches, name):
         layer = L.GlobalAveragePooling2D(name)
         super().__init__(name, n_branches, layer)
+
+def smart_add(x, y):
+    # Intelligently add x and y to avoid error when adding empty list
+    if y == []:
+        return x
+    else:
+        return x + y
+
+def smart_concat(xs, axis=-1, name='concat'):
+    # Intelligently concat x and y to avoid error when concating empty list
+    x_concat = []
+    for x in xs:
+        if x != []:
+            x_concat.append(x)
+    return tf.concat(x_concat, axis=axis, name=name)

@@ -12,15 +12,19 @@ Datasets:
 
 ## Results
 
-![fcn-results](figs/fcn-results.png)
+![fcn-results](figs/fcn-2-results.png)
+![fcn-results](figs/fcn-3-results.png)
+![fcn-results](figs/fcn-4-results.png)
 
 FCN = 784 units, 128 units, 10 units; batch norm, relu; softmax; 30 epochs;
-learning rate = 0.001
+learning rate = 0.001; test = before mean acc
 
-![cnn-results](figs/cnn-results.png)
+![cnn-results](figs/cnn-2-results.png)
+![cnn-results](figs/cnn-3-results.png)
+![cnn-results](figs/cnn-4-results.png)
 
 CNN = 1 -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
-learning rate = 0.001
+learning rate = 0.001; test = before mean acc
 
 ## Related Papers
 http://openaccess.thecvf.com/content_cvpr_2018/papers/Rebuffi_Efficient_Parametrization_of_CVPR_2018_paper.pdf

@@ -275,8 +275,16 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
         results_dict['val_acc_'+str(i+1)] = indiv_accs[i]
     results_dict['val_acc'] = val_accs
 
-    csv_path = pd.DataFrame(data=results_dict).to_csv(os.path.join('results',
-        model_name+'-train.csv'))
+    csv_dir = os.path.join('results','vb-mnist-'+architecture,'B'+str(num_branches),
+        'S{:.2f}'.format(shared_frac))
+    if not os.path.isdir(csv_dir):
+        os.system('mkdir -p ' + csv_dir)
+
+    csv_path = pd.DataFrame(data=results_dict).to_csv(os.path.join(csv_dir,
+        'train_{}.csv'.format(model_id)))
+
+    # csv_path = pd.DataFrame(data=results_dict).to_csv(os.path.join('results',
+    #     model_name+'-train.csv'))
 
 def test(architecture, num_branches, model_id, shared_frac, message):
     model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
@@ -313,8 +321,13 @@ def test(architecture, num_branches, model_id, shared_frac, message):
     results_dict['ensemble_acc'] = val_acc
     results_dict['message'] = message
 
+    csv_dir = os.path.join('results','vb-mnist-'+architecture,'B'+str(num_branches),
+        'S{:.2f}'.format(shared_frac))
+    if not os.path.isdir(csv_dir):
+        os.system('mkdir -p ' + csv_dir)
+
     csv_path = pd.DataFrame(data=results_dict, index=[0]).to_csv(os.path.join(
-        'results', 'vb-mnist-{}-test.csv'.format(architecture)), mode='a')
+        csv_dir, 'test.csv'.format(architecture)), mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()

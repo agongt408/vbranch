@@ -176,7 +176,12 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
     # Store loss/acc values as csv
     results = pd.DataFrame(data={'train_loss':train_losses,'train_acc':train_accs,
         'val_loss':val_losses, 'val_acc':val_accs})
-    results.to_csv(os.path.join('results',model_name+'-train.csv'),
+
+    csv_dir = os.path.join('results', 'mnist-{}'.format(architecture))
+    if not os.path.isdir(csv_dir):
+        os.system('mkdir -p ' + csv_dir)
+
+    results.to_csv(os.path.join(csv_dir, 'train_{}.csv'.format(model_id)),
         index_label='epoch')
 
 def compute_acc(pred, labels_one_hot, num_classes):
@@ -242,8 +247,12 @@ def test(architecture,model_id_list,num_classes,output_dict={},acc_dict={},loss_
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
+    csv_dir = os.path.join('results', 'mnist-{}'.format(architecture))
+    if not os.path.isdir(csv_dir):
+        os.system('mkdir -p ' + csv_dir)
+
     csv_path = pd.DataFrame(data=results_dict, index=[0]).to_csv(os.path.join(
-        'results', 'mnist-{}-test.csv'.format(architecture)), mode='a')
+        csv_dir, 'B{}-test.csv'.format(len(model_id_list))), mode='a')
 
     return output_dict, acc_dict, loss_dict
 

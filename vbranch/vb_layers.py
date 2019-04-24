@@ -14,9 +14,18 @@ class Layer(object):
         self.n_branches = n_branches
         self.output_shapes = []
 
-    # Decorator for formatting inputs to fit the right number of branches
-    def expand_input(call_func):
-        def inner(layer, x):
+    # Decorator for exanding input for branches and
+    # setting output shape after calling the layer
+    @staticmethod
+    def call(func):
+        def get_shape(x):
+            if x == []:
+                return []
+            else:
+                return x.get_shape().as_list()
+
+        def call(layer, x):
+            # Expand input to fit branches
             if type(x) is list:
                 assert len(x) == layer.n_branches, \
                     '{} != {}'.format(len(x), layer.n_branches)
@@ -24,35 +33,22 @@ class Layer(object):
             else:
                 x_list = [x] * layer.n_branches
 
-            return call_func(layer, x_list)
-        return inner
-
-    # Decorator for setting output shape after calling the layer
-    def set_output_shapes(func):
-        def get_shape(x):
-            if x == []:
-                return []
-            else:
-                return x.get_shape().as_list()
-
-        def call(self, x_list):
-            output = func(self, x_list)
+            output = func(layer, x_list)
 
             if not type(output) is list:
                 output_list = [output]
             else:
                 output_list = output
 
-            self.output_shapes = []
+            layer.output_shapes = []
             for o in output_list:
                 if type(o) is list:
                     out_shape = [get_shape(o[0]), get_shape(o[1])]
                 else:
                     out_shape = [get_shape(o)]
-                self.output_shapes.append(out_shape)
+                layer.output_shapes.append(out_shape)
 
             return output
-
         return call
 
     def get_weights(self):
@@ -84,8 +80,7 @@ class Dense(Layer):
         self.shared_units = shared_units
         self.shared_branch = None
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         self.branches = []
         output_list = []
@@ -178,8 +173,7 @@ class BatchNormalization(Layer):
         self.epsilon = epsilon
         self.shared_branch = None
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         self.branches = []
         output_list = []
@@ -233,8 +227,7 @@ class Activation(Layer):
         super().__init__(name, n_branches)
         self.activation = activation
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         self.branches = []
         output_list = []
@@ -262,8 +255,7 @@ class Add(Layer):
     def __init__(self, n_branches, name):
         super().__init__(name, n_branches)
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         if type(x_list[0]) is list:
             input_ = smart_concat(x_list, -1)
@@ -282,8 +274,7 @@ class Average(Layer):
     def __init__(self, n_branches, name):
         super().__init__(name, n_branches)
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         if type(x_list[0]) is list:
             input_ = smart_concat(x_list, -1)
@@ -302,8 +293,7 @@ class Concatenate(Layer):
     def __init__(self, n_branches, name):
         super().__init__(name, n_branches)
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         if type(x_list[0]) is list:
             input_ = smart_concat(x_list, -1)
@@ -322,8 +312,7 @@ class MergeSharedUnique(Layer):
     def __init__(self, n_branches, name):
         super().__init__(name, n_branches)
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         output = []
         for i in range(self.n_branches):
@@ -348,8 +337,7 @@ class Conv2D(Layer):
         self.shared_filters = shared_filters
         self.shared_branch = None
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         self.branches = []
         output_list = []
@@ -441,8 +429,7 @@ class Pooling(Layer):
         super().__init__(name, n_branches)
         self.layer = layer
 
-    @Layer.set_output_shapes
-    @Layer.expand_input
+    @Layer.call
     def __call__(self, x_list):
         output_list = []
 

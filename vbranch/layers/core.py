@@ -38,6 +38,12 @@ class Layer(object):
     @staticmethod
     def call(func):
         def new_func(layer, x):
+            # Set inbound nodes
+            if type(x) is list:
+                layer._inbound_tensors = x
+            else:
+                layer._inbound_tensors = [x]
+
             if x == []:
                 output = []
                 layer.output_shape = []

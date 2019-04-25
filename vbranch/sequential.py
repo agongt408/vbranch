@@ -2,7 +2,7 @@
 
 from . import layers as L
 from . import vb_layers as VBL
-from .utils import PrintLine
+from . import utils
 
 import tensorflow as tf
 import numpy as np
@@ -22,29 +22,30 @@ class Sequential(object):
         self.output = layer(self.output)
 
     def summary(self):
-        print_line = PrintLine(4, 20, 20, 30, 10)
-        print_line('i','Layer name','Output shape','Parameters','Num param')
+        model_summary = utils.Summary('i', 'Layer name', 'Output shape',
+            'Parameters', 'Num param')
 
         total_num_params = 0
 
         # Input spec
-        print_line('', 'Input', str(self.input.get_shape().as_list()).\
-            replace(' ', ''), '', '')
+        model_summary.add('','Input',utils.get_shape_as_str(self.input),'','')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
             name = config['name']
-            output_shape = str(config['output_shape']).replace(' ', '')
+            output_shape = utils.shape_to_str(config['output_shape'])
 
             num_params = 0
             param_shapes = ''
             if 'weights' in config.keys():
                 for weight in config['weights']:
-                    num_params += np.prod(weight.get_shape().as_list())
-                    param_shapes += str(weight.shape).replace(' ', '') + ' '
+                    num_params += utils.get_num_params(weight)
+                    param_shapes += utils.get_shape_as_str(weight) + ' '
 
-            print_line(i, name, output_shape, param_shapes, num_params)
+            model_summary.add(i, name, output_shape, param_shapes, num_params)
             total_num_params += num_params
+
+        model_summary.show()
 
         print('Total parameters: {:d}'.format(total_num_params))
 
@@ -63,19 +64,17 @@ class SequentialVB(object):
         self.output = layer(self.output)
 
     def summary(self):
-        print_line = PrintLine(4, 20, 40, 10)
-        print_line('i', 'Layer name', 'Output shapes', 'Num param')
+        model_summary = utils.Summary('i', 'Layer name', 'Output shapes',
+            'Num param')
 
         total_num_params = 0
 
         # Input spec
         if type(self.input) is list:
             for ip in self.input:
-                print_line('', 'Input', str(ip.get_shape().as_list()).\
-                    replace(' ', ''), '')
+                model_summary.add('', 'Input', utils.get_shape_as_str(ip), '')
         else:
-            print_line('', 'Input', str(self.input.get_shape().as_list()).\
-                replace(' ', ''), '')
+            model_summary.add('','Input',utils.get_shape_as_str(self.input),'')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
@@ -85,20 +84,23 @@ class SequentialVB(object):
             if 'weights' in config.keys():
                 for weight in config['weights']:
                     if weight != []:
-                        num_params += np.prod(weight.get_shape().as_list())
+                        num_params += utils.get_num_params(weight)
             total_num_params += num_params
 
             num_outputs = len(config['output_shapes'])
             for b in range(num_outputs):
                 output_shape = ''
                 for shape in config['output_shapes'][b]:
-                    output_shape += str(shape).replace(' ', '') + ' '
+                    output_shape += utils.shape_to_str(shape) + ' '
 
                 if b == 0:
-                    print_line(i, name, output_shape, num_params,
+                    model_summary.add(i, name, output_shape, num_params,
                         show_line=b==num_outputs-1)
                 else:
-                    print_line('','',output_shape,'',show_line=b==num_outputs-1)
+                    model_summary.add('', '', output_shape, '',
+                        show_line=b==num_outputs-1)
+
+        model_summary.show()
 
         print('Total parameters: {:d}'.format(total_num_params))
 
@@ -111,7 +113,7 @@ def simple_fcn(input_tensor, *layers_spec):
         model.add(L.Dense(units, 'fc'+str(i + 1)))
         model.add(L.BatchNormalization('bn'+str(i + 1)))
 
-        activation_name = 'relu'+str(i + 1) if i < len(layers_spec) - 1 else 'output'
+        activation_name = 'relu'+str(i+1) if i<len(layers_spec)-1 else 'output'
         model.add(L.Activation('relu', activation_name))
 
     return model
@@ -126,10 +128,6 @@ def simple_cnn(input_tensor, num_classes, *layers_spec):
             model.add(L.Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
             model.add(L.BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
             model.add(L.Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
-
-            # model.add(L.BatchNormalization('bn_%d_%d' % (i + 1, l+1)))
-            # model.add(L.Activation('relu', 'relu_%d_%d' % (i+1, l+1)))
-            # model.add(L.Conv2D(filters, 3, 'conv2d_%d_%d' % (i+1, l+1)))
 
         if i < len(layers_spec) - 1:
             model.add(L.AveragePooling2D((2,2), 'avg_pool2d_'+str(i + 1)))
@@ -180,12 +178,6 @@ def vbranch_cnn(inputs, final_spec, *layers_spec, branches=1):
                 'conv2d_%d_%d'%(i+1,l+1),shared_filters))
             model.add(VBL.BatchNormalization(branches,'bn_%d_%d' % (i+1, l+1)))
             model.add(VBL.Activation('relu',branches,'relu_%d_%d' % (i+1, l+1)))
-
-            # # Preactivation
-            # model.add(VBL.BatchNormalization(branches,'bn_%d_%d' % (i + 1, l+1)))
-            # model.add(VBL.Activation('relu',branches,'relu_%d_%d' % (i+1, l+1)))
-            # model.add(VBL.Conv2D(filters_list,3,branches,
-            #     'conv2d_%d_%d'%(i+1,l+1),shared_filters))
 
         if i < len(layers_spec) - 1:
             model.add(VBL.AveragePooling2D((2,2),branches,'avg_pool2d_'+str(i+1)))

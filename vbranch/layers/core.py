@@ -157,3 +157,17 @@ class Flatten(Layer):
         dim = np.prod(shape_in[1:])
         output = tf.reshape(x, [-1, dim], name=self.name)
         return output
+
+class InputLayer(Layer):
+    def __init__(self, name):
+        super().__init__(name)
+        self._inbound_tensors = []
+
+def Input(input_tensor):
+    """Instantiate Input layer"""
+    # Declare layer
+    input_layer = InputLayer(input_tensor.name)
+
+    # Attach InputLayer as attribute to tensor
+    setattr(input_tensor, '_vb_history', input_layer)
+    return input_tensor

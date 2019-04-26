@@ -56,7 +56,7 @@ class Omniglot(object):
             for char in self.files[alpha].keys():
                 for name in self.files[alpha][char]:
                     index_list.append([counter, alpha, char, name])
-                    files_list.append(os.path.join(self.dir_path, alpha, char, name))
+                    files_list.append(os.path.join(self.dir_path,alpha,char,name))
                     counter += 1
 
         return index_list, files_list

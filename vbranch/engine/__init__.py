@@ -1,2 +1,4 @@
-from .functional import Model, ModelVB
+# from .functional import Network, NetworkVB
+
 from .sequential import Sequential, SequentialVB
+from .training import Model, ModelVB

@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 
 class Sequential(object):
-    def __init__(self, input_tensor):
+    def __init__(self, input_tensor, name=None):
         """
         Args:
             - input_tensor: single Tensor"""
@@ -14,6 +14,7 @@ class Sequential(object):
         self.input = input_tensor
         self.layers = []
         self.output = input_tensor
+        self.name = name
 
     def add(self, layer):
         self.layers.append(layer)
@@ -48,7 +49,7 @@ class Sequential(object):
         print('Total parameters: {:d}'.format(total_num_params))
 
 class SequentialVB(object):
-    def __init__(self, inputs):
+    def __init__(self, inputs, name=None):
         """
         Args:
             - inputs: single Tensor or list of Tensors"""
@@ -56,6 +57,12 @@ class SequentialVB(object):
         self.input = inputs
         self.layers = []
         self.output = inputs
+        self.name = name
+
+        # Calculate number of branches
+        self.n_branches = self.layers[0]
+        for l in self.layers:
+            assert l.n_branches == self.n_branches
 
     def add(self, layer):
         self.layers.append(layer)

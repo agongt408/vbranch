@@ -7,10 +7,11 @@ from ..vb_layers import VBOutput
 import tensorflow as tf
 import numpy as np
 
-class Model(object):
-    def __init__(self, inputs, outputs):
+class Network(object):
+    def __init__(self, inputs, outputs, name=None):
         self.input = inputs
         self.output = outputs
+        self.name = name
 
         if type(inputs) is not list:
             inputs = [inputs]
@@ -57,10 +58,11 @@ class Model(object):
 
         print('Total parameters: {:d}'.format(total_num_params))
 
-class ModelVB(object):
-    def __init__(self, inputs, outputs):
+class NetworkVB(object):
+    def __init__(self, inputs, outputs, name=None):
         self.input = inputs
         self.output = outputs
+        self.name = name
 
         if type(inputs) is not list:
             inputs = [inputs]
@@ -68,6 +70,11 @@ class ModelVB(object):
             outputs = [outputs]
 
         self.layers = _map_graph(inputs, outputs)
+
+        # Calculate number of branches
+        self.n_branches = self.layers[0]
+        for l in self.layers:
+            assert l.n_branches == self.n_branches
 
     def summary(self):
         model_summary = utils.Summary('i','Layer name','Output shape',

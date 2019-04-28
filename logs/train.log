@@ -6955,4 +6955,193 @@ i   Layer name         Output shape     Parameters         Num param  Inbound
 8   bn_2_1             [None,10,10,32]  [32] [32]          64         conv2d_2_1         
 -----------------------------------------------------------------------------------------
 9   relu_2_1           [None,10,10,32]                     0          bn_2_1             
------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------[95mMODE: TRAIN[0m
+[95mSave model path: models/mnist-fcn_1[0m
+i  Layer name  Output shape  Parameters        Num param  Inbound            
+-----------------------------------------------------------------------------
+   Input       [None,784]                                                    
+-----------------------------------------------------------------------------
+0  fc1         [None,128]    [784,128] [128]   100480     IteratorGetNext:0  
+-----------------------------------------------------------------------------
+1  bn1         [None,128]    [128] [128]       256        fc1                
+-----------------------------------------------------------------------------
+2  relu1       [None,128]                      0          bn1                
+-----------------------------------------------------------------------------
+3  fc2         [None,10]     [128,10] [10]     1290       relu1              
+-----------------------------------------------------------------------------
+4  bn2         [None,10]     [10] [10]         20         fc2                
+-----------------------------------------------------------------------------
+5  output      [None,10]                       0          bn2                
+-----------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/30
+[95mMODE: TRAIN[0m
+[95mSave model path: models/mnist-fcn_1[0m
+i  Layer name  Output shape  Parameters        Num param  Inbound            
+-----------------------------------------------------------------------------
+   Input       [None,784]                                                    
+-----------------------------------------------------------------------------
+0  fc1         [None,128]    [784,128] [128]   100480     IteratorGetNext:0  
+-----------------------------------------------------------------------------
+1  bn1         [None,128]    [128] [128]       256        fc1                
+-----------------------------------------------------------------------------
+2  relu1       [None,128]                      0          bn1                
+-----------------------------------------------------------------------------
+3  fc2         [None,10]     [128,10] [10]     1290       relu1              
+-----------------------------------------------------------------------------
+4  bn2         [None,10]     [10] [10]         20         fc2                
+-----------------------------------------------------------------------------
+5  output      [None,10]                       0          bn2                
+-----------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/30
+Time=1, Loss=0.7165, Acc=0.9062, Val Loss=0.7749, Val Acc=0.8873
+Epoch 2/30
+Time=0, Loss=0.7013, Acc=0.8125, Val Loss=0.6279, Val Acc=0.9125
+Epoch 3/30
+Time=0, Loss=0.7083, Acc=0.9062, Val Loss=0.5427, Val Acc=0.9211
+Epoch 4/30
+Time=0, Loss=0.4689, Acc=0.9062, Val Loss=0.4845, Val Acc=0.9271
+Epoch 5/30
+Time=0, Loss=0.4329, Acc=0.9375, Val Loss=0.4398, Val Acc=0.9319
+Epoch 6/30
+Time=0, Loss=0.3380, Acc=1.0000, Val Loss=0.3995, Val Acc=0.9342
+Epoch 7/30
+Time=0, Loss=0.3334, Acc=1.0000, Val Loss=0.3724, Val Acc=0.9360
+Epoch 8/30
+Time=0, Loss=0.3543, Acc=0.9375, Val Loss=0.3483, Val Acc=0.9399
+Epoch 9/30
+Time=0, Loss=0.2466, Acc=0.9688, Val Loss=0.3268, Val Acc=0.9411
+Epoch 10/30
+Time=0, Loss=0.2286, Acc=1.0000, Val Loss=0.3139, Val Acc=0.9405
+Epoch 11/30
+Time=0, Loss=0.1544, Acc=1.0000, Val Loss=0.3002, Val Acc=0.9417
+Epoch 12/30
+Time=0, Loss=0.1875, Acc=0.9688, Val Loss=0.2836, Val Acc=0.9428
+Epoch 13/30
+Time=0, Loss=0.3128, Acc=0.9688, Val Loss=0.2706, Val Acc=0.9449
+Epoch 14/30
+Time=0, Loss=0.1929, Acc=1.0000, Val Loss=0.2627, Val Acc=0.9453
+Epoch 15/30
+Time=0, Loss=0.1445, Acc=1.0000, Val Loss=0.2619, Val Acc=0.9441
+Epoch 16/30
+Time=0, Loss=0.3317, Acc=1.0000, Val Loss=0.2579, Val Acc=0.9423
+Epoch 17/30
+Time=0, Loss=0.1270, Acc=1.0000, Val Loss=0.2455, Val Acc=0.9455
+Epoch 18/30
+Time=0, Loss=0.0621, Acc=1.0000, Val Loss=0.2397, Val Acc=0.9443
+Epoch 19/30
+Time=0, Loss=0.1317, Acc=1.0000, Val Loss=0.2352, Val Acc=0.9463
+Epoch 20/30
+Time=0, Loss=0.0862, Acc=1.0000, Val Loss=0.2244, Val Acc=0.9472
+Epoch 21/30
+Time=0, Loss=0.0904, Acc=1.0000, Val Loss=0.2297, Val Acc=0.9439
+Epoch 22/30
+Time=0, Loss=0.1467, Acc=1.0000, Val Loss=0.2175, Val Acc=0.9475
+Epoch 23/30
+Time=0, Loss=0.1772, Acc=0.9688, Val Loss=0.2096, Val Acc=0.9482
+Epoch 24/30
+Time=0, Loss=0.1321, Acc=0.9688, Val Loss=0.2103, Val Acc=0.9477
+Epoch 25/30
+Time=0, Loss=0.0714, Acc=1.0000, Val Loss=0.2062, Val Acc=0.9475
+Epoch 26/30
+Time=0, Loss=0.0595, Acc=1.0000, Val Loss=0.2034, Val Acc=0.9476
+Epoch 27/30
+Time=0, Loss=0.0601, Acc=1.0000, Val Loss=0.2015, Val Acc=0.9489
+Epoch 28/30
+Time=0, Loss=0.0451, Acc=1.0000, Val Loss=0.2004, Val Acc=0.9482
+Epoch 29/30
+Time=0, Loss=0.1286, Acc=1.0000, Val Loss=0.2134, Val Acc=0.9424
+Epoch 30/30
+Time=0, Loss=0.0358, Acc=1.0000, Val Loss=0.1933, Val Acc=0.9491
+[95mSave model path: models/mnist-fcn_2[0m
+i  Layer name  Output shape  Parameters        Num param  Inbound            
+-----------------------------------------------------------------------------
+   Input       [None,784]                                                    
+-----------------------------------------------------------------------------
+0  fc1         [None,128]    [784,128] [128]   100480     IteratorGetNext:0  
+-----------------------------------------------------------------------------
+1  bn1         [None,128]    [128] [128]       256        fc1                
+-----------------------------------------------------------------------------
+2  relu1       [None,128]                      0          bn1                
+-----------------------------------------------------------------------------
+3  fc2         [None,10]     [128,10] [10]     1290       relu1              
+-----------------------------------------------------------------------------
+4  bn2         [None,10]     [10] [10]         20         fc2                
+-----------------------------------------------------------------------------
+5  output      [None,10]                       0          bn2                
+-----------------------------------------------------------------------------
+Total parameters: 102046
+Epoch 1/30
+Time=1, Loss=0.6349, Acc=0.9688, Val Loss=0.7796, Val Acc=0.8874
+Epoch 2/30
+Time=0, Loss=0.7083, Acc=0.9062, Val Loss=0.6375, Val Acc=0.9112
+Epoch 3/30
+Time=0, Loss=0.6405, Acc=0.8125, Val Loss=0.5475, Val Acc=0.9210
+Epoch 4/30
+Time=0, Loss=0.4967, Acc=0.9688, Val Loss=0.4869, Val Acc=0.9289
+Epoch 5/30
+Time=0, Loss=0.3410, Acc=0.9688, Val Loss=0.4414, Val Acc=0.9339
+Epoch 6/30
+Time=0, Loss=0.4317, Acc=0.9375, Val Loss=0.4041, Val Acc=0.9363
+Epoch 7/30
+Time=0, Loss=0.5881, Acc=0.8438, Val Loss=0.3715, Val Acc=0.9409
+Epoch 8/30
+Time=0, Loss=0.2817, Acc=0.9688, Val Loss=0.3532, Val Acc=0.9399
+Epoch 9/30
+Time=0, Loss=0.1921, Acc=1.0000, Val Loss=0.3209, Val Acc=0.9456
+Epoch 10/30
+Time=0, Loss=0.3282, Acc=0.9375, Val Loss=0.3134, Val Acc=0.9435
+Epoch 11/30
+Time=0, Loss=0.2484, Acc=0.9688, Val Loss=0.3053, Val Acc=0.9396
+Epoch 12/30
+Time=0, Loss=0.3615, Acc=0.9375, Val Loss=0.2866, Val Acc=0.9443
+Epoch 13/30
+Time=0, Loss=0.3537, Acc=0.9062, Val Loss=0.2752, Val Acc=0.9443
+Epoch 14/30
+Time=0, Loss=0.2890, Acc=0.9688, Val Loss=0.2637, Val Acc=0.9460
+Epoch 15/30
+Time=0, Loss=0.1966, Acc=1.0000, Val Loss=0.2519, Val Acc=0.9462
+Epoch 16/30
+Time=0, Loss=0.1726, Acc=0.9688, Val Loss=0.2458, Val Acc=0.9475
+Epoch 17/30
+Time=0, Loss=0.0796, Acc=1.0000, Val Loss=0.2434, Val Acc=0.9460
+Epoch 18/30
+Time=0, Loss=0.1199, Acc=1.0000, Val Loss=0.2335, Val Acc=0.9462
+Epoch 19/30
+Time=0, Loss=0.1044, Acc=1.0000, Val Loss=0.2353, Val Acc=0.9448
+Epoch 20/30
+Time=0, Loss=0.0733, Acc=1.0000, Val Loss=0.2277, Val Acc=0.9464
+Epoch 21/30
+Time=0, Loss=0.1707, Acc=1.0000, Val Loss=0.2211, Val Acc=0.9470
+Epoch 22/30
+Time=0, Loss=0.0701, Acc=1.0000, Val Loss=0.2188, Val Acc=0.9461
+Epoch 23/30
+Time=0, Loss=0.0614, Acc=1.0000, Val Loss=0.2120, Val Acc=0.9486
+Epoch 24/30
+Time=0, Loss=0.0670, Acc=1.0000, Val Loss=0.2101, Val Acc=0.9474
+Epoch 25/30
+Time=0, Loss=0.0535, Acc=1.0000, Val Loss=0.2104, Val Acc=0.9459
+Epoch 26/30
+Time=0, Loss=0.0375, Acc=1.0000, Val Loss=0.2086, Val Acc=0.9472
+Epoch 27/30
+Time=0, Loss=0.0634, Acc=1.0000, Val Loss=0.2073, Val Acc=0.9462
+Epoch 28/30
+Time=0, Loss=0.0446, Acc=1.0000, Val Loss=0.1994, Val Acc=0.9487
+Epoch 29/30
+Time=0, Loss=0.0567, Acc=1.0000, Val Loss=0.2031, Val Acc=0.9449
+Epoch 30/30
+Time=0, Loss=0.0817, Acc=1.0000, Val Loss=0.2013, Val Acc=0.9477
+[95mSave model path: models/mnist-fcn_3[0m
+i  Layer name  Output shape  Parameters        Num param  Inbound            
+-----------------------------------------------------------------------------
+   Input       [None,784]                                                    
+-----------------------------------------------------------------------------
+0  fc1         [None,128]    [784,128] [128]   100480     IteratorGetNext:0  
+-----------------------------------------------------------------------------
+1  bn1         [None,128]    [128] [128]       256        fc1                
+-----------------------------------------------------------------------------
+2  relu1       [None,128]                      0          bn1                
+-----------------------------------------------------------------------------
+3  fc2         [None,10]     [128,10] [10]     1290       relu1              
+-----------------------------------------------------------------------------

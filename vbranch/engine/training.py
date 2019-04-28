@@ -36,21 +36,17 @@ class Model(Network):
         self.train_op = optimizer.minimize(self.loss)
 
     def get_tensors(self):
-        attributes = dir(self)
+        attributes = [getattr(self, name) for name in dir(self)]
         tensors = {}
-        for attr_name in attributes:
-            attr = getattr(self, attr_name)
-            if isinstance(attr, tf.Tensor):
-                tensors[attr.name] = attr
+
+        _get_tensors(attributes, tensors)
         return tensors
 
     def get_operations(self):
-        attributes = dir(self)
+        attributes = [getattr(self, name) for name in dir(self)]
         operations = {}
-        for attr_name in attributes:
-            attr = getattr(self, attr_name)
-            if isinstance(attr, tf.Operation):
-                operations[attr.name] = attr
+
+        _get_operations(attributes, operations)
         return operations
 
 class ModelVB(NetworkVB):
@@ -162,31 +158,25 @@ class ModelVB(NetworkVB):
         return train_accs, test_acc
 
     def get_tensors(self):
-        def _get_tensors(attributes, tensors):
-            for attr in attributes:
-                if type(attr) is list:
-                    _get_tensors(attr, tensors)
-                else:
-                    if isinstance(attr, tf.Tensor):
-                        tensors[attr.name] = attr
-
-        attributes = [getattr(self, name) for name in dir(self)]
-        tensors = {}
-
-        _get_tensors(attributes, tensors)
-        return tensors
+        # Reuse same method from Model
+        return Model.get_tensors(self)
 
     def get_operations(self):
-        def _get_operations(attributes, operations):
-            for attr in attributes:
-                if type(attr) is list:
-                    _get_operations(attr, operations)
-                else:
-                    if isinstance(attr, tf.Operation):
-                        operations[attr.name] = attr
+        # Reuse same method from Model
+        return Model.get_operations(self)
 
-        attributes = [getattr(self, name) for name in dir(self)]
-        operations = {}
+def _get_tensors(attributes, tensors):
+    for attr in attributes:
+        if type(attr) is list:
+            _get_tensors(attr, tensors)
+        else:
+            if isinstance(attr, tf.Tensor):
+                tensors[attr.name] = attr
 
-        _get_operations(attributes, operations)
-        return operations
+def _get_operations(attributes, operations):
+    for attr in attributes:
+        if type(attr) is list:
+            _get_operations(attr, operations)
+        else:
+            if isinstance(attr, tf.Operation):
+                operations[attr.name] = attr

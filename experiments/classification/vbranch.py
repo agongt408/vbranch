@@ -1,9 +1,8 @@
-# MNIST FCN with Virtual Branching
-
 import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
+from vbranch.utils import training_utils as utils
 
 import tensorflow as tf
 import numpy as np
@@ -36,16 +35,6 @@ parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 def get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE):
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -100,7 +89,8 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
         num_branches, shared_frac, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
+    print(utils.utils.bcolors.HEADER+'Save model path: '+ model_path+ \
+        utils.utils.bcolors.ENDC)
 
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
@@ -136,25 +126,25 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
             print("Epoch {}/{}".format(e + 1, epochs))
             start = time.time()
 
+            # Training
             sess.run(train_init_ops, feed_dict={batch_size: BATCH_SIZE})
-
             for i in range(steps_per_epoch):
                 _, train_losses, train_accs = sess.run([model.train_ops,
                     model.losses, model.train_accs])
 
-                if i == steps_per_epoch - 1:
-                    sess.run(test_init_ops,feed_dict={batch_size:len(X_test)})
-                    val_losses, val_acc, indiv_accs = \
-                        sess.run([model.losses,model.test_acc,model.train_accs])
+            # Validation
+            sess.run(test_init_ops,feed_dict={batch_size:len(X_test)})
+            val_losses, val_acc, indiv_accs = \
+                sess.run([model.losses,model.test_acc,model.train_accs])
 
-                    for b in range(num_branches):
-                        train_loss_hist[b].append(train_losses[b])
-                        train_acc_hist[b].append(train_accs[b])
-                        indiv_accs_hist[b].append(indiv_accs[b])
-                        val_loss_hist[b].append(val_losses[b])
+            for b in range(num_branches):
+                train_loss_hist[b].append(train_losses[b])
+                train_acc_hist[b].append(train_accs[b])
+                indiv_accs_hist[b].append(indiv_accs[b])
+                val_loss_hist[b].append(val_losses[b])
 
-                    val_loss = np.mean(val_losses)
-                    val_acc_hist.append(val_acc)
+            val_loss = np.mean(val_losses)
+            val_acc_hist.append(val_acc)
 
             str_log = 'Time={:.0f}, '.format(time.time() - start)
             for b in range(num_branches):
@@ -179,14 +169,15 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
         results_dict['val_acc_'+str(i+1)] = indiv_accs_hist[i]
     results_dict['val_acc'] = val_acc_hist
 
-    _save_results(results_dict, architecture, num_branches, shared_frac,
-        'train_{}.csv'.format(model_id))
+    dirname = os.path.join('vb-mnist-'+architecture,'B'+str(num_branches),
+        'S{:.2f}'.format(shared_frac))
+    utils.save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
 
 def test(architecture, num_branches, model_id, shared_frac, message):
     model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
         format(architecture, num_branches, shared_frac, model_id)
 
-    print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
+    print(utils.bcolors.HEADER + 'Load model path: ' + model_path + utils.bcolors.ENDC)
 
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
@@ -218,41 +209,20 @@ def test(architecture, num_branches, model_id, shared_frac, message):
     results_dict['ensemble_acc'] = val_acc
     results_dict['message'] = message
 
-    _save_results(results_dict, architecture, num_branches, shared_frac,
-        'test.csv', mode='a')
-
-def _save_results(data,architecture,num_branches,shared_frac,filename,mode='w'):
-    """Helper to save `data` dict to csv"""
-
-    # Create folder to store csv
-    csv_dir = os.path.join('results', 'vb-mnist-'+architecture,
-        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-
-    if not os.path.isdir(csv_dir):
-        os.system('mkdir -p ' + csv_dir)
-
-    if mode == 'w':
-        results = pd.DataFrame(data=data)
-    elif mode == 'a':
-        results = pd.DataFrame(data=results_dict, index=[0])
-    else:
-        raise ValueError('invalid file I/O mode ("w" or "a")')
-
-    csv_path = os.path.join(csv_dir, filename)
-    results.to_csv(csv_path, mode=mode)
-
-    return csv_path
+    dirname = os.path.join('vb-mnist-'+architecture,'B'+str(num_branches),
+        'S{:.2f}'.format(shared_frac))
+    utils.save_results(results_dict, dirname, 'test.csv', mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
 
         for id in args.model_id:
             test(args.architecture,args.num_branches,id,args.shared_frac,args.m)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:

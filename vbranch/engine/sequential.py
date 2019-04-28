@@ -1,6 +1,6 @@
 # Declare models sequentially
 
-from . import utils
+from ..utils import generic_utils as utils
 
 import tensorflow as tf
 import numpy as np

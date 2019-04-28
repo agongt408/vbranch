@@ -1,7 +1,7 @@
 # Declare models using input and output tensors
 # Utilizes _vb_history attribute
 
-from . import utils
+from ..utils import generic_utils as utils
 from ..vb_layers import VBOutput
 
 import tensorflow as tf

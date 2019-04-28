@@ -1,9 +1,8 @@
-# MNIST FCN with Virtual Branching
-
 import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
+from vbranch.utils import training_utils as utils
 
 import tensorflow as tf
 import numpy as np
@@ -32,16 +31,6 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 def get_data_as_tensor(train_data, test_data, BATCH_SIZE):
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -81,7 +70,8 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
     model_name = 'mnist-{}_{:d}'.format(architecture, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
+    print(utils.bcolors.HEADER + 'Save model path: ' + model_path + \
+        utils.bcolors.ENDC)
 
     # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
@@ -115,21 +105,20 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
             print("Epoch {}/{}".format(e + 1, epochs))
             start = time.time()
 
+            # Training
             sess.run(train_init_op, feed_dict={batch_size: BATCH_SIZE})
-
             for i in range(steps_per_epoch):
                 _, train_loss, train_acc = sess.run([model.train_op,
                     model.loss, model.acc])
 
-                if i == steps_per_epoch - 1:
-                    sess.run(test_init_op, feed_dict={batch_size:len(X_test)})
+            # Validation
+            sess.run(test_init_op, feed_dict={batch_size:len(X_test)})
+            val_loss, val_acc = sess.run([model.loss, model.acc])
 
-                    val_loss, val_acc = sess.run([model.loss, model.acc])
-
-                    train_loss_hist.append(train_loss)
-                    train_acc_hist.append(train_acc)
-                    val_loss_hist.append(val_loss)
-                    val_acc_hist.append(val_acc)
+            train_loss_hist.append(train_loss)
+            train_acc_hist.append(train_acc)
+            val_loss_hist.append(val_loss)
+            val_acc_hist.append(val_acc)
 
             epoch_time = time.time() - start
 
@@ -142,8 +131,8 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
         saver.save(sess, path)
 
     # Store loss/acc values as csv
-    _save_results({'train_loss':train_loss_hist,'train_acc':train_acc_hist,
-        'val_loss':val_loss_hist, 'val_acc':val_acc_hist}, architecture,
+    utils.save_results({'train_loss':train_loss_hist,'train_acc':train_acc_hist,
+        'val_loss':val_loss_hist, 'val_acc':val_acc_hist},'mnist-'+architecture,
         'train_{}.csv'.format(model_id), mode='w')
 
 def test(architecture, model_id_list, num_classes,
@@ -220,36 +209,16 @@ def test(architecture, model_id_list, num_classes,
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    _save_results(results_dict, architecture, 'B{}-test.csv'.\
-        format(len(model_id_list)), mode='a')
+    utils.save_results(results_dict, 'mnist-'+architecture,
+        'B{}-test.csv'.format(len(model_id_list)), mode='a')
 
     return output_dict, acc_dict, loss_dict
-
-def _save_results(data, architecture, filename, mode='w'):
-    """Helper to save `data` dict to csv"""
-
-    # Create folder to store csv
-    csv_dir = os.path.join('results', 'mnist-{}'.format(architecture))
-    if not os.path.isdir(csv_dir):
-        os.system('mkdir -p ' + csv_dir)
-
-    if mode == 'w':
-        results = pd.DataFrame(data=data)
-    elif mode == 'a':
-        results = pd.DataFrame(data=data, index=[0])
-    else:
-        raise ValueError('invalid file I/O mode ("w" or "a")')
-
-    csv_path = os.path.join(csv_dir, filename)
-    results.to_csv(csv_path, mode=mode)
-
-    return csv_path
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
 
         if args.trials == 1:
             # args.model_id is a list of model ids
@@ -270,7 +239,7 @@ if __name__ == '__main__':
                 output_dict,acc_dict,loss_dict = test(args.architecture,
                             model_ids, 10, output_dict, acc_dict, loss_dict)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:

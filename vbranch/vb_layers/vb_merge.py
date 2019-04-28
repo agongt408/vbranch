@@ -1,6 +1,6 @@
 # Merge branches (specific to vbranch)
 
-from .core import Layer
+from .core import Layer, smart_concat
 
 import tensorflow as tf
 

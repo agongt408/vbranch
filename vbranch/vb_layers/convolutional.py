@@ -1,5 +1,5 @@
 from .. import layers as L
-from .core import Layer, smart_add, smart_concat
+from .core import Layer, smart_add, smart_concat, CrossWeights
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,
@@ -61,7 +61,8 @@ class Conv2D(Layer):
 
                 shared_out = smart_add(self.shared_branch(shared_in),
                     unique_to_shared(unique_in))
-                unique_out = shared_to_unique(shared_in)+unique_to_unique(unique_in)
+                unique_out = smart_add(shared_to_unique(shared_in),
+                    unique_to_unique(unique_in))
             else:
                 shared_out = self.shared_branch(x[i])
                 unique_out = shared_to_unique(x[i])

@@ -72,9 +72,13 @@ class NetworkVB(object):
         self.layers = _map_graph(inputs, outputs)
 
         # Calculate number of branches
-        self.n_branches = self.layers[0]
+        self.n_branches = self.layers[0].n_branches
+
         for l in self.layers:
-            assert l.n_branches == self.n_branches
+            # Verify number of branches
+            assert l.n_branches == self.n_branches, \
+                'model has {} branches, but layer {} has {} branches'.\
+                    format(self.n_branches, l.name, l.n_branches)
 
     def summary(self):
         model_summary = utils.Summary('i','Layer name','Output shape',

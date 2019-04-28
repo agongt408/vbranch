@@ -1,6 +1,7 @@
 # Virtual branching version of layers
 
 from .. import layers as L
+from ..layers.core import EmptyOutput
 
 import tensorflow as tf
 import collections
@@ -53,7 +54,7 @@ class Layer(object):
     @staticmethod
     def call(func):
         def get_shape(x):
-            if x == []:
+            if isinstance(x, EmptyOutput):
                 return []
             else:
                 return x.get_shape().as_list()
@@ -121,17 +122,21 @@ class Layer(object):
         return config
 
 def smart_add(x, y):
-    # Intelligently add x and y to avoid error when adding empty list
-    if y == []:
+    # Intelligently add x and y to avoid error when adding EmptyOutput
+    if isinstance(x, EmptyOutput) and isinstance(y, EmptyOutput):
+        return EmptyOutput()
+    elif isinstance(x, EmptyOutput):
+        return y
+    elif isinstance(y, EmptyOutput):
         return x
     else:
         return x + y
 
 def smart_concat(xs, axis=-1, name='concat'):
-    # Intelligently concat x and y to avoid error when concating empty list
+    # Intelligently concat x and y to avoid error when concating EmptyOutput
     x_concat = []
     for x in xs:
-        if x != []:
+        if not isinstance(x, EmptyOutput):
             x_concat.append(x)
     return tf.concat(x_concat, axis=axis, name=name)
 
@@ -197,8 +202,8 @@ class Dense(Layer):
 
                 shared_out = smart_add(self.shared_branch(shared_in),
                     unique_to_shared(unique_in))
-                unique_out = shared_to_unique(shared_in) + \
-                    unique_to_unique(unique_in)
+                unique_out = smart_add(shared_to_unique(shared_in),
+                    unique_to_unique(unique_in))
             else:
                 shared_out = self.shared_branch(x[i])
                 unique_out = shared_to_unique(x[i])

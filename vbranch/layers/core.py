@@ -21,6 +21,9 @@ def eval_params(func):
         return weights
     return inner
 
+class EmptyOutput(object):
+    pass
+
 class Layer(object):
     def __init__(self, name):
         self.name = name
@@ -44,12 +47,17 @@ class Layer(object):
             else:
                 layer._inbound_tensors = [x]
 
-            if x == []:
-                output = []
+            if isinstance(x, EmptyOutput):
+                output = EmptyOutput()
                 layer.output_shape = []
             else:
                 output = func(layer, x)
-                layer.output_shape = output.get_shape().as_list()
+
+                # Catch empty output
+                if isinstance(output, EmptyOutput):
+                    layer.output_shape = []
+                else:
+                    layer.output_shape = output.get_shape().as_list()
 
             # Add vbranch history here to output tensor
             # Similar to Keras Functional API
@@ -71,7 +79,7 @@ class Dense(Layer):
     def __call__(self, x):
         # Return empty output for empty layer
         if self.units == 0:
-            return []
+            return EmptyOutput()
 
         n_in = x.get_shape().as_list()[-1]
         self.w = tf.get_variable(self.name + '_w', shape=[n_in, self.units])

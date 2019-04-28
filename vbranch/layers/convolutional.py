@@ -1,4 +1,4 @@
-from .core import Layer, eval_params
+from .core import Layer, eval_params, EmptyOutput
 
 import tensorflow as tf
 
@@ -18,7 +18,7 @@ class Conv2D(Layer):
     def __call__(self, x):
         # Return empty output for empty layer
         if self.filters == 0:
-            return []
+            return EmptyOutput()
 
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]

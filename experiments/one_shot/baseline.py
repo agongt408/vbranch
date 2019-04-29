@@ -217,9 +217,7 @@ def test(dataset, architecture, model_id_list,train_dict={},test_dict={}):
     print('Average embedding acc:', mean_acc)
     print('Concatenate embedding acc:', concat_acc)
 
-    results_dict = {}
-    results_dict['mean_acc'] = mean_acc
-    results_dict['concat_acc'] = concat_acc
+    results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
 
     training_utils.save_results(results_dict, '{}-{}'.format(dataset,architecture),
         'B{}-test.csv'.format(len(model_id_list)), mode='a')

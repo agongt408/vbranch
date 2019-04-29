@@ -150,48 +150,73 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
     for i in range(num_branches):
         results_dict['train_loss_'+str(i+1)] = train_loss_hist[i]
 
-    _save_results(results_dict, architecture, num_branches, shared_frac,
-        'train_{}.csv'.format(model_id))
+    training_utils.ave_results(results_dict, architecture, num_branches,
+        shared_frac, 'train_{}.csv'.format(model_id))
 
-def test(architecture, num_branches, model_id, shared_frac, message):
+def test(dataset, architecture, num_branches, model_id, shared_frac, message):
     model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
         format(architecture, num_branches, shared_frac, model_id)
 
     print(training_utils.bcolors.HEADER + 'Load model path: ' + \
         model_path + training_utils.bcolors.ENDC)
 
-    # Load data from MNIST
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        load_data(architecture, 10)
-
     test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
-    losses = ['loss_'+str(i+1)+':0' for i in range(num_branches)]
-    train_acc_ops = ['train_acc_'+str(i+1)+':0' for i in range(num_branches)]
+    model_outputs = ['model_1/model_1/output_vb{}:0'.format(i+1) \
+        for i in range(num_branches)]
+
+    total_runs = 20
+    train_pred_runs = []
+    test_pred_runs = []
+
+    run_data = [get_run(r+1) for r in range(total_runs)]
 
     with tf.Session() as sess:
-        meta_path = os.path.join(model_path, 'ckpt.meta')
-        ckpt = tf.train.get_checkpoint_state(model_path)
+        restore_sess(sess, model_path)
 
-        imported_graph = tf.train.import_meta_graph(meta_path)
-        imported_graph.restore(sess, ckpt.model_checkpoint_path)
+        for r in range(total_runs):
+            train_files,test_files,train_imgs,test_imgs,answers_files = \
+                run_data[r]
 
-        sess.run(test_init_ops, feed_dict={'batch_size:0': len(X_test)})
-        val_losses,val_acc,indiv_accs = sess.run([losses,'test_acc:0',
-                                                  train_acc_ops])
+            feed_dict = {'x:0':train_imgs, 'batch_size:0':len(train_imgs)}
+            sess.run(test_init_ops, feed_dict=feed_dict)
+            train_pred_runs.append(sess.run(model_outputs))
 
-    val_loss = np.mean(val_losses)
-    print('Loss:', val_loss)
-    print('Acc:', val_acc)
-    print('Indiv accs:', indiv_accs)
+            feed_dict = {'x:0':test_imgs, 'batch_size:0':len(test_imgs)}
+            sess.run(test_init_ops, feed_dict=feed_dict)
+            test_pred_runs.append(sess.run(model_outputs))
 
-    results_dict = {}
-    for i in range(num_branches):
-        results_dict['acc_'+str(i+1)] = indiv_accs[i]
-    results_dict['ensemble_acc'] = val_acc
-    results_dict['message'] = message
+    mean_acc_runs = []
+    for r in range(total_runs):
+        test_embed = np.mean(test_pred_runs[r], axis=0)
+        train_embed = np.mean(train_pred_runs[r], axis=0)
+        train_files = run_data[r][0]
+        answers_files = run_data[r][-1]
 
-    _save_results(results_dict, architecture, num_branches, shared_frac,
-        'test.csv', mode='a')
+        acc = compute_one_shot_acc(test_embed, train_embed,train_files,
+            answers_files)
+        mean_acc_runs.append(acc)
+    mean_acc = np.mean(mean_acc_runs)
+
+    concat_acc_runs = []
+    for r in range(total_runs):
+        test_embed = np.concatenate(test_pred_runs[r], axis=-1)
+        train_embed = np.concatenate(train_pred_runs[r], axis=-1)
+        train_files = run_data[r][0]
+        answers_files = run_data[r][-1]
+
+        acc = compute_one_shot_acc(test_embed, train_embed,train_files,
+            answers_files)
+        concat_acc_runs.append(acc)
+    concat_acc = np.mean(concat_acc_runs)
+
+    print('Average embedding acc:', mean_acc)
+    print('Concatenate embedding acc:', concat_acc)
+
+    results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
+
+    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
+        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
+    training_utils.save_results(results_dict, dirname, 'test.csv', mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()

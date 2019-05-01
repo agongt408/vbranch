@@ -15,25 +15,29 @@ import pandas as pd
 # Parse command line arguments
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--architecture', action='store', default='fcn',
-                    nargs='?', choices=['fcn', 'cnn'],
-                    help='model architecture, i.e., fcn or cnn')
-parser.add_argument('--batch_size', action='store', default=32, nargs='?',
-                    type=int, help='batch size')
-parser.add_argument('--epochs', action='store', default=10, nargs='?',
-                    type=int, help='number of epochs to train model')
-parser.add_argument('--model_id',action='store',nargs='*',type=int,default=[1],
-                    help='list of checkpoint model ids')
+parser.add_argument('--dataset', action='store', default='omniglot',
+                    nargs='?', choices=['omniglot'], help='dataset')
+parser.add_argument('--architecture', action='store', default='simple',
+                    nargs='?', choices=['simple', 'res'],
+                    help='model architecture, i.e., simple cnn or resnet')
+parser.add_argument('--A',action='store',default=4,nargs='?',type=int,help='A')
+parser.add_argument('--P',action='store',default=8,nargs='?',type=int,help='P')
+parser.add_argument('--K',action='store',default=4,nargs='?',type=int,help='K')
 
 parser.add_argument('--num_branches', action='store', default=2, nargs='?',
                     type=int, help='number of virtual branches')
 parser.add_argument('--shared_frac', action='store', default=0, nargs='?',
                     type=float, help='fraction of layer to share weights [0,1)')
-parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
-                    type=int, help='number of training steps per epoch')
+
 parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
+parser.add_argument('--epochs', action='store', default=90, nargs='?',
+                    type=int, help='number of epochs to train model')
+parser.add_argument('--model_id',action='store',nargs='*',type=int,default=[1],
+                    help='list of checkpoint model ids')
+parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
+                    type=int, help='number of training steps per epoch')
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
 def get_data_as_tensor(train_generator, num_branches, input_dim, A, P, K):
@@ -77,7 +81,7 @@ def build_model(architecture,inputs,output_dim,num_branches,model_id,shared_frac
         layers_spec = [([f]*num_branches, int(f*shared_frac)) for f in filters]
 
         model = vb.vbranch_simple_cnn(inputs, (output_dim, 0), *layers_spec,
-            branches=NUM_BRANCHES, name='model_' + str(model_id))
+            branches=num_branches, name='model_' + str(model_id))
     else:
         raise ValueError('invalid model')
 
@@ -108,15 +112,16 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
         get_data_as_tensor(train_gen, num_branches, input_dim, A, P, K)
 
     # Build and compile model
-    model = build_model(architecture,inputs,output_dim,num_classes,num_branches,
+    model = build_model(architecture,inputs,output_dim,num_branches,
         model_id, shared_frac)
+
     lr = tf.placeholder('float32', name='lr')
     optimizer = tf.train.AdamOptimizer(learning_rate=lr)
     model.compile(optimizer, 'triplet_'+dataset, A=A, P=P, K=K)
     model.summary()
 
     # Run training ops
-    train_loss_hist = [[] for i in range(num_branches)]
+    train_loss_hist = []
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -127,12 +132,13 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
-            progbar = tf.keras.utils.Progbar(steps_per_epoch)
+            progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
 
             learning_rate = lr_sched(e + 1)
             for i in range(steps_per_epoch):
                 _, loss_values = sess.run([model.train_ops, model.losses],
                                             feed_dict={lr:learning_rate})
+                train_loss_hist.append(loss_values)
 
                 # Update progress bar
                 values = []
@@ -145,23 +151,27 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
         path = os.path.join(model_path, 'ckpt')
         saver.save(sess, path)
 
+    train_loss_hist = np.array(train_loss_hist)
+
     # Store loss/acc values as csv
     results_dict = {}
     for i in range(num_branches):
-        results_dict['train_loss_'+str(i+1)] = train_loss_hist[i]
+        results_dict['train_loss_'+str(i+1)] = train_loss_hist[:, i]
 
-    training_utils.ave_results(results_dict, architecture, num_branches,
-        shared_frac, 'train_{}.csv'.format(model_id))
+    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
+        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
+    training_utils.save_results(results_dict, dirname,
+        'train_{}.csv'.format(model_id))
 
 def test(dataset, architecture, num_branches, model_id, shared_frac, message):
-    model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(architecture, num_branches, shared_frac, model_id)
+    model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
+        format(dataset, architecture, num_branches, shared_frac, model_id)
 
     print(training_utils.bcolors.HEADER + 'Load model path: ' + \
         model_path + training_utils.bcolors.ENDC)
 
     test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
-    model_outputs = ['model_1/model_1/output_vb{}:0'.format(i+1) \
+    model_outputs = ['model_1/output_vb{}:0'.format(i+1) \
         for i in range(num_branches)]
 
     total_runs = 20
@@ -222,20 +232,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        print(training_utils.bcolors.HEADER + 'MODE: TEST' + \
+            training_utils.bcolors.ENDC)
 
         for id in args.model_id:
-            test(args.architecture,args.num_branches,id,args.shared_frac,args.m)
+            test(args.dataset,args.architecture,args.num_branches,id,
+                args.shared_frac,args.m)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        print(training_utils.bcolors.HEADER + 'MODE: TRAIN' + \
+            training_utils.bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:
-                train(args.architecture, args.num_branches, id, 10,args.epochs,
-                    args.steps_per_epoch,args.batch_size,args.shared_frac)
+                train(args.dataset,args.architecture, args.num_branches, id,
+                    args.A, args.P,args.K,args.epochs,args.steps_per_epoch,
+                    args.shared_frac)
         else:
             for i in range(args.trials):
-                train(args.architecture, args.num_branches, i+1, 10,args.epochs,
-                    args.steps_per_epoch,args.batch_size,args.shared_frac)
+                train(args.dataset, args.architecture, args.num_branches, i+1,
+                    args.A, args.P,args.K,args.epochs,args.steps_per_epoch,
+                    args.shared_frac)
 
     print('Finished!')

@@ -1,6 +1,6 @@
 # Declare models sequentially
 
-from ..utils import generic_utils as utils
+from ..utils import Summary, get_shape_as_str, shape_to_str, get_num_params
 
 import tensorflow as tf
 import numpy as np
@@ -21,25 +21,25 @@ class Sequential(object):
         self.output = layer(self.output)
 
     def summary(self):
-        model_summary = utils.Summary('i', 'Layer name', 'Output shape',
+        model_summary = Summary('i', 'Layer name', 'Output shape',
             'Parameters', 'Num param')
 
         total_num_params = 0
 
         # Input spec
-        model_summary.add('','Input',utils.get_shape_as_str(self.input),'','')
+        model_summary.add('','Input',get_shape_as_str(self.input),'','')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
             name = config['name']
-            output_shape = utils.shape_to_str(config['output_shape'])
+            output_shape = shape_to_str(config['output_shape'])
 
             num_params = 0
             param_shapes = ''
             if 'weights' in config.keys():
                 for weight in config['weights']:
-                    num_params += utils.get_num_params(weight)
-                    param_shapes += utils.get_shape_as_str(weight) + ' '
+                    num_params += get_num_params(weight)
+                    param_shapes += get_shape_as_str(weight) + ' '
 
             model_summary.add(i, name, output_shape, param_shapes, num_params)
             total_num_params += num_params
@@ -69,7 +69,7 @@ class SequentialVB(object):
         self.output = layer(self.output)
 
     def summary(self):
-        model_summary = utils.Summary('i', 'Layer name', 'Output shapes',
+        model_summary = Summary('i', 'Layer name', 'Output shapes',
             'Num param')
 
         total_num_params = 0
@@ -77,9 +77,9 @@ class SequentialVB(object):
         # Input spec
         if type(self.input) is list:
             for ip in self.input:
-                model_summary.add('', 'Input', utils.get_shape_as_str(ip), '')
+                model_summary.add('', 'Input', get_shape_as_str(ip), '')
         else:
-            model_summary.add('','Input',utils.get_shape_as_str(self.input),'')
+            model_summary.add('','Input',get_shape_as_str(self.input),'')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
@@ -89,14 +89,14 @@ class SequentialVB(object):
             if 'weights' in config.keys():
                 for weight in config['weights']:
                     if weight != []:
-                        num_params += utils.get_num_params(weight)
+                        num_params += get_num_params(weight)
             total_num_params += num_params
 
             num_outputs = len(config['output_shapes'])
             for b in range(num_outputs):
                 output_shape = ''
                 for shape in config['output_shapes'][b]:
-                    output_shape += utils.shape_to_str(shape) + ' '
+                    output_shape += shape_to_str(shape) + ' '
 
                 if b == 0:
                     model_summary.add(i, name, output_shape, num_params,

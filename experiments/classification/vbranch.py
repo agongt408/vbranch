@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import training_utils as utils
+from vbranch.utils import bcolors, save_results, get_data
 
 import tensorflow as tf
 import numpy as np
@@ -15,6 +15,12 @@ import pandas as pd
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
+
+parser.add_argument('--dataset', action='store', default='mnist',
+                    nargs='?', choices=['mnist', 'toy'], help='dataset')
+# Number of classes used only when generating toy dataset
+parser.add_argument('--num_classes', action='store', default=10, nargs='?',
+                    help='number of classes in toy dataset')
 
 parser.add_argument('--architecture', action='store', default='fcn',
                     nargs='?', choices=['fcn', 'cnn'],
@@ -34,7 +40,6 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
-parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
 def get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE):
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -79,22 +84,20 @@ def build_model(architecture,inputs,num_classes,num_branches,model_id,shared_fra
 
     return model
 
-def train(architecture, num_branches, model_id, num_classes, epochs,
+def train(dataset, architecture, num_branches, model_id, num_classes, epochs,
         steps_per_epoch, BATCH_SIZE, shared_frac):
 
     if not os.path.isdir('models'):
         os.system('mkdir models')
 
-    model_name = 'vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.format(architecture,
+    model_name = 'vb-{}-{}-B{:d}-S{:.2f}_{:d}'.format(dataset, architecture,
         num_branches, shared_frac, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(utils.utils.bcolors.HEADER+'Save model path: '+ model_path+ \
-        utils.utils.bcolors.ENDC)
+    print(bcolors.HEADER+'Save model path: '+ model_path+ bcolors.ENDC)
 
-    # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        vb.datasets.mnist.load_data(format=architecture)
+        get_data(dataset, architecture, num_classes)
 
     tf.reset_default_graph()
 
@@ -169,19 +172,19 @@ def train(architecture, num_branches, model_id, num_classes, epochs,
         results_dict['val_acc_'+str(i+1)] = indiv_accs_hist[i]
     results_dict['val_acc'] = val_acc_hist
 
-    dirname = os.path.join('vb-mnist-'+architecture,'B'+str(num_branches),
-        'S{:.2f}'.format(shared_frac))
-    utils.save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
+    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
+        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
+    save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
 
-def test(architecture, num_branches, model_id, shared_frac, message):
-    model_path = './models/vb-mnist-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(architecture, num_branches, shared_frac, model_id)
+def test(dataset,architecture,num_branches,model_id,shared_frac,num_classes):
+    
+    model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
+        format(dataset, architecture, num_branches, shared_frac, model_id)
 
-    print(utils.bcolors.HEADER + 'Load model path: ' + model_path + utils.bcolors.ENDC)
+    print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
 
-    # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        load_data(architecture, 10)
+        get_data(dataset, architecture, num_classes)
 
     test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
     losses = ['loss_'+str(i+1)+':0' for i in range(num_branches)]
@@ -207,30 +210,32 @@ def test(architecture, num_branches, model_id, shared_frac, message):
     for i in range(num_branches):
         results_dict['acc_'+str(i+1)] = indiv_accs[i]
     results_dict['ensemble_acc'] = val_acc
-    results_dict['message'] = message
 
-    dirname = os.path.join('vb-mnist-'+architecture,'B'+str(num_branches),
-        'S{:.2f}'.format(shared_frac))
-    utils.save_results(results_dict, dirname, 'test.csv', mode='a')
+    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
+        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
+    save_results(results_dict, dirname, 'test.csv', mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
 
         for id in args.model_id:
-            test(args.architecture,args.num_branches,id,args.shared_frac,args.m)
+            test(args.architecture,args.num_branches,id,args.shared_frac,
+                args.num_classes)
     else:
-        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:
-                train(args.architecture, args.num_branches, id, 10,args.epochs,
-                    args.steps_per_epoch,args.batch_size,args.shared_frac)
+                train(args.dataset, args.architecture, args.num_branches, id,
+                    args.num_classes, args.epochs, args.steps_per_epoch,
+                    args.batch_size, args.shared_frac)
         else:
             for i in range(args.trials):
-                train(args.architecture, args.num_branches, i+1, 10,args.epochs,
-                    args.steps_per_epoch,args.batch_size,args.shared_frac)
+                train(args.dataset, args.architecture, args.num_branches, i+1,
+                    args.num_classes, args.epochs, args.steps_per_epoch,
+                    args.batch_size, args.shared_frac)
 
     print('Finished!')

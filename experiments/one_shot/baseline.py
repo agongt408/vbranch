@@ -2,8 +2,8 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import training_utils
-from vbranch.utils.test_utils import restore_sess,get_run,compute_one_shot_acc
+from vbranch.utils import bcolors, save_results, get_data, \
+    restore_sess, get_run, compute_one_shot_acc
 
 import tensorflow as tf
 import numpy as np
@@ -81,8 +81,7 @@ def train(dataset, architecture, model_id, A, P, K, epochs,steps_per_epoch):
     model_name = '{}-{}_{:d}'.format(dataset, architecture, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(training_utils.bcolors.HEADER+'Save model path: '+\
-        model_path+training_utils.bcolors.ENDC)
+    print(bcolors.HEADER+'Save model path: '+ model_path+bcolors.ENDC)
 
     # Load data
     if dataset == 'omniglot':
@@ -110,7 +109,7 @@ def train(dataset, architecture, model_id, A, P, K, epochs,steps_per_epoch):
         sess.run(tf.global_variables_initializer())
         sess.run(train_init_op)
 
-        lr_sched = training_utils.lr_exp_decay_scheduler(0.001,epochs//3,
+        lr_sched = lr_exp_decay_scheduler(0.001,epochs//3,
             epochs,0.001)
 
         for e in range(epochs):
@@ -135,7 +134,7 @@ def train(dataset, architecture, model_id, A, P, K, epochs,steps_per_epoch):
         saver.save(sess, path)
 
     # Store loss/acc values as csv
-    training_utils.save_results({'train_loss':train_loss_hist}, '{}-{}'.\
+    save_results({'train_loss':train_loss_hist}, '{}-{}'.\
         format(dataset, architecture),'train_{}.csv'.format(model_id),mode='w')
 
 def test(dataset, architecture, model_id_list,train_dict={},test_dict={}):
@@ -219,7 +218,7 @@ def test(dataset, architecture, model_id_list,train_dict={},test_dict={}):
 
     results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
 
-    training_utils.save_results(results_dict, '{}-{}'.format(dataset,architecture),
+    save_results(results_dict, '{}-{}'.format(dataset,architecture),
         'B{}-test.csv'.format(len(model_id_list)), mode='a')
 
     return train_dict, test_dict
@@ -228,7 +227,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(training_utils.bcolors.HEADER + 'MODE: TEST' + training_utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
 
         if args.trials == 1:
             # args.model_id is a list of model ids
@@ -252,7 +251,7 @@ if __name__ == '__main__':
                 train_dict, test_dict = test(args.dataset, args.architecture,
                     model_ids, train_dict,test_dict)
     else:
-        print(training_utils.bcolors.HEADER + 'MODE: TRAIN' + training_utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:

@@ -2,7 +2,8 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import training_utils as utils
+from vbranch.utils import bcolors, save_results, get_data, compute_acc, \
+    compute_before_mean_acc, compute_after_mean_acc
 
 import tensorflow as tf
 import numpy as np
@@ -17,6 +18,12 @@ from glob import glob
 # Parse command line arguments
 parser = argparse.ArgumentParser()
 
+parser.add_argument('--dataset', action='store', default='mnist',
+                    nargs='?', choices=['mnist', 'toy'], help='dataset')
+# Number of classes used only when generating toy dataset
+parser.add_argument('--num_classes', action='store', default=10, nargs='?',
+                    help='number of classes in toy dataset')
+
 parser.add_argument('--architecture', action='store', default='fcn',
                     nargs='?', choices=['fcn', 'cnn'],
                     help='model architecture, i.e., fcn or cnn')
@@ -30,7 +37,7 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
 parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
-                    help='number of trials to perform, if 1, then model_id used')
+                    help='number of trials to perform, if 1 then model_id used')
 
 def get_data_as_tensor(train_data, test_data, BATCH_SIZE):
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -63,19 +70,18 @@ def build_model(architecture, inputs, num_classes, model_id):
 
     return model
 
-def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
+def train(dataset, architecture,model_id,num_classes,epochs,steps_per_epoch,
+        BATCH_SIZE):
     if not os.path.isdir('models'):
         os.system('mkdir models')
 
-    model_name = 'mnist-{}_{:d}'.format(architecture, model_id)
+    model_name = '{}-{}_{:d}'.format(dataset, architecture, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(utils.bcolors.HEADER + 'Save model path: ' + model_path + \
-        utils.bcolors.ENDC)
+    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
-    # Load data from MNIST
     (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        vb.datasets.mnist.load_data(format=architecture)
+        get_data(dataset, architecture, num_classes)
 
     tf.reset_default_graph()
 
@@ -131,34 +137,19 @@ def train(architecture,model_id,num_classes,epochs,steps_per_epoch,BATCH_SIZE):
         saver.save(sess, path)
 
     # Store loss/acc values as csv
-    utils.save_results({'train_loss':train_loss_hist,'train_acc':train_acc_hist,
-        'val_loss':val_loss_hist, 'val_acc':val_acc_hist},'mnist-'+architecture,
+    results_dict = {'train_loss':train_loss_hist,'train_acc':train_acc_hist,
+        'val_loss':val_loss_hist, 'val_acc':val_acc_hist}
+
+    save_results(results_dict, '{}-{}'.format(dataset, architecture),
         'train_{}.csv'.format(model_id), mode='w')
 
-def test(architecture, model_id_list, num_classes,
+def test(dataset, architecture, model_id_list, num_classes,
         output_dict={}, acc_dict={}, loss_dict={}):
-
-    # Compute accurary given class predictions and labels
-    def compute_acc(pred, labels_one_hot, num_classes):
-        pred_max = tf.keras.utils.to_categorical(np.argmax(pred, axis=-1),
-            num_classes)
-        return np.mean(np.sum(labels_one_hot*pred_max, axis=1))
-
-    # Average predictions before softmax
-    def compute_before_mean_acc(outputs, y_test_one_hot, num_classes):
-        mean_output = softmax(np.array(outputs).mean(axis=0), axis=-1)
-        return compute_acc(mean_output, y_test_one_hot, num_classes)
-
-    # Average predictions after softmax
-    def compute_after_mean_acc(outputs, y_test_one_hot, num_classes):
-        mean_output = softmax(np.array(test_outputs), axis=-1).mean(axis=0)
-        return compute_acc(mean_output, y_test_one_hot, num_classes)
 
     print(model_id_list)
 
-    # Load data from MNIST
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        vb.datasets.mnist.load_data(format=architecture)
+    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = get_data(dataset,
+        architecture, num_classes)
 
     test_outputs = []
     test_accs = []
@@ -174,7 +165,7 @@ def test(architecture, model_id_list, num_classes,
             sess = tf.Session(graph=graph)
 
             with sess.as_default(), graph.as_default():
-                model_path = 'models/mnist-{}_{}'.format(architecture, id)
+                model_path = 'models/{}-{}_{}'.format(dataset,architecture,id)
                 meta_path = os.path.join(model_path, 'ckpt.meta')
                 ckpt = tf.train.get_checkpoint_state(model_path)
 
@@ -209,7 +200,7 @@ def test(architecture, model_id_list, num_classes,
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    utils.save_results(results_dict, 'mnist-'+architecture,
+    save_results(results_dict, '{}-{}'.format(dataset, architecture),
         'B{}-test.csv'.format(len(model_id_list)), mode='a')
 
     return output_dict, acc_dict, loss_dict
@@ -218,38 +209,41 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
 
         if args.trials == 1:
             # args.model_id is a list of model ids
-            test(args.architecture, args.model_id, 10)
+            test(args.dataset,args.architecture,args.model_id,args.num_classes)
         else:
             # Store output, acc, and dict in case need to be reused
             output_dict = {}
             acc_dict = {}
             loss_dict = {}
 
-            avail_runs = glob('models/mnist-{}_*'.format(args.architecture))
+            avail_runs = glob('models/{}-{}_*'.format(args.dataset,
+                args.architecture))
             avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
 
             for i in range(args.trials):
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
                 model_ids.sort()
-                output_dict,acc_dict,loss_dict = test(args.architecture,
-                            model_ids, 10, output_dict, acc_dict, loss_dict)
+
+                output_dict,acc_dict,loss_dict = test(args.dataset,
+                    args.architecture, model_ids,args.num_classes,output_dict,
+                    acc_dict, loss_dict)
     else:
-        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:
                 # Run trial with specified model id
-                train(args.architecture,id,10,args.epochs,args.steps_per_epoch,
-                    args.batch_size)
+                train(args.dataset, args.architecture,id,args.num_classes,
+                    args.epochs,args.steps_per_epoch, args.batch_size)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
-                train(args.architecture,i+1,10,args.epochs,args.steps_per_epoch,
-                    args.batch_size)
+                train(args.dataset, args.architecture,i+1,args.num_classes,
+                    args.epochs,args.steps_per_epoch, args.batch_size)
 
     print('Finished!')

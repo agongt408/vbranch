@@ -1,7 +1,7 @@
 # Declare models using input and output tensors
 # Utilizes _vb_history attribute
 
-from ..utils import generic_utils as utils
+from ..utils import Summary, get_shape_as_str, shape_to_str, get_num_params
 from ..vb_layers import VBOutput
 
 import tensorflow as tf
@@ -21,26 +21,26 @@ class Network(object):
         self.layers = _map_graph(inputs, outputs)
 
     def summary(self):
-        model_summary = utils.Summary('i','Layer name','Output shape',
-            'Parameters','Num param', 'Inbound')
+        model_summary = Summary('i','Layer name','Output shape','Parameters',
+            'Num param', 'Inbound')
 
         total_num_params = 0
 
         # Input spec
-        input_shape = utils.get_shape_as_str(self.input)
+        input_shape = get_shape_as_str(self.input)
         model_summary.add('', 'Input', input_shape, '', '', '')
 
         for i, l in enumerate(self.layers):
             config = l.get_config()
             name = config['name']
-            output_shape = utils.shape_to_str(config['output_shape'])
+            output_shape = shape_to_str(config['output_shape'])
 
             num_params = 0
             param_shapes = ''
             if 'weights' in config.keys():
                 for weight in config['weights']:
-                    num_params += utils.get_num_params(weight)
-                    param_shapes += utils.get_shape_as_str(weight) + ' '
+                    num_params += get_num_params(weight)
+                    param_shapes += get_shape_as_str(weight) + ' '
 
             inbound_names = [ip._vb_history.name for ip in l._inbound_tensors]
 
@@ -81,18 +81,18 @@ class NetworkVB(object):
                     format(self.n_branches, l.name, l.n_branches)
 
     def summary(self):
-        model_summary = utils.Summary('i','Layer name','Output shape',
-            'Num param', 'Inbound')
+        model_summary = Summary('i','Layer name','Output shape','Num param',
+            'Inbound')
 
         total_num_params = 0
 
         # Input spec
         if type(self.input) is list or isinstance(self.input, VBOutput):
             for ip in self.input:
-                input_shape = utils.get_shape_as_str(ip)
+                input_shape = get_shape_as_str(ip)
                 model_summary.add('', 'Input', input_shape, '', '')
         else:
-            input_shape = utils.get_shape_as_str(self.input)
+            input_shape = get_shape_as_str(self.input)
             model_summary.add('', 'Input', input_shape, '', '')
 
         for i, l in enumerate(self.layers):
@@ -103,7 +103,7 @@ class NetworkVB(object):
             if 'weights' in config.keys():
                 for weight in config['weights']:
                     if weight != []:
-                        num_params += utils.get_num_params(weight)
+                        num_params += get_num_params(weight)
             total_num_params += num_params
 
             inbound_names = [ip._vb_history.name for ip in l._inbound_tensors]
@@ -112,7 +112,7 @@ class NetworkVB(object):
             for b in range(num_outputs):
                 output_shape = ''
                 for shape in config['output_shapes'][b]:
-                    output_shape += utils.shape_to_str(shape) + ' '
+                    output_shape += shape_to_str(shape) + ' '
 
                 if b < len(inbound_names):
                     in_name = inbound_names[b]

@@ -5,6 +5,26 @@ from scipy.spatial import distance
 import os
 import copy
 
+# Classification metrics
+
+# Compute accurary given class predictions and labels
+def compute_acc(pred, labels_one_hot, num_classes):
+    pred_max = tf.keras.utils.to_categorical(np.argmax(pred, axis=-1),
+        num_classes)
+    return np.mean(np.sum(labels_one_hot*pred_max, axis=1))
+
+# Average predictions before softmax
+def compute_before_mean_acc(outputs, y_test_one_hot, num_classes):
+    mean_output = softmax(np.array(outputs).mean(axis=0), axis=-1)
+    return compute_acc(mean_output, y_test_one_hot, num_classes)
+
+# Average predictions after softmax
+def compute_after_mean_acc(outputs, y_test_one_hot, num_classes):
+    mean_output = softmax(np.array(test_outputs), axis=-1).mean(axis=0)
+    return compute_acc(mean_output, y_test_one_hot, num_classes)
+
+# One-shot metrics
+
 def restore_sess(sess, model_path):
     meta_path = os.path.join(model_path, 'ckpt.meta')
     ckpt = tf.train.get_checkpoint_state(model_path)

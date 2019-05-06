@@ -2,8 +2,8 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import training_utils
-from vbranch.utils.test_utils import restore_sess,get_run,compute_one_shot_acc
+from vbranch.utils import bcolors, save_results, get_data, \
+    restore_sess, get_run, compute_one_shot_acc
 
 import tensorflow as tf
 import numpy as np
@@ -97,10 +97,9 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
         num_branches, shared_frac, model_id)
     model_path = os.path.join('models', model_name)
 
-    print(training_utils.bcolors.HEADER + 'Save model path: ' + \
-        model_path + training_utils.bcolors.ENDC)
+    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
 
-    # Load data from MNIST
+    # Load data
     if dataset == 'omniglot':
         train_gen = vb.datasets.omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
@@ -127,8 +126,7 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
         sess.run(tf.global_variables_initializer())
         sess.run(train_init_ops)
 
-        lr_sched = training_utils.lr_exp_decay_scheduler(0.001,epochs//3,
-            epochs,0.001)
+        lr_sched = lr_exp_decay_scheduler(0.001,epochs//3, epochs,0.001)
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
@@ -160,15 +158,13 @@ def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
 
     dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
         'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    training_utils.save_results(results_dict, dirname,
-        'train_{}.csv'.format(model_id))
+    save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
 
 def test(dataset, architecture, num_branches, model_id, shared_frac, message):
     model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
         format(dataset, architecture, num_branches, shared_frac, model_id)
 
-    print(training_utils.bcolors.HEADER + 'Load model path: ' + \
-        model_path + training_utils.bcolors.ENDC)
+    print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
 
     test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
     model_outputs = ['model_1/output_vb{}:0'.format(i+1) \
@@ -226,21 +222,18 @@ def test(dataset, architecture, num_branches, model_id, shared_frac, message):
 
     dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
         'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    training_utils.save_results(results_dict, dirname, 'test.csv', mode='a')
+    save_results(results_dict, dirname, 'test.csv', mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(training_utils.bcolors.HEADER + 'MODE: TEST' + \
-            training_utils.bcolors.ENDC)
-
+        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
         for id in args.model_id:
             test(args.dataset,args.architecture,args.num_branches,id,
                 args.shared_frac,args.m)
     else:
-        print(training_utils.bcolors.HEADER + 'MODE: TRAIN' + \
-            training_utils.bcolors.ENDC)
+        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:

@@ -339,15 +339,16 @@ class InputLayer(Layer):
         self.name = name
         self._inbound_tensors = []
 
-def Input(inputs, name='input'):
+def Input(inputs, num_branches, name='input'):
     """
     Instantiate Input layer
     Args:
         - inputs: single tensor or list of tensors
     """
 
+    # Expand inputs if single tensor
     if not type(inputs) is list:
-        inputs = [inputs]
+        inputs = [inputs] * num_branches
 
     output = VBOutput(inputs)
     setattr(output, '_vb_history', InputLayer(name))

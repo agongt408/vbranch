@@ -41,34 +41,27 @@ parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
 
-def get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE):
+def get_data_as_tensor(x_shape, y_shape, num_branches, BATCH_SIZE):
+    x = tf.placeholder('float32', x_shape, name='x')
+    y = tf.placeholder('float32', y_shape, name='y')
     batch_size = tf.placeholder('int64', name='batch_size')
 
-    train_datasets = []
-    test_datasets = []
-    inputs = [None] * args.num_branches
-    labels_one_hot = [None] * args.num_branches
-    train_init_ops = []
-    test_init_ops = []
+    iterators = [None] * num_branches
+    inputs = [None] * num_branches
+    labels_one_hot = [None] * num_branches
 
     for i in range(num_branches):
-        train_datasets.append(tf.data.Dataset.from_tensor_slices(train_data).\
-            batch(batch_size).repeat().shuffle(buffer_size=4*BATCH_SIZE))
+        dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
+            batch(batch_size).repeat().shuffle(buffer_size=4*BATCH_SIZE)
 
-        test_datasets.append(tf.data.Dataset.from_tensor_slices(test_data).\
-            batch(batch_size))
+        iterators[i] = dataset.make_initializable_iterator()
+        inputs[i], labels_one_hot[i] = iterators[i].get_next('input')
 
-        iterator = tf.data.Iterator.from_structure(train_datasets[i].output_types,
-                                               train_datasets[i].output_shapes)
-        inputs[i], labels_one_hot[i] = iterator.get_next()
+    return inputs, labels_one_hot, iterators
 
-        train_init_ops.append(iterator.make_initializer(train_datasets[i]))
-        test_init_ops.append(iterator.make_initializer(test_datasets[i],
-                                                    name='test_init_op_'+str(i+1)))
+def build_model(architecture,inputs,labels, num_classes,num_branches,model_id,
+        shared_frac, test=False):
 
-    return inputs, labels_one_hot, train_init_ops, test_init_ops, batch_size
-
-def build_model(architecture,inputs,num_classes,num_branches,model_id,shared_frac):
     if architecture == 'fcn':
         model = vb.vbranch_simple_fcn(inputs,
             ([128]*num_branches, int(128*shared_frac)),
@@ -82,102 +75,53 @@ def build_model(architecture,inputs,num_classes,num_branches,model_id,shared_fra
     else:
         raise ValueError('invalid model')
 
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+    model.compile(optimizer, 'softmax_cross_entropy_with_logits',
+                    labels_one_hot=labels, test=test)
+    if not test:
+        model.summary()
+
     return model
 
-def train(dataset, architecture, num_branches, model_id, num_classes, epochs,
-        steps_per_epoch, BATCH_SIZE, shared_frac):
+def train(dataset, arch, num_branches, model_id, num_classes, epochs,
+        steps_per_epoch, batch_size, shared_frac):
 
     if not os.path.isdir('models'):
         os.system('mkdir models')
 
-    model_name = 'vb-{}-{}-B{:d}-S{:.2f}_{:d}'.format(dataset, architecture,
-        num_branches, shared_frac, model_id)
-    model_path = os.path.join('models', model_name)
+    model_path = os.path.join('models', 'vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
+        format(dataset, arch, num_branches, shared_frac, model_id))
 
     print(bcolors.HEADER+'Save model path: '+ model_path+ bcolors.ENDC)
 
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        get_data(dataset, architecture, num_classes)
+    (X_train, y_train), (X_test, y_test) = get_data(dataset,arch,num_classes)
 
-    tf.reset_default_graph()
-
-    train_data = (X_train.astype('float32'), y_train_one_hot)
-    test_data = (X_test.astype('float32'), y_test_one_hot)
-
-    inputs, labels_one_hot, train_init_ops, test_init_ops, batch_size = \
-        get_data_as_tensor(train_data, test_data, num_branches, BATCH_SIZE)
+    # Convert data to iterator using Dataset API
+    x_shape = (None,) + X_train.shape[1:]
+    y_shape = (None, num_classes)
+    inputs, labels_one_hot, iterators = \
+        get_data_as_tensor(x_shape, y_shape, num_branches, batch_size)
 
     # Build and compile model
-    model = build_model(architecture, inputs, num_classes, num_branches,
-        model_id, shared_frac)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-    model.compile(optimizer, 'softmax_cross_entropy_with_logits',
-        labels_one_hot=labels_one_hot)
-    model.summary()
+    model = build_model(arch, inputs, labels_one_hot, num_classes,
+        num_branches, model_id, shared_frac)
 
-    # Run training ops
-    train_loss_hist = [[] for i in range(num_branches)]
-    train_acc_hist = [[] for i in range(num_branches)]
-    indiv_accs_hist = [[] for i in range(num_branches)]
-    val_loss_hist = [[] for i in range(num_branches)]
-    val_acc_hist = []
+    # Build copy of model for testing
+    x_place = tf.placeholder('float32', x_shape, name='x_test')
+    y_place = tf.placeholder('float32', y_shape, name='y_test')
+    test_model = build_model(arch, x_place, [y_place] * num_branches,
+        num_classes, num_branches, model_id, shared_frac, test=True)
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    history = model.fit(iterators, X_train, y_train, epochs, steps_per_epoch,
+        batch_size, validation=(X_test, y_test), test_model=test_model,
+        save_model_path=model_path)
 
-        for e in range(epochs):
-            print("Epoch {}/{}".format(e + 1, epochs))
-            start = time.time()
-
-            # Training
-            sess.run(train_init_ops, feed_dict={batch_size: BATCH_SIZE})
-            for i in range(steps_per_epoch):
-                _, train_losses, train_accs = sess.run([model.train_ops,
-                    model.losses, model.train_accs])
-
-            # Validation
-            sess.run(test_init_ops,feed_dict={batch_size:len(X_test)})
-            val_losses, val_acc, indiv_accs = \
-                sess.run([model.losses,model.test_acc,model.train_accs])
-
-            for b in range(num_branches):
-                train_loss_hist[b].append(train_losses[b])
-                train_acc_hist[b].append(train_accs[b])
-                indiv_accs_hist[b].append(indiv_accs[b])
-                val_loss_hist[b].append(val_losses[b])
-
-            val_loss = np.mean(val_losses)
-            val_acc_hist.append(val_acc)
-
-            str_log = 'Time={:.0f}, '.format(time.time() - start)
-            for b in range(num_branches):
-                str_log += 'Loss {}={:.4f}, Acc {}={:.4f}, '.\
-                    format(b+1,train_loss_hist[b][-1],b+1,train_acc_hist[b][-1])
-                str_log += 'Val Loss {}={:.4f}, Val Acc {}={:.4f}, '.\
-                    format(b+1, val_losses[b], b+1, indiv_accs[b])
-            str_log += 'Val Loss={:.4f}, Val Acc={:.4f}'.format(val_loss,val_acc)
-
-            print(str_log)
-
-        saver = tf.train.Saver()
-        path = os.path.join(model_path, 'ckpt')
-        saver.save(sess, path)
-
-    # Store loss/acc values as csv
-    results_dict = {}
-    for i in range(num_branches):
-        results_dict['train_loss_'+str(i+1)] = train_loss_hist[i]
-        results_dict['train_acc_'+str(i+1)] = train_acc_hist[i]
-        results_dict['val_loss_'+str(i+1)] = val_loss_hist[i]
-        results_dict['val_acc_'+str(i+1)] = indiv_accs_hist[i]
-    results_dict['val_acc'] = val_acc_hist
-
-    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
+    dirname = os.path.join('vb-{}-{}'.format(dataset, arch),
         'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
+    save_results(history, dirname, 'train_{}.csv'.format(model_id))
 
 def test(dataset,architecture,num_branches,model_id,shared_frac,num_classes):
-    
+
     model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
         format(dataset, architecture, num_branches, shared_frac, model_id)
 

@@ -2,8 +2,7 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import bcolors, save_results, get_data, compute_acc, \
-    compute_before_mean_acc, compute_after_mean_acc
+from vbranch import utils
 
 import tensorflow as tf
 import numpy as np
@@ -39,155 +38,103 @@ parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1 then model_id used')
 
-def get_data_as_tensor(train_data, test_data, BATCH_SIZE):
+def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
+    x = tf.placeholder('float32', x_shape, name='x')
+    y = tf.placeholder('float32', y_shape, name='y')
     batch_size = tf.placeholder('int64', name='batch_size')
 
-    train_dataset = tf.data.Dataset.from_tensor_slices(train_data).\
-        batch(batch_size).repeat().\
-        shuffle(buffer_size=4*BATCH_SIZE)
+    dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
+        batch(batch_size).repeat().shuffle(buffer_size=4*BATCH_SIZE)
 
-    test_dataset = tf.data.Dataset.from_tensor_slices(test_data).\
-        batch(batch_size).repeat()
+    iter_ = dataset.make_initializable_iterator()
+    inputs, labels_one_hot = iter_.get_next('input')
 
-    iter_ = tf.data.Iterator.from_structure(train_dataset.output_types,
-                                           train_dataset.output_shapes)
-    inputs, labels_one_hot = iter_.get_next()
+    return inputs, labels_one_hot, iter_
 
-    train_init_op = iter_.make_initializer(train_dataset)
-    test_init_op = iter_.make_initializer(test_dataset, name='test_init_op')
-
-    return inputs, labels_one_hot, train_init_op, test_init_op, batch_size
-
-def build_model(architecture, inputs, num_classes, model_id):
-    name = 'model_' + str(model_id)
-
+def build_model(architecture, inputs, labels, num_classes,model_id,test=False):
     if architecture == 'fcn':
-        model = vb.simple_fcn(inputs, 128, num_classes, name=name)
+        model = vb.simple_fcn(inputs,128,num_classes,
+            name='model_'+str(model_id))
     elif architecture == 'cnn':
-        model = vb.simple_cnn(inputs, num_classes, 16, 32, name=name)
+        model = vb.simple_cnn(inputs,num_classes,16,32,
+            name='model_'+str(model_id))
     else:
         raise ValueError('Invalid architecture')
 
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+    model.compile(optimizer, 'softmax_cross_entropy_with_logits',
+                    labels_one_hot=labels, test=test)
+    if not test:
+        model.summary()
+
     return model
 
-def train(dataset, architecture,model_id,num_classes,epochs,steps_per_epoch,
-        BATCH_SIZE):
+def train(dataset,arch,model_id,num_classes,epochs,steps_per_epoch,batch_size):
+    # Ensure folder exists to store saved model checkpoints
     if not os.path.isdir('models'):
         os.system('mkdir models')
 
-    model_name = '{}-{}_{:d}'.format(dataset, architecture, model_id)
-    model_path = os.path.join('models', model_name)
+    # Save model path
+    model_path = os.path.join('models','{}-{}_{:d}'.format(dataset,arch,model_id))
+    print(utils.bcolors.HEADER+'Saved path: '+model_path+utils.bcolors.ENDC)
 
-    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
+    # Load data
+    (X_train,y_train),(X_test,y_test) = utils.get_data(dataset,arch,num_classes)
 
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        get_data(dataset, architecture, num_classes)
+    # Convert data to iterator using Dataset API
+    x_shape = (None,) + X_train.shape[1:]
+    y_shape = (None, num_classes)
+    inputs, labels, iterator = get_data_as_tensor(x_shape,y_shape,batch_size)
 
-    tf.reset_default_graph()
+    model = build_model(arch, inputs, labels, num_classes, model_id)
 
-    train_data = (X_train.astype('float32'), y_train_one_hot)
-    test_data = (X_test.astype('float32'), y_test_one_hot)
+    # Build copy of model for testing
+    x_place = tf.placeholder('float32', x_shape, name='x_test')
+    y_place = tf.placeholder('float32', y_shape, name='y_test')
+    test_model = build_model(arch,x_place,y_place,num_classes,model_id,test=True)
 
-    inputs, labels_one_hot, train_init_op, test_init_op, batch_size = \
-        get_data_as_tensor(train_data, test_data, BATCH_SIZE)
+    history = model.fit(iterator, X_train, y_train, epochs, steps_per_epoch,
+        batch_size, validation=(X_test, y_test), test_model=test_model,
+        save_model_path=model_path)
 
-    # Build and compile model
-    model = build_model(architecture, inputs, num_classes, model_id)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-    model.compile(optimizer, 'softmax_cross_entropy_with_logits',
-        labels_one_hot=labels_one_hot)
-    model.summary()
-
-    # Train
-    train_loss_hist = []
-    train_acc_hist = []
-    val_loss_hist = []
-    val_acc_hist = []
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-
-        for e in range(epochs):
-            print("Epoch {}/{}".format(e + 1, epochs))
-            start = time.time()
-
-            # Training
-            sess.run(train_init_op, feed_dict={batch_size: BATCH_SIZE})
-            for i in range(steps_per_epoch):
-                _, train_loss, train_acc = sess.run([model.train_op,
-                    model.loss, model.acc])
-
-            # Validation
-            sess.run(test_init_op, feed_dict={batch_size:len(X_test)})
-            val_loss, val_acc = sess.run([model.loss, model.acc])
-
-            train_loss_hist.append(train_loss)
-            train_acc_hist.append(train_acc)
-            val_loss_hist.append(val_loss)
-            val_acc_hist.append(val_acc)
-
-            epoch_time = time.time() - start
-
-            print(('Time={:.0f}, Loss={:.4f}, Acc={:.4f}, ' + \
-                'Val Loss={:.4f}, Val Acc={:.4f}').format(epoch_time,
-                train_loss_hist[-1], train_acc_hist[-1], val_loss, val_acc))
-
-        saver = tf.train.Saver()
-        path = os.path.join(model_path, 'ckpt')
-        saver.save(sess, path)
-
-    # Store loss/acc values as csv
-    results_dict = {'train_loss':train_loss_hist,'train_acc':train_acc_hist,
-        'val_loss':val_loss_hist, 'val_acc':val_acc_hist}
-
-    save_results(results_dict, '{}-{}'.format(dataset, architecture),
+    utils.save_results(history, '{}-{}'.format(dataset, arch),
         'train_{}.csv'.format(model_id), mode='w')
 
-def test(dataset, architecture, model_id_list, num_classes,
-        output_dict={}, acc_dict={}, loss_dict={}):
-
+def test(dataset,arch,model_id_list,num_classes,output_dict={},acc_dict={}):
     print(model_id_list)
 
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = get_data(dataset,
-        architecture, num_classes)
+    _, (X_test, y_test) = get_data(dataset, arch, num_classes)
 
     test_outputs = []
     test_accs = []
-    test_losses = []
 
     for id in model_id_list:
         if id in output_dict.keys():
             output = output_dict[id]
             acc = acc_dict[id]
-            loss = loss_dict[id]
         else:
-            graph = tf.Graph()
-            sess = tf.Session(graph=graph)
-
-            with sess.as_default(), graph.as_default():
-                model_path = 'models/{}-{}_{}'.format(dataset,architecture,id)
+            with tf.Session() as sess:
+                model_path = 'models/{}-{}_{}'.format(dataset, arch, id)
                 meta_path = os.path.join(model_path, 'ckpt.meta')
                 ckpt = tf.train.get_checkpoint_state(model_path)
 
                 imported_graph = tf.train.import_meta_graph(meta_path)
                 imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
-                sess.run('test_init_op',feed_dict={'batch_size:0':len(X_test)})
-                output,acc,loss = sess.run(['model_%s'%id+'/'+'output:0',
-                                            'acc:0', 'loss:0'])
+                output = sess.run('model_{}_1/output:0'.format(id),
+                    feed_dict={'x_test:0':X_test})
+
+            # Compute accuracy outside of the Graph
+            acc = compute_acc(output, y_test, num_classes)
 
             output_dict[id] = output
             acc_dict[id] = acc
-            loss_dict[id] = loss
 
         test_outputs.append(output)
         test_accs.append(acc)
-        test_losses.append(loss)
 
-    before_mean_acc = compute_before_mean_acc(test_outputs,y_test_one_hot,
-        num_classes)
-    after_mean_acc = compute_after_mean_acc(test_outputs, y_test_one_hot,
-        num_classes)
+    before_mean_acc = compute_before_mean_acc(test_outputs,y_test, num_classes)
+    after_mean_acc = compute_after_mean_acc(test_outputs, y_test, num_classes)
 
     print('Individual accs:', test_accs)
     print('Before mean acc:', before_mean_acc)
@@ -196,11 +143,10 @@ def test(dataset, architecture, model_id_list, num_classes,
     results_dict = {}
     for i, id in enumerate(model_id_list):
         results_dict['acc_'+str(id)] = test_accs[i]
-        results_dict['loss_'+str(id)] = test_losses[i]
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    save_results(results_dict, '{}-{}'.format(dataset, architecture),
+    utils.save_results(results_dict, '{}-{}'.format(dataset, arch),
         'B{}-test.csv'.format(len(model_id_list)), mode='a')
 
     return output_dict, acc_dict, loss_dict
@@ -209,7 +155,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
 
         if args.trials == 1:
             # args.model_id is a list of model ids
@@ -218,7 +164,6 @@ if __name__ == '__main__':
             # Store output, acc, and dict in case need to be reused
             output_dict = {}
             acc_dict = {}
-            loss_dict = {}
 
             avail_runs = glob('models/{}-{}_*'.format(args.dataset,
                 args.architecture))
@@ -227,13 +172,10 @@ if __name__ == '__main__':
             for i in range(args.trials):
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
-                model_ids.sort()
-
-                output_dict,acc_dict,loss_dict = test(args.dataset,
-                    args.architecture, model_ids,args.num_classes,output_dict,
-                    acc_dict, loss_dict)
+                output_dict,acc_dict = test(args.dataset, args.architecture,
+                    model_ids,args.num_classes,output_dict, acc_dict)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:

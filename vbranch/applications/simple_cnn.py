@@ -48,7 +48,7 @@ def vbranch_default(inputs, final_spec, *layers_spec, branches=1, name=None):
     """
 
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        ip = VBL.Input(inputs)
+        ip = VBL.Input(inputs, branches)
         x = ip
 
         for i, (filters_list, shared_filters) in enumerate(layers_spec):

@@ -31,7 +31,7 @@ def vbranch_default(inputs, *layers_spec, branches=1, name=None):
     # NOTE: inputs can be single Tensor or list of Tensors
 
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        ip = VBL.Input(inputs)
+        ip = VBL.Input(inputs, branches)
         x = ip
 
         for i, (units_list, shared_units) in enumerate(layers_spec):

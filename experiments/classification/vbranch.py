@@ -54,10 +54,10 @@ def get_data_as_tensor(x_shape, y_shape, num_branches, BATCH_SIZE):
     labels_one_hot = [None] * num_branches
 
     for i in range(num_branches):
-        dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
-            batch(batch_size).repeat().shuffle(buffer_size=4*BATCH_SIZE)
+        iterators[i] = tf.data.Dataset.from_tensor_slices((x,y)).\
+            repeat().batch(batch_size).shuffle(buffer_size=4*BATCH_SIZE).\
+            make_initializable_iterator()
 
-        iterators[i] = dataset.make_initializable_iterator()
         inputs[i], labels_one_hot[i] = iterators[i].get_next('input')
 
     return inputs, labels_one_hot, iterators

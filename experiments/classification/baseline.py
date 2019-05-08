@@ -47,7 +47,7 @@ def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
     batch_size = tf.placeholder('int64', name='batch_size')
 
     dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
-        batch(batch_size).repeat().shuffle(buffer_size=4*BATCH_SIZE)
+        repeat().batch(batch_size).shuffle(buffer_size=4*BATCH_SIZE)
 
     iter_ = dataset.make_initializable_iterator()
     inputs, labels_one_hot = iter_.get_next('input')

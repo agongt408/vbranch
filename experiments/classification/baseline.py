@@ -19,9 +19,12 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', action='store', default='mnist',
                     nargs='?', choices=['mnist', 'toy'], help='dataset')
-# Number of classes used only when generating toy dataset
 parser.add_argument('--num_classes', action='store', default=10, nargs='?',
-                    help='number of classes in toy dataset')
+                    type=int, help='number of classes in toy dataset')
+parser.add_argument('--num_features', action='store', default=784, nargs='?',
+                    type=int, help='number of features in toy dataset')
+parser.add_argument('--samples_per_class',action='store',default=1000,nargs='?',
+                    type=int, help='samples per class')
 
 parser.add_argument('--architecture', action='store', default='fcn',
                     nargs='?', choices=['fcn', 'cnn'],
@@ -53,10 +56,10 @@ def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
 
 def build_model(architecture, inputs, labels, num_classes,model_id,test=False):
     if architecture == 'fcn':
-        model = vb.simple_fcn(inputs,128,num_classes,
+        model = vb.simple_fcn(inputs, 512, num_classes,
             name='model_'+str(model_id))
     elif architecture == 'cnn':
-        model = vb.simple_cnn(inputs,num_classes,16,32,
+        model = vb.simple_cnn(inputs, num_classes, 16, 32,
             name='model_'+str(model_id))
     else:
         raise ValueError('Invalid architecture')
@@ -69,17 +72,19 @@ def build_model(architecture, inputs, labels, num_classes,model_id,test=False):
 
     return model
 
-def train(dataset,arch,model_id,num_classes,epochs,steps_per_epoch,batch_size):
-    # Ensure folder exists to store saved model checkpoints
-    if not os.path.isdir('models'):
-        os.system('mkdir models')
+def train(dataset,arch,model_id,num_classes,num_features,samples_per_class,
+        epochs, steps_per_epoch,batch_size):
 
-    # Save model path
-    model_path = os.path.join('models','{}-{}_{:d}'.format(dataset,arch,model_id))
-    print(utils.bcolors.HEADER+'Saved path: '+model_path+utils.bcolors.ENDC)
+    # Get path to save model
+    model_path = _get_model_path(dataset, arch, num_classes, samples_per_class,
+        model_id)
+    print(utils.bcolors.HEADER+'Save model path: '+model_path+utils.bcolors.ENDC)
 
     # Load data
-    (X_train,y_train),(X_test,y_test) = utils.get_data(dataset,arch,num_classes)
+    (X_train,y_train),(X_test,y_test) = utils.get_data(dataset, arch,
+        num_classes, num_features, samples_per_class)
+
+    tf.reset_default_graph()
 
     # Convert data to iterator using Dataset API
     x_shape = (None,) + X_train.shape[1:]
@@ -97,59 +102,85 @@ def train(dataset,arch,model_id,num_classes,epochs,steps_per_epoch,batch_size):
         batch_size, validation=(X_test, y_test), test_model=test_model,
         save_model_path=model_path)
 
-    utils.save_results(history, '{}-{}'.format(dataset, arch),
-        'train_{}.csv'.format(model_id), mode='w')
+    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
+    utils.save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
-def test(dataset,arch,model_id_list,num_classes,output_dict={},acc_dict={}):
+def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
+        output_dict={}, acc_dict={}):
+
     print(model_id_list)
 
-    _, (X_test, y_test) = get_data(dataset, arch, num_classes)
+    _, (X_test, y_test) = utils.get_data(dataset, arch, num_classes,
+        num_features, samples_per_class)
 
     test_outputs = []
     test_accs = []
 
-    for id in model_id_list:
-        if id in output_dict.keys():
-            output = output_dict[id]
-            acc = acc_dict[id]
+    for model_id in model_id_list:
+        if model_id in output_dict.keys():
+            output = output_dict[model_id]
+            acc = acc_dict[model_id]
         else:
+            tf.reset_default_graph()
+
             with tf.Session() as sess:
-                model_path = 'models/{}-{}_{}'.format(dataset, arch, id)
+                model_path = _get_model_path(dataset, arch, num_classes,
+                    samples_per_class, model_id)
                 meta_path = os.path.join(model_path, 'ckpt.meta')
                 ckpt = tf.train.get_checkpoint_state(model_path)
 
                 imported_graph = tf.train.import_meta_graph(meta_path)
                 imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
-                output = sess.run('model_{}_1/output:0'.format(id),
+                output = sess.run('model_{}_1/output:0'.format(model_id),
                     feed_dict={'x_test:0':X_test})
 
-            # Compute accuracy outside of the Graph
-            acc = compute_acc(output, y_test, num_classes)
+            # Compute accuracy outside of the graph
+            acc = utils.compute_acc(output, y_test, num_classes)
 
-            output_dict[id] = output
-            acc_dict[id] = acc
+            output_dict[model_id] = output
+            acc_dict[model_id] = acc
 
         test_outputs.append(output)
         test_accs.append(acc)
 
-    before_mean_acc = compute_before_mean_acc(test_outputs,y_test, num_classes)
-    after_mean_acc = compute_after_mean_acc(test_outputs, y_test, num_classes)
+    before_mean_acc = utils.compute_before_mean_acc(test_outputs,y_test,num_classes)
+    after_mean_acc = utils.compute_after_mean_acc(test_outputs,y_test,num_classes)
 
     print('Individual accs:', test_accs)
     print('Before mean acc:', before_mean_acc)
     print('After mean acc:', after_mean_acc)
 
     results_dict = {}
-    for i, id in enumerate(model_id_list):
-        results_dict['acc_'+str(id)] = test_accs[i]
+    for i, model_id in enumerate(model_id_list):
+        results_dict['acc_'+str(model_id)] = test_accs[i]
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    utils.save_results(results_dict, '{}-{}'.format(dataset, arch),
-        'B{}-test.csv'.format(len(model_id_list)), mode='a')
+    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
+    utils.save_results(results_dict, dirpath, 'B%d-test.csv' % \
+        len(model_id_list), mode='a')
 
-    return output_dict, acc_dict, loss_dict
+    return output_dict, acc_dict
+
+def _get_dir_path(dataset, arch, num_classes, samples_per_class):
+    if dataset == 'toy':
+        # Further organize results by number of classes and samples_per_class
+        dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%num_classes,
+            'SpC%d' % samples_per_class)
+    else:
+        dirpath = '{}-{}'.format(dataset, arch)
+    return dirpath
+
+def _get_model_path(dataset, arch, num_classes, samples_per_class, model_id):
+    # Get path to save model
+    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
+    model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
+
+    if not os.path.isdir(model_path):
+        os.system('mkdir -p ' + model_path)
+
+    return model_path
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -159,33 +190,38 @@ if __name__ == '__main__':
 
         if args.trials == 1:
             # args.model_id is a list of model ids
-            test(args.dataset,args.architecture,args.model_id,args.num_classes)
+            test(args.dataset,args.architecture,args.model_id,args.num_classes,
+                args.num_features, args.samples_per_class)
         else:
             # Store output, acc, and dict in case need to be reused
             output_dict = {}
             acc_dict = {}
 
-            avail_runs = glob('models/{}-{}_*'.format(args.dataset,
-                args.architecture))
+            dirpath = _get_dir_path(args.dataset, args.architecture,
+                args.num_classes, args.samples_per_class)
+            avail_runs = glob(dirpath + '/model_*')
             avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
 
             for i in range(args.trials):
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
                 output_dict,acc_dict = test(args.dataset, args.architecture,
-                    model_ids,args.num_classes,output_dict, acc_dict)
+                    model_ids, args.num_classes, args.num_features,
+                    args.samples_per_class, output_dict, acc_dict)
     else:
         print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
 
         if args.trials == 1:
-            for id in args.model_id:
+            for model_id in args.model_id:
                 # Run trial with specified model id
-                train(args.dataset, args.architecture,id,args.num_classes,
-                    args.epochs,args.steps_per_epoch, args.batch_size)
+                train(args.dataset, args.architecture,model_id,args.num_classes,
+                    args.num_features, args.samples_per_class, args.epochs,
+                    args.steps_per_epoch, args.batch_size)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
                 train(args.dataset, args.architecture,i+1,args.num_classes,
-                    args.epochs,args.steps_per_epoch, args.batch_size)
+                    args.num_features, args.samples_per_class, args.epochs,
+                    args.steps_per_epoch, args.batch_size)
 
     print('Finished!')

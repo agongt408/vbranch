@@ -18,9 +18,12 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', action='store', default='mnist',
                     nargs='?', choices=['mnist', 'toy'], help='dataset')
-# Number of classes used only when generating toy dataset
 parser.add_argument('--num_classes', action='store', default=10, nargs='?',
-                    help='number of classes in toy dataset')
+                    type=int, help='number of classes in toy dataset')
+parser.add_argument('--num_features', action='store', default=784, nargs='?',
+                    type=int, help='number of features in toy dataset')
+parser.add_argument('--samples_per_class',action='store',default=1000,nargs='?',
+                    type=int, help='samples per class')
 
 parser.add_argument('--architecture', action='store', default='fcn',
                     nargs='?', choices=['fcn', 'cnn'],
@@ -64,8 +67,8 @@ def build_model(architecture,inputs,labels, num_classes,num_branches,model_id,
 
     if architecture == 'fcn':
         model = vb.vbranch_simple_fcn(inputs,
-            ([128]*num_branches, int(128*shared_frac)),
-            ([10]*num_branches, int(10*shared_frac)),
+            ([512]*num_branches, int(512*shared_frac)),
+            ([num_classes]*num_branches, int(num_classes*shared_frac)),
             branches=num_branches, name='model_' + str(model_id))
     elif architecture == 'cnn':
         model = vb.vbranch_simple_cnn(inputs, (num_classes, 0),
@@ -83,18 +86,18 @@ def build_model(architecture,inputs,labels, num_classes,num_branches,model_id,
 
     return model
 
-def train(dataset, arch, num_branches, model_id, num_classes, epochs,
-        steps_per_epoch, batch_size, shared_frac):
+def train(dataset, arch, num_branches, model_id, num_classes, num_features,
+        samples_per_class, epochs, steps_per_epoch, batch_size, shared_frac):
 
-    if not os.path.isdir('models'):
-        os.system('mkdir models')
-
-    model_path = os.path.join('models', 'vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(dataset, arch, num_branches, shared_frac, model_id))
+    model_path = _get_model_path(dataset, arch, num_branches, shared_frac,
+        num_classes, samples_per_class, model_id)
 
     print(bcolors.HEADER+'Save model path: '+ model_path+ bcolors.ENDC)
 
-    (X_train, y_train), (X_test, y_test) = get_data(dataset,arch,num_classes)
+    (X_train, y_train), (X_test, y_test) = get_data(dataset,arch,num_classes,
+                                            num_features, samples_per_class)
+
+    tf.reset_default_graph()
 
     # Convert data to iterator using Dataset API
     x_shape = (None,) + X_train.shape[1:]
@@ -116,23 +119,25 @@ def train(dataset, arch, num_branches, model_id, num_classes, epochs,
         batch_size, validation=(X_test, y_test), test_model=test_model,
         save_model_path=model_path)
 
-    dirname = os.path.join('vb-{}-{}'.format(dataset, arch),
-        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    save_results(history, dirname, 'train_{}.csv'.format(model_id))
+    dirpath = _get_dir_path(dataset, arch, num_branches, shared_frac,
+        num_classes, samples_per_class)
+    save_results(history, dirpath, 'train_{}.csv'.format(model_id))
 
-def test(dataset,architecture,num_branches,model_id,shared_frac,num_classes):
+def test(dataset,architecture,num_branches,model_id,shared_frac,
+        num_classes, num_features, samples_per_class):
 
-    model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(dataset, architecture, num_branches, shared_frac, model_id)
+    model_path = _get_model_path(dataset, architecture, num_branches,
+        shared_frac, num_classes, samples_per_class, model_id)
 
     print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
 
-    (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-        get_data(dataset, architecture, num_classes)
+    (X_train, y_train), (X_test, y_test) = get_data(dataset, architecture,
+        num_classes, num_features, samples_per_class)
 
-    test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
-    losses = ['loss_'+str(i+1)+':0' for i in range(num_branches)]
-    train_acc_ops = ['train_acc_'+str(i+1)+':0' for i in range(num_branches)]
+    losses = ['loss_{}_1:0'.format(i+1) for i in range(num_branches)]
+    indiv_accs = ['acc_{}_1:0'.format(i+1) for i in range(num_branches)]
+
+    tf.reset_default_graph()
 
     with tf.Session() as sess:
         meta_path = os.path.join(model_path, 'ckpt.meta')
@@ -141,23 +146,47 @@ def test(dataset,architecture,num_branches,model_id,shared_frac,num_classes):
         imported_graph = tf.train.import_meta_graph(meta_path)
         imported_graph.restore(sess, ckpt.model_checkpoint_path)
 
-        sess.run(test_init_ops, feed_dict={'batch_size:0': len(X_test)})
-        val_losses,val_acc,indiv_accs = sess.run([losses,'test_acc:0',
-                                                  train_acc_ops])
+        losses_v,acc_v,indiv_accs_v = sess.run([losses,'acc_ensemble_1:0',
+            indiv_accs], feed_dict={'x_test:0': X_test, 'y_test:0': y_test})
 
-    val_loss = np.mean(val_losses)
-    print('Loss:', val_loss)
-    print('Acc:', val_acc)
-    print('Indiv accs:', indiv_accs)
+    print('Losses:', losses_v)
+    print('Indiv accs:', indiv_accs_v)
+    print('Ensemble acc:', acc_v)
 
     results_dict = {}
     for i in range(num_branches):
-        results_dict['acc_'+str(i+1)] = indiv_accs[i]
-    results_dict['ensemble_acc'] = val_acc
+        results_dict['loss_'+str(i+1)] = losses_v[i]
+        results_dict['acc_'+str(i+1)] = indiv_accs_v[i]
+    results_dict['acc_ensemble'] = acc_v
 
-    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
-        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    save_results(results_dict, dirname, 'test.csv', mode='a')
+    dirpath = _get_dir_path(dataset, architecture, num_branches, shared_frac,
+        num_classes, samples_per_class)
+    save_results(results_dict, dirpath, 'test.csv', mode='a')
+
+def _get_dir_path(dataset, arch, num_branches, shared_frac,
+        num_classes, samples_per_class):
+
+    if dataset == 'toy':
+        # Further organize results by number of classes and samples_per_class
+        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
+            'C%d'%num_classes, 'SpC%d' % samples_per_class, 'B%d'%num_branches,
+            'S{:.2f}'.format(shared_frac))
+    else:
+        dirpath = 'vb-{}-{}'.format(dataset, arch)
+    return dirpath
+
+def _get_model_path(dataset, arch, num_branches, shared_frac, num_classes,
+        samples_per_class, model_id):
+
+    # Get path to save model
+    dirpath = _get_dir_path(dataset, arch, num_branches, shared_frac,
+        num_classes, samples_per_class)
+    model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
+
+    if not os.path.isdir(model_path):
+        os.system('mkdir -p ' + model_path)
+
+    return model_path
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -166,20 +195,23 @@ if __name__ == '__main__':
         print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
 
         for id in args.model_id:
-            test(args.architecture,args.num_branches,id,args.shared_frac,
-                args.num_classes)
+            test(args.dataset, args.architecture,args.num_branches,id,
+                args.shared_frac, args.num_classes, args.num_features,
+                args.samples_per_class)
     else:
         print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
 
         if args.trials == 1:
             for id in args.model_id:
-                train(args.dataset, args.architecture, args.num_branches, id,
-                    args.num_classes, args.epochs, args.steps_per_epoch,
-                    args.batch_size, args.shared_frac)
+                train(args.dataset, args.architecture, args.num_branches,id,
+                    args.num_classes, args.num_features,args.samples_per_class,
+                    args.epochs, args.steps_per_epoch, args.batch_size,
+                    args.shared_frac)
         else:
             for i in range(args.trials):
-                train(args.dataset, args.architecture, args.num_branches, i+1,
-                    args.num_classes, args.epochs, args.steps_per_epoch,
-                    args.batch_size, args.shared_frac)
+                train(args.dataset, args.architecture, args.num_branches,i+1,
+                    args.num_classes, args.num_features,args.samples_per_class,
+                    args.epochs, args.steps_per_epoch,args.batch_size,
+                    args.shared_frac)
 
     print('Finished!')

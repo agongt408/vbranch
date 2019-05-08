@@ -4,6 +4,7 @@ import numpy as np
 from scipy.spatial import distance
 import os
 import copy
+from scipy.special import softmax
 
 # Classification metrics
 
@@ -20,7 +21,7 @@ def compute_before_mean_acc(outputs, y_test_one_hot, num_classes):
 
 # Average predictions after softmax
 def compute_after_mean_acc(outputs, y_test_one_hot, num_classes):
-    mean_output = softmax(np.array(test_outputs), axis=-1).mean(axis=0)
+    mean_output = softmax(np.array(outputs), axis=-1).mean(axis=0)
     return compute_acc(mean_output, y_test_one_hot, num_classes)
 
 # One-shot metrics

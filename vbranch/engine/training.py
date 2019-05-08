@@ -95,8 +95,8 @@ class ModelVB(NetworkVB):
                     history['val_' + k] = []
 
         history = _fit(history, iterators, x, y, epochs, steps_per_epoch,
-            batch_size, tensors, validation_tensors, self.train_ops,validation,
-            save_model_path)
+            batch_size, tensors, validation_tensors, self.train_ops,
+            validation, save_model_path)
 
         return history
 
@@ -189,11 +189,12 @@ class ModelVB(NetworkVB):
             accs[name] = tf.reduce_mean(
                 tf.reduce_sum(labels[i]*pred_max,[1]), name=name)
 
-        # Test accuracy
+        # Test accuracy (before average accuracy)
         pred = tf.nn.softmax(tf.reduce_mean(self.output.to_list(), [0]))
         pred_max = tf.one_hot(tf.argmax(pred, axis=-1), num_classes)
-        accs['acc'] = tf.reduce_mean(tf.reduce_sum(labels[0]*pred_max, [1]),
-                                     name='acc')
+        accs['acc_ensemble'] = tf.reduce_mean(tf.reduce_sum(labels[0] * \
+            pred_max, [1]), name='acc_ensemble')
+
         return accs
 
 def _get_tensors(attributes, tensors):

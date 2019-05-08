@@ -43,7 +43,8 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
         return lr
     return func
 
-def get_data(dataset, architecture, num_classes=None):
+def get_data(dataset, architecture, num_classes=10, num_features=784,
+        samples_per_class=1000):
     """
     Load (or generate) data
     Args:
@@ -51,6 +52,8 @@ def get_data(dataset, architecture, num_classes=None):
         - architecture: 'fcn' or 'cnn' (must be 'fcn' if `dataset`='toy')
         - num_classes: number of classes to generate toy dataset (must be 10
         if `dataset`='mnist')
+        - num_features: number of features
+        - samples_per_class: number of samples per class
     """
 
     # Load (or generate) data
@@ -63,9 +66,15 @@ def get_data(dataset, architecture, num_classes=None):
         assert architecture=='fcn', 'architecture must be fcn'
         assert not num_classes is None, 'num_classes cannot be None'
 
+        num_samples = num_classes * samples_per_class
+
+        print('Creating dataset (hypercube)...')
         (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-            datasets.toy.generate_from_hypercube(num_samples=10000,
-                num_features=784, num_classes=num_classes)
+            datasets.toy.generate_from_hypercube(num_samples=num_samples,
+                num_features=num_features, num_classes=num_classes)
+
+        print('Training set:', X_train.shape)
+        print('Testing set:', X_test.shape)
     else:
         raise ValueError('invalid dataset: ' + dataset)
 

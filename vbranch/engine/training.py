@@ -147,7 +147,9 @@ class ModelVB(NetworkVB):
         unshared_train_ops = []
 
         for i in range(self.n_branches):
-            loss = list(self.losses.items())[i][1]
+            # Get loss from losses dict, key names can be predicted because
+            # train ops only declared once
+            loss = self.losses['loss_' + str(i+1)]
 
             # Compute gradients of shared vars for each branch (but don't apply)
             if len(self.shared_vars) > 0:

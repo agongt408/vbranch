@@ -1,0 +1,16 @@
+,acc_2,acc_6,acc_7,after_mean_acc,before_mean_acc
+0,0.9837,0.98295,0.983,0.9877,0.98765
+,acc_1,acc_3,acc_6,after_mean_acc,before_mean_acc
+0,0.983,0.98275,0.98295,0.98715,0.9875
+,acc_3,acc_5,acc_7,after_mean_acc,before_mean_acc
+0,0.98275,0.98215,0.983,0.98745,0.9875
+,acc_1,acc_7,acc_8,after_mean_acc,before_mean_acc
+0,0.983,0.983,0.9825,0.98735,0.98735
+,acc_4,acc_5,acc_7,after_mean_acc,before_mean_acc
+0,0.98355,0.98215,0.983,0.9876,0.9877
+,acc_2,acc_4,acc_6,after_mean_acc,before_mean_acc
+0,0.9837,0.98355,0.98295,0.9875,0.9878
+,acc_2,acc_4,acc_8,after_mean_acc,before_mean_acc
+0,0.9837,0.98355,0.9825,0.9873,0.9874
+,acc_1,acc_7,acc_8,after_mean_acc,before_mean_acc
+0,0.983,0.983,0.9825,0.98735,0.98735

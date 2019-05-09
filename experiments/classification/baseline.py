@@ -197,8 +197,8 @@ if __name__ == '__main__':
             output_dict = {}
             acc_dict = {}
 
-            dirpath = _get_dir_path(args.dataset, args.architecture,
-                args.num_classes, args.samples_per_class)
+            dirpath = os.path.join('models', _get_dir_path(args.dataset,
+                args.architecture, args.num_classes, args.samples_per_class))
             avail_runs = glob(dirpath + '/model_*')
             avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
 

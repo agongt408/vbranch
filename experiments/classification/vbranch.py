@@ -7,10 +7,7 @@ from vbranch.utils import bcolors, save_results, get_data
 import tensorflow as tf
 import numpy as np
 import os
-from scipy.special import softmax
-import matplotlib.pyplot as plt
 import argparse
-import time
 import pandas as pd
 
 # Parse command line arguments
@@ -26,7 +23,7 @@ parser.add_argument('--samples_per_class',action='store',default=1000,nargs='?',
                     type=int, help='samples per class')
 
 parser.add_argument('--architecture', action='store', default='fcn',
-                    nargs='?', choices=['fcn', 'cnn'],
+                    nargs='?', choices=['fcn', 'cnn', 'fcn2'],
                     help='model architecture, i.e., fcn or cnn')
 parser.add_argument('--batch_size', action='store', default=32, nargs='?',
                     type=int, help='batch size')
@@ -68,6 +65,12 @@ def build_model(architecture,inputs,labels, num_classes,num_branches,model_id,
     if architecture == 'fcn':
         model = vb.vbranch_simple_fcn(inputs,
             ([512]*num_branches, int(512*shared_frac)),
+            ([num_classes]*num_branches, int(num_classes*shared_frac)),
+            branches=num_branches, name='model_' + str(model_id))
+    elif architecture == 'fcn2':
+        model = vb.vbranch_simple_fcn(inputs,
+            ([512]*num_branches, int(512*shared_frac)),
+            ([256]*num_branches, int(256*shared_frac)),
             ([num_classes]*num_branches, int(num_classes*shared_frac)),
             branches=num_branches, name='model_' + str(model_id))
     elif architecture == 'cnn':

@@ -26,6 +26,7 @@ def save_results(data, dirname, filename, mode='w'):
         results = pd.DataFrame(data=data)
     elif mode == 'a':
         results = pd.DataFrame(data=data, index=[0])
+        # results = pd.DataFrame(data=data, header=False)
     else:
         raise ValueError('invalid file I/O mode ("w" or "a")')
 
@@ -59,8 +60,9 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
     # Load (or generate) data
     if dataset == 'mnist':
         # Load data from MNIST
-        (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-            datasets.mnist.load_data(format=architecture)
+        if architecture.find('fcn') > -1:
+            (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
+                datasets.mnist.load_data(format='fcn')
     elif dataset == 'toy':
         # Generate toy dataset
         assert architecture=='fcn', 'architecture must be fcn'

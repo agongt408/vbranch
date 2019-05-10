@@ -7,10 +7,8 @@ from vbranch import utils
 import tensorflow as tf
 import numpy as np
 import os
-from scipy.special import softmax
 import matplotlib.pyplot as plt
 import argparse
-import time
 import pandas as pd
 from glob import glob
 
@@ -27,7 +25,7 @@ parser.add_argument('--samples_per_class',action='store',default=1000,nargs='?',
                     type=int, help='samples per class')
 
 parser.add_argument('--architecture', action='store', default='fcn',
-                    nargs='?', choices=['fcn', 'cnn'],
+                    nargs='?', choices=['fcn', 'cnn', 'fcn2'],
                     help='model architecture, i.e., fcn or cnn')
 parser.add_argument('--batch_size', action='store', default=32, nargs='?',
                     type=int, help='batch size')
@@ -57,6 +55,9 @@ def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
 def build_model(architecture, inputs, labels, num_classes,model_id,test=False):
     if architecture == 'fcn':
         model = vb.simple_fcn(inputs, 512, num_classes,
+            name='model_'+str(model_id))
+    elif architecture == 'fcn2':
+        model = vb.simple_fcn(inputs, 512, 256, num_classes,
             name='model_'+str(model_id))
     elif architecture == 'cnn':
         model = vb.simple_cnn(inputs, num_classes, 16, 32,
@@ -153,7 +154,8 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
 
     results_dict = {}
     for i, model_id in enumerate(model_id_list):
-        results_dict['acc_'+str(model_id)] = test_accs[i]
+        results_dict['model_id_'+(i+1)] = model_id
+        results_dict['acc_'+str(i+1)] = test_accs[i]
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 

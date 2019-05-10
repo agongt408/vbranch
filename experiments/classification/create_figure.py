@@ -57,13 +57,8 @@ def get_ensemble_acc_from_file(dataset, arch, num_classes, samples_per_class,
     ensemble_results = {}
     for b in branches:
         f = os.path.join(dirpath, 'B%d-test.csv' % b)
-        csv = pd.read_csv(f, header=None)
-
-        acc_list = []
-        for trial in range(8):
-            row = csv.iloc[2*trial+1]
-            acc_list.append(float(row.iloc[-1]))
-
+        csv = pd.read_csv(f)
+        acc_list = csv['before_mean_acc']
         ensemble_results[b] = [np.mean(acc_list), np.std(acc_list)]
 
     return ensemble_results

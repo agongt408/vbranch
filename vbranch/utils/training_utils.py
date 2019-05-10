@@ -22,16 +22,19 @@ def save_results(data, dirname, filename, mode='w'):
     if not os.path.isdir(csv_dir):
         os.system('mkdir -p ' + csv_dir)
 
+    csv_path = os.path.join(csv_dir, filename)
+
     if mode == 'w':
         results = pd.DataFrame(data=data)
     elif mode == 'a':
         results = pd.DataFrame(data=data, index=[0])
-        # results = pd.DataFrame(data=data, header=False)
     else:
         raise ValueError('invalid file I/O mode ("w" or "a")')
 
-    csv_path = os.path.join(csv_dir, filename)
-    results.to_csv(csv_path, mode=mode)
+    if os.path.isfile(csv_path):
+        results.to_csv(csv_path, mode=mode, header=False)
+    else:
+        results.to_csv(csv_path, mode=mode)
 
     return csv_path
 

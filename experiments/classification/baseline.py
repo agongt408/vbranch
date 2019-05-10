@@ -154,7 +154,7 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
 
     results_dict = {}
     for i, model_id in enumerate(model_id_list):
-        results_dict['model_id_'+(i+1)] = model_id
+        results_dict['model_id_'+str(i+1)] = model_id
         results_dict['acc_'+str(i+1)] = test_accs[i]
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc

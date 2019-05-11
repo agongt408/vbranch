@@ -171,7 +171,7 @@ def _get_dir_path(dataset, arch, num_classes, samples_per_class):
         dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%num_classes,
             'SpC%d' % samples_per_class)
     else:
-        dirpath = '{}-{}'.format(dataset, arch)
+        dirpath = os.path.join('{}-{}'.format(dataset, arch))
     return dirpath
 
 def _get_model_path(dataset, arch, num_classes, samples_per_class, model_id):

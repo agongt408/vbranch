@@ -31,7 +31,7 @@ def save_results(data, dirname, filename, mode='w'):
     else:
         raise ValueError('invalid file I/O mode ("w" or "a")')
 
-    if os.path.isfile(csv_path):
+    if os.path.isfile(csv_path) and mode == 'a':
         results.to_csv(csv_path, mode=mode, header=False)
     else:
         results.to_csv(csv_path, mode=mode)
@@ -68,7 +68,7 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
                 datasets.mnist.load_data(format='fcn')
     elif dataset == 'toy':
         # Generate toy dataset
-        assert architecture=='fcn', 'architecture must be fcn'
+        assert architecture in ['fcn', 'fcn2'], 'architecture must be fcn'
         assert not num_classes is None, 'num_classes cannot be None'
 
         num_samples = num_classes * samples_per_class

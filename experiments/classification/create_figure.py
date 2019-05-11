@@ -40,6 +40,7 @@ def _get_results_path(dataset, arch, num_classes, samples_per_class, vb=False):
 
 def get_baseline_acc_from_file(dataset, arch, num_classes, samples_per_class):
     dirpath = _get_results_path(dataset, arch, num_classes, samples_per_class)
+    print(dirpath)
 
     acc_list = []
     for f in glob(dirpath + '/train_*'):

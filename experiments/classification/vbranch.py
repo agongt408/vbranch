@@ -175,7 +175,8 @@ def _get_dir_path(dataset, arch, num_branches, shared_frac,
             'C%d'%num_classes, 'SpC%d' % samples_per_class, 'B%d'%num_branches,
             'S{:.2f}'.format(shared_frac))
     else:
-        dirpath = 'vb-{}-{}'.format(dataset, arch)
+        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
+            'B%d'%num_branches, 'S{:.2f}'.format(shared_frac))
     return dirpath
 
 def _get_model_path(dataset, arch, num_branches, shared_frac, num_classes,

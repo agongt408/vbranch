@@ -66,9 +66,14 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
         if architecture.find('fcn') > -1:
             (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
                 datasets.mnist.load_data(format='fcn')
+        elif architecture.find('cnn') > -1:
+            (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
+                datasets.mnist.load_data(format='cnn')
+        else:
+            raise ValueError('invalid architecture:', architecture)
     elif dataset == 'toy':
         # Generate toy dataset
-        assert architecture in ['fcn', 'fcn2'], 'architecture must be fcn'
+        # assert architecture in ['fcn', 'fcn2'], 'architecture must be fcn'
         assert not num_classes is None, 'num_classes cannot be None'
 
         num_samples = num_classes * samples_per_class

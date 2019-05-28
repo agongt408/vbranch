@@ -13,15 +13,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', action='store', default='mnist',
                     nargs='?', choices=['mnist', 'toy'], help='dataset')
 parser.add_argument('--architecture', action='store', default='fcn',
-                    nargs='?', choices=['fcn', 'cnn', 'fcn2'],
-                    help='model architecture, i.e., fcn or cnn')
+                    nargs='?', help='model architecture, i.e., fcn or cnn')
 parser.add_argument('--num_classes', action='store', nargs='*', type=int,
                     help='number of classes in toy dataset (list)')
 parser.add_argument('--samples_per_class', action='store', nargs='*', type=int,
                     help='samples per class (list)')
 parser.add_argument('--shared_frac', action='store', nargs='*', type=float,
                     default=[0, 0.25, 0.5, 0.75, 1],
-                    help='samples per class (list)')
+                    help='shared frac list')
 parser.add_argument('--num_branches', action='store', nargs='*', type=int,
                     help='number of branches (list)')
 

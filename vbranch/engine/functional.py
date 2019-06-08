@@ -58,6 +58,20 @@ class Network(object):
 
         print('Total parameters: {:d}'.format(total_num_params))
 
+    def count_parameters(self):
+        total_num_params = 0
+
+        for i, l in enumerate(self.layers):
+            config = l.get_config()
+            num_params = 0
+            if 'weights' in config.keys():
+                for weight in config['weights']:
+                    num_params += get_num_params(weight)
+
+            total_num_params += num_params
+
+        return total_num_params
+
 class NetworkVB(object):
     def __init__(self, inputs, outputs, name=None):
         self.input = inputs
@@ -129,6 +143,22 @@ class NetworkVB(object):
         model_summary.show()
 
         print('Total parameters: {:d}'.format(total_num_params))
+
+    def count_parameters(self):
+        total_num_params = 0
+
+        for i, l in enumerate(self.layers):
+            config = l.get_config()
+            name = config['name']
+
+            num_params = 0
+            if 'weights' in config.keys():
+                for weight in config['weights']:
+                    if weight != []:
+                        num_params += get_num_params(weight)
+            total_num_params += num_params
+
+        return total_num_params
 
 def _map_graph(inputs, outputs):
     """

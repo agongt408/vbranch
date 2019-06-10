@@ -1,6 +1,6 @@
 # Virtual Branching
 
-- Random Forest (simple ensemble)
+- Simple ensemble
 - Multiple branches (same data)
 - Multiple branches (different data, equally sized partitions)
 - Multiple branches (different data, differently sized partitions)
@@ -62,10 +62,10 @@ learning rate = 0.001; concatenate embeddings
 ## Notes
 
 Theory:
-- Hypothesis: reduce variance (see Bagging)
+- Hypothesis: reduce variance (see Bagging, Random Forest)
 
-Why does vbranch result in worse performance for FCN and shared fraction equals 1?
-- Hypothesis: too large of a batch size can sometimes lead to worse performance, especially for small models (i.e., FCN)
+<!-- Why does vbranch result in worse performance for FCN and shared fraction equals 1?
+- Hypothesis: too large of a batch size can sometimes lead to worse performance, especially for small models (i.e., FCN) -->
 
 Graph performance vs. number of parameters (direct instead of using shared_frac)
 
@@ -91,3 +91,6 @@ https://towardsdatascience.com/how-to-use-dataset-in-tensorflow-c758ef9e4428
 
 Bagging (with derivations):
 https://www.stat.berkeley.edu/~breiman/bagging.pdf
+
+Random Forest:
+https://www.stat.berkeley.edu/~breiman/randomforest2001.pdf

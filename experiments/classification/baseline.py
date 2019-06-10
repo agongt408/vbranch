@@ -2,7 +2,8 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch import utils
+from vbranch.utils.training_utils import p_console,save_results,get_data
+from vbranch.utils.test_utils import compute_before_mean_acc, compute_after_mean_acc
 
 import tensorflow as tf
 import numpy as np
@@ -38,7 +39,7 @@ parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1 then model_id used')
 
-def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
+def get_iter(x_shape, y_shape, BATCH_SIZE):
     x = tf.placeholder('float32', x_shape, name='x')
     y = tf.placeholder('float32', y_shape, name='y')
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -51,73 +52,65 @@ def get_data_as_tensor(x_shape, y_shape, BATCH_SIZE):
 
     return inputs, labels_one_hot, iter_
 
-def build_model(architecture, inputs, labels, num_classes,model_id,test=False):
-    if architecture == 'fcn':
-        model = vb.simple_fcn(inputs, 512, num_classes,
-            name='model_'+str(model_id))
-    elif architecture == 'fcn2':
-        model = vb.simple_fcn(inputs, 512, 256, num_classes,
-            name='model_'+str(model_id))
-    elif architecture == 'fcn3':
-        model = vb.simple_fcn(inputs, 512, 512, num_classes,
-            name='model_'+str(model_id))
-    elif architecture == 'fcn4':
-        model = vb.simple_fcn(inputs, 512, 512, 512, num_classes,
-            name='model_'+str(model_id))
-    elif architecture == 'cnn':
-        model = vb.simple_cnn(inputs, num_classes, 16, 32,
-            name='model_'+str(model_id))
-    else:
-        raise ValueError('Invalid architecture')
+def build_model(architecture, inputs, labels, n_classes, name):
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        if architecture == 'fcn':
+            model = vb.simple_fcn(inputs, 512, n_classes, name=name)
+        elif architecture == 'fcn2':
+            model = vb.simple_fcn(inputs, 512, 256, n_classes, name=name)
+        elif architecture == 'fcn3':
+            model = vb.simple_fcn(inputs, 512, 512, n_classes, name=name)
+        elif architecture == 'fcn4':
+            model = vb.simple_fcn(inputs, 512, 512, 512, n_classes, name=name)
+        elif architecture == 'cnn':
+            model = vb.simple_cnn(inputs, n_classes, 16, 32, name=name)
+        else:
+            raise ValueError('Invalid architecture')
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-    model.compile(optimizer, 'softmax_cross_entropy_with_logits',
-                    labels_one_hot=labels, test=test)
-    if not test:
-        model.summary()
-
+        optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+        model.compile(optimizer, 'softmax_cross_entropy_with_logits',
+                        labels_one_hot=labels)
     return model
 
-def train(dataset,arch,model_id,num_classes,num_features,samples_per_class,
+def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
         epochs, steps_per_epoch,batch_size):
-
+    name = 'model_' + str(model_id)
     # Get path to save model
-    model_path = _get_model_path(dataset, arch, num_classes, samples_per_class,
-        model_id)
-    print(utils.bcolors.HEADER+'Save model path: '+model_path+utils.bcolors.ENDC)
+    model_path = _model_path(dataset, arch, n_classes, samples_per_class,model_id)
+    p_console('Save model path: ' + model_path)
 
     # Load data
-    (X_train,y_train),(X_test,y_test) = utils.get_data(dataset, arch,
-        num_classes, num_features, samples_per_class)
+    (X_train, y_train), (X_test, y_test) = get_data(dataset, arch,
+        n_classes, n_features, samples_per_class)
 
     tf.reset_default_graph()
 
     # Convert data to iterator using Dataset API
     x_shape = (None,) + X_train.shape[1:]
-    y_shape = (None, num_classes)
-    inputs, labels, iterator = get_data_as_tensor(x_shape,y_shape,batch_size)
+    y_shape = (None, n_classes)
+    inputs, labels, iterator = get_iter(x_shape,y_shape,batch_size)
 
-    model = build_model(arch, inputs, labels, num_classes, model_id)
+    model = build_model(arch, inputs, labels, n_classes, name)
 
     # Build copy of model for testing
     x_place = tf.placeholder('float32', x_shape, name='x_test')
     y_place = tf.placeholder('float32', y_shape, name='y_test')
-    test_model = build_model(arch,x_place,y_place,num_classes,model_id,test=True)
+    model_copy = build_model(arch, x_place, y_place, n_classes, name)
 
     history = model.fit(iterator, X_train, y_train, epochs, steps_per_epoch,
-        batch_size, validation=(X_test, y_test), test_model=test_model,
+        batch_size, validation=(X_test, y_test), test_model=model_copy,
         save_model_path=model_path)
 
-    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
-    utils.save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
+    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+    save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
-def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
+def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
         output_dict={}, acc_dict={}):
 
     print(model_id_list)
 
-    _, (X_test, y_test) = utils.get_data(dataset, arch, num_classes,
-        num_features, samples_per_class)
+    _, (X_test, y_test) = utils.get_data(dataset, arch, n_classes,
+        n_features, samples_per_class)
 
     test_outputs = []
     test_accs = []
@@ -130,7 +123,7 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
             tf.reset_default_graph()
 
             with tf.Session() as sess:
-                model_path = _get_model_path(dataset, arch, num_classes,
+                model_path = _get_model_path(dataset, arch, n_classes,
                     samples_per_class, model_id)
                 meta_path = os.path.join(model_path, 'ckpt.meta')
                 ckpt = tf.train.get_checkpoint_state(model_path)
@@ -142,7 +135,7 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
                     feed_dict={'x_test:0':X_test})
 
             # Compute accuracy outside of the graph
-            acc = utils.compute_acc(output, y_test, num_classes)
+            acc = utils.compute_acc(output, y_test, n_classes)
 
             output_dict[model_id] = output
             acc_dict[model_id] = acc
@@ -150,8 +143,8 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
         test_outputs.append(output)
         test_accs.append(acc)
 
-    before_mean_acc = utils.compute_before_mean_acc(test_outputs,y_test,num_classes)
-    after_mean_acc = utils.compute_after_mean_acc(test_outputs,y_test,num_classes)
+    before_mean_acc = utils.compute_before_mean_acc(test_outputs,y_test,n_classes)
+    after_mean_acc = utils.compute_after_mean_acc(test_outputs,y_test,n_classes)
 
     print('Individual accs:', test_accs)
     print('Before mean acc:', before_mean_acc)
@@ -164,24 +157,23 @@ def test(dataset,arch,model_id_list,num_classes,num_features,samples_per_class,
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
-    utils.save_results(results_dict, dirpath, 'B%d-test.csv' % \
-        len(model_id_list), mode='a')
+    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+    save_results(results_dict, dirpath, 'B%d-test.csv'%len(model_id_list), 'a')
 
     return output_dict, acc_dict
 
-def _get_dir_path(dataset, arch, num_classes, samples_per_class):
+def _dir_path(dataset, arch, n_classes, samples_per_class):
     if dataset == 'toy':
         # Further organize results by number of classes and samples_per_class
-        dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%num_classes,
+        dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%n_classes,
             'SpC%d' % samples_per_class)
     else:
         dirpath = os.path.join('{}-{}'.format(dataset, arch))
     return dirpath
 
-def _get_model_path(dataset, arch, num_classes, samples_per_class, model_id):
+def _model_path(dataset, arch, n_classes, samples_per_class, model_id):
     # Get path to save model
-    dirpath = _get_dir_path(dataset, arch, num_classes, samples_per_class)
+    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
     model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
 
     if not os.path.isdir(model_path):
@@ -193,7 +185,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(utils.bcolors.HEADER + 'MODE: TEST' + utils.bcolors.ENDC)
+        p_console('MODE: TEST')
 
         if args.trials == 1:
             # args.model_id is a list of model ids
@@ -216,7 +208,7 @@ if __name__ == '__main__':
                     model_ids, args.num_classes, args.num_features,
                     args.samples_per_class, output_dict, acc_dict)
     else:
-        print(utils.bcolors.HEADER + 'MODE: TRAIN' + utils.bcolors.ENDC)
+        p_console('MODE: TRAIN')
 
         if args.trials == 1:
             for model_id in args.model_id:

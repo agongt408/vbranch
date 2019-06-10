@@ -89,3 +89,36 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
         raise ValueError('invalid dataset: ' + dataset)
 
     return (X_train, y_train_one_hot), (X_test, y_test_one_hot)
+
+def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
+    """
+    Perform bagging on numpy arrays X, Y
+    Args:
+        - n: number of samples
+        - max_samples: float or int, size of each random sample
+        - bootstrap: if true, choose with replacement
+    """
+
+    x_list = []
+    y_list = []
+
+    if type(max_samples) is float:
+        samples = int(max_samples * len(X))
+    elif type(max_samples) is int:
+        samples = max_samples
+    else:
+        raise ValueError('max_samples must be float or int')
+
+    for i in range(n):
+        choice = np.random.choice(len(X), samples, replace=bootstrap)
+        x_sample = X[choice]
+        y_sample = Y[choice]
+
+        x_list.append(x_sample)
+        y_list.append(y_sample)
+
+    return x_list, y_list
+
+def p_console(*args):
+    # Print to console
+    print(bcolors.HEADER, *args, bcolors.ENDC)

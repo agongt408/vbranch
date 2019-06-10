@@ -1,7 +1,7 @@
 # Declare models using input and output tensors
 # Utilizes _vb_history attribute
 
-from ..utils import Summary, get_shape_as_str, shape_to_str, get_num_params
+from ..utils.generic_utils import Summary, get_shape_as_str, shape_to_str, get_num_params
 from ..vb_layers import VBOutput
 
 import tensorflow as tf

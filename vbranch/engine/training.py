@@ -31,18 +31,21 @@ class Model(Network):
             self.loss = triplet_omniglot(self.output, A=kwargs['A'],
                 P=kwargs['P'], K=kwargs['K'], name='loss')
         else:
-            raise ValueError('invalid loss')
+            # raise ValueError('invalid loss')
+            print('Custom loss used...')
+            self.loss = loss
 
-        if not test:
-            # Set training op
-            self.train_op = optimizer.minimize(self.loss)
+        # Set training op
+        self.train_op = optimizer.minimize(self.loss)
 
     def fit(self, iterator, x, y, epochs, steps_per_epoch, batch_size,
             validation=None, test_model=None, save_model_path=None):
 
+        history = {}
+
+        # Get tensors
         tensors = {}
         validation_tensors = {}
-        history = {}
 
         for t in ['loss', 'acc']:
             if hasattr(self, t):
@@ -53,9 +56,26 @@ class Model(Network):
                 validation_tensors['val_' + t] = getattr(test_model, t)
                 history['val_' + t] = []
 
-        history = _fit(history, [iterator], x, y, epochs, steps_per_epoch,
-            batch_size, tensors, validation_tensors, self.train_op, validation,
-            save_model_path)
+        # Get feed_dicts
+        default_graph = tf.get_default_graph()
+
+        data_dict = {
+            default_graph.get_tensor_by_name('x:0'): x,
+            default_graph.get_tensor_by_name('y:0'): y,
+            default_graph.get_tensor_by_name('batch_size:0'): batch_size
+        }
+
+        if validation is None:
+            val_data_dict = {}
+        else:
+            val_data_dict = {
+                default_graph.get_tensor_by_name('x_test:0'): validation[0],
+                default_graph.get_tensor_by_name('y_test:0'): validation[1]
+            }
+
+        history = _fit(history, [iterator], data_dict, epochs,
+            steps_per_epoch, tensors, validation_tensors,
+            self.train_op, val_data_dict, save_model_path)
 
         return history
 
@@ -71,8 +91,7 @@ class ModelVB(NetworkVB):
             labels_one_hot = kwargs['labels_one_hot']
             self.accs = self._get_acc_ops(labels_one_hot)
 
-        if not test:
-            self.train_ops = self._get_train_ops(optimizer)
+        self.train_ops = self._get_train_ops(optimizer)
 
     def fit(self, iterators, x, y, epochs, steps_per_epoch, batch_size,
             validation=None, test_model=None, save_model_path=None):
@@ -94,9 +113,55 @@ class ModelVB(NetworkVB):
                     validation_tensors['val_' + k] = attr[k]
                     history['val_' + k] = []
 
-        history = _fit(history, iterators, x, y, epochs, steps_per_epoch,
-            batch_size, tensors, validation_tensors, self.train_ops,
-            validation, save_model_path)
+        # Get feed_dicts
+        default_graph = tf.get_default_graph()
+
+        data_dict = {
+            default_graph.get_tensor_by_name('x:0'): x,
+            default_graph.get_tensor_by_name('y:0'): y,
+            default_graph.get_tensor_by_name('batch_size:0'): batch_size
+        }
+
+        if validation is None:
+            val_data_dict = {}
+        else:
+            val_data_dict = {
+                default_graph.get_tensor_by_name('x_test:0'): validation[0],
+                default_graph.get_tensor_by_name('y_test:0'): validation[1]
+            }
+
+        history = _fit(history, iterators, data_dict, epochs,
+            steps_per_epoch, tensors, validation_tensors, self.train_ops,
+            val_data_dict, save_model_path)
+
+        return history
+
+    def fit_data(self, iterators, epochs, steps_per_epoch, batch_size,
+            data_dict, val_dict=None, test_model=None, save_model_path=None):
+
+        tensors = {}
+        validation_tensors = {}
+        history = {}
+
+        for t in ['losses', 'accs']:
+            if hasattr(self, t):
+                attr = getattr(self, t)
+                for k in attr.keys():
+                    tensors['train_' + k] = attr[k]
+                    history['train_' + k] = []
+
+            if not val_dict is None and hasattr(test_model, t):
+                attr = getattr(test_model, t)
+                for k in attr.keys():
+                    validation_tensors['val_' + k] = attr[k]
+                    history['val_' + k] = []
+
+        b_s = tf.get_default_graph().get_tensor_by_name('batch_size:0')
+        data_dict[b_s] = batch_size
+
+        history = _fit(history, iterators, data_dict, epochs, steps_per_epoch,
+            tensors, validation_tensors, self.train_ops,
+            val_dict, save_model_path)
 
         return history
 
@@ -125,8 +190,9 @@ class ModelVB(NetworkVB):
         losses = {}
 
         for i in range(self.n_branches):
+            name = 'loss_'+str(i+1)
+
             if loss == 'softmax_cross_entropy_with_logits':
-                name = 'loss_'+str(i+1)
                 labels = kwargs['labels_one_hot'][i]
                 losses[name] = softmax_cross_entropy_with_logits(labels=labels,
                     logits=self.output[i], name=name)
@@ -215,19 +281,9 @@ def _get_operations(attributes, operations):
             if isinstance(attr, tf.Operation):
                 operations[attr.name] = attr
 
-def _fit(history, iterators, x, y, epochs, steps_per_epoch, batch_size, tensors,
-        validation_tensors, ops, validation=None, save_model_path=None):
-
-    default_graph = tf.get_default_graph()
-
-    # Get tensors for training
-    x_train = default_graph.get_tensor_by_name('x:0')
-    y_train = default_graph.get_tensor_by_name('y:0')
-    b_s = default_graph.get_tensor_by_name('batch_size:0')
-
-    # Get tensors for validation
-    x_test = default_graph.get_tensor_by_name('x_test:0')
-    y_test = default_graph.get_tensor_by_name('y_test:0')
+def _fit(history, iterators, data_dict, epochs, steps_per_epoch,
+        tensors, validation_tensors, ops, val_data_dict=None,
+        save_model_path=None):
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -237,8 +293,7 @@ def _fit(history, iterators, x, y, epochs, steps_per_epoch, batch_size, tensors,
             progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
 
             # Training
-            sess.run([it.initializer for it in iterators],
-                feed_dict={x_train:x, y_train:y, b_s: batch_size})
+            sess.run([it.initializer for it in iterators], feed_dict=data_dict)
 
             for i in range(steps_per_epoch):
                 progbar_vals = []
@@ -248,8 +303,7 @@ def _fit(history, iterators, x, y, epochs, steps_per_epoch, batch_size, tensors,
 
                 if validation_tensors != {} and i == steps_per_epoch - 1:
                     val_tensors_v = sess.run(validation_tensors,
-                        feed_dict={x_test:validation[0],
-                                   y_test:validation[1]})
+                        feed_dict=val_data_dict)
 
                     for t in validation_tensors.keys():
                         progbar_vals.append((t, val_tensors_v[t]))
@@ -262,7 +316,7 @@ def _fit(history, iterators, x, y, epochs, steps_per_epoch, batch_size, tensors,
                 history[t].append(train_tensors_v[t])
 
             # Add validation to history
-            if not validation is None:
+            if not val_data_dict is None:
                 for t in validation_tensors.keys():
                     history[t].append(val_tensors_v[t])
 

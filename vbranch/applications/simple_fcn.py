@@ -9,53 +9,53 @@ def default(input_tensor, *layers_spec, name=None):
     # Model created using Functional approach
     # NOTE: input_tensor is a single Tensor object
 
-    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        # Wrap input tensor in Input layer in order to retrieve inbound name
-        # when printing model summary
-        ip = L.Input(input_tensor)
-        x = ip
+    # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+    # Wrap input tensor in Input layer in order to retrieve inbound name
+    # when printing model summary
+    ip = L.Input(input_tensor)
+    x = ip
 
-        for i, units in enumerate(layers_spec[:-1]):
-            x = L.Dense(units, 'fc'+str(i + 1))(x)
-            x = L.BatchNormalization('bn'+str(i + 1))(x)
-            x = L.Activation('relu', 'relu'+str(i+1))(x)
+    for i, units in enumerate(layers_spec[:-1]):
+        x = L.Dense(units, 'fc'+str(i + 1))(x)
+        x = L.BatchNormalization('bn'+str(i + 1))(x)
+        x = L.Activation('relu', 'relu'+str(i+1))(x)
 
-        # 7June2019: Don't apply batch norm or relu for last FC layer
-        x = L.Dense(layers_spec[-1], 'output')(x)
+    # 7June2019: Don't apply batch norm or relu for last FC layer
+    x = L.Dense(layers_spec[-1], 'output')(x)
 
-        model = Model(ip, x, name=name)
+    model = Model(ip, x, name=name)
 
     return model
 
 def vbranch_default(inputs, *layers_spec, branches=1, name=None):
     # NOTE: inputs can be single Tensor or list of Tensors
 
-    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        ip = VBL.Input(inputs, branches)
-        x = ip
+    # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+    ip = VBL.Input(inputs, branches)
+    x = ip
 
-        for i, (units_list, shared_units) in enumerate(layers_spec[:-1]):
-            x = VBL.Dense(units_list,branches,'fc'+str(i + 1), shared_units)(x)
-            x = VBL.BatchNormalization(branches, 'bn'+str(i + 1))(x)
+    for i, (units_list, shared_units) in enumerate(layers_spec[:-1]):
+        x = VBL.Dense(units_list,branches,'fc'+str(i + 1), shared_units)(x)
+        x = VBL.BatchNormalization(branches, 'bn'+str(i + 1))(x)
 
-            # activation_name = 'relu'+str(i + 1) if (i < len(layers_spec) - 1 or \
-            #     layers_spec[-1][-1] > 0) else 'output'
-            # x = VBL.Activation('relu', branches, activation_name)(x)
+        # activation_name = 'relu'+str(i + 1) if (i < len(layers_spec) - 1 or \
+        #     layers_spec[-1][-1] > 0) else 'output'
+        # x = VBL.Activation('relu', branches, activation_name)(x)
 
-            x = VBL.Activation('relu', branches, 'relu'+str(i + 1))(x)
+        x = VBL.Activation('relu', branches, 'relu'+str(i + 1))(x)
 
-        # 7June2019: Don't apply batch norm or relu for last FC layer
+    # 7June2019: Don't apply batch norm or relu for last FC layer
 
-        if layers_spec[-1][-1] > 0:
-            # If using shared params
-            x = VBL.Dense(layers_spec[-1][0], branches, 'fc_output',
-                          layers_spec[-1][1])(x)
-            x = VBL.MergeSharedUnique(branches, 'output')(x)
-        else:
-            x = VBL.Dense(layers_spec[-1][0], branches, 'output',
-                          layers_spec[-1][1])(x)
+    if layers_spec[-1][-1] > 0:
+        # If using shared params
+        x = VBL.Dense(layers_spec[-1][0], branches, 'fc_output',
+                      layers_spec[-1][1])(x)
+        x = VBL.MergeSharedUnique(branches, 'output')(x)
+    else:
+        x = VBL.Dense(layers_spec[-1][0], branches, 'output',
+                      layers_spec[-1][1])(x)
 
-        model = ModelVB(ip, x, name=name)
+    model = ModelVB(ip, x, name=name)
 
     return model
 

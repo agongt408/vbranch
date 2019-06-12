@@ -23,20 +23,20 @@ class Conv2D(Layer):
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]
 
-        self.f = tf.get_variable(self.name + '_f', shape=[self.kernel_size,
+        self.f = tf.get_variable('filter', shape=[self.kernel_size,
             self.kernel_size, channels_in, self.filters])
 
         strides = (1, self.strides, self.strides, 1)
 
         if self.use_bias:
             output = tf.nn.conv2d(x, self.f, strides, self.padding.upper())
-            self.b = tf.get_variable(self.name + '_b',
-                initializer=tf.zeros([self.filters]))
+            self.b = tf.get_variable('bias', initializer=tf.zeros([self.filters]))
+
             b = tf.reshape(self.b, [-1, 1, 1, self.filters])
-            output = tf.add(output, b, name=self.name)
+            output = tf.add(output, b, name='output')
         else:
             output = tf.nn.conv2d(x, self.f, strides, self.padding.upper(),
-                name=self.name)
+                name='output')
 
         return output
 
@@ -67,18 +67,18 @@ class Conv1D(Layer):
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]
 
-        self.f = tf.get_variable(self.name + '_f', shape=[self.kernel_size,
+        self.f = tf.get_variable('filter', shape=[self.kernel_size,
             channels_in, self.filters])
 
         if self.use_bias:
             output = tf.nn.conv1d(x,self.f,self.strides,self.padding.upper())
-            self.b = tf.get_variable(self.name + '_b',
-                initializer=tf.zeros([self.filters]))
+            self.b = tf.get_variable('bias', initializer=tf.zeros([self.filters]))
+
             b = tf.reshape(self.b, [-1, 1, self.filters])
-            output = tf.add(output, b, name=self.name)
+            output = tf.add(output, b, name='output')
         else:
             output = tf.nn.conv1d(x, self.f, strides, self.padding.upper(),
-                name=self.name)
+                name='output')
 
         return output
 

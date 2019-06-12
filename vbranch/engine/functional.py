@@ -31,8 +31,11 @@ class Network(object):
         model_summary.add('', 'Input', input_shape, '', '', '')
 
         for i, l in enumerate(self.layers):
-            config = l.get_config()
-            name = config['name']
+            # Feed variable scope in order to get variable collection
+            with tf.variable_scope(self.name):
+                config = l.get_config()
+
+            name = '{} ({})'.format(config['name'], l.__class__.__name__)
             output_shape = shape_to_str(config['output_shape'])
 
             num_params = 0
@@ -110,8 +113,11 @@ class NetworkVB(object):
             model_summary.add('', 'Input', input_shape, '', '')
 
         for i, l in enumerate(self.layers):
-            config = l.get_config()
-            name = config['name']
+            # Feed variable scope in order to get variable collection
+            with tf.variable_scope(self.name):
+                config = l.get_config()
+                
+            name = '{} ({})'.format(config['name'], l.__class__.__name__)
 
             num_params = 0
             if 'weights' in config.keys():

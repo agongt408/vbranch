@@ -145,8 +145,8 @@ def test(dataset, arch, n_branches, model_id, shared, n_classes,
 
     p_console('Load model path: ' + model_path)
 
-    (X_train, y_train), (X_test, y_test) = get_data(dataset, arch,
-        n_classes, n_features, samples_per_class)
+    _, (X_test, y_test) = get_data(dataset, arch, n_classes, n_features,
+        samples_per_class)
 
     losses = []
     indiv_accs = []

@@ -48,7 +48,7 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
     return func
 
 def get_data(dataset, architecture, num_classes=10, num_features=784,
-        samples_per_class=1000):
+        samples_per_class=1000, one_hot=True):
     """
     Load (or generate) data
     Args:
@@ -64,11 +64,11 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
     if dataset == 'mnist':
         # Load data from MNIST
         if architecture.find('fcn') > -1:
-            (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-                datasets.mnist.load_data(format='fcn')
+            (X_train, y_train), (X_test, y_test) = \
+                datasets.mnist.load_data(format='fcn', one_hot=one_hot)
         elif architecture.find('cnn') > -1:
-            (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
-                datasets.mnist.load_data(format='cnn')
+            (X_train, y_train), (X_test, y_test) = \
+                datasets.mnist.load_data(format='cnn', one_hot=one_hot)
         else:
             raise ValueError('invalid architecture:', architecture)
     elif dataset == 'toy':
@@ -79,7 +79,7 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
         num_samples = num_classes * samples_per_class
 
         print('Creating dataset (hypercube)...')
-        (X_train, y_train_one_hot), (X_test, y_test_one_hot) = \
+        (X_train, y_train), (X_test, y_test) = \
             datasets.toy.generate_from_hypercube(num_samples=num_samples,
                 num_features=num_features, num_classes=num_classes)
 
@@ -88,7 +88,7 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
     else:
         raise ValueError('invalid dataset: ' + dataset)
 
-    return (X_train, y_train_one_hot), (X_test, y_test_one_hot)
+    return (X_train, y_train), (X_test, y_test)
 
 def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
     """

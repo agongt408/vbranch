@@ -44,10 +44,11 @@ class VBOutput(object):
             raise StopIteration
 
 class Layer(object):
-    def __init__(self, name, n_branches):
+    def __init__(self, name, n_branches, merge=False):
         self.name = name
         self.n_branches = n_branches
         self.output_shapes = []
+        self.merge = merge
 
     # Decorator for exanding input for branches and
     # setting output shape after calling the layer
@@ -89,12 +90,24 @@ class Layer(object):
                 x = VBOutput([x] * layer.n_branches)
                 layer._inbound_tensors = [x]
 
-            output = func(layer, x)
+            with tf.variable_scope(layer.name):
+                if layer.merge:
+                    output_list = []
+                    for i, output in enumerate(func(layer, x)):
+                        if type(output) is list:
+                            with tf.variable_scope('vb'+str(i+1)):
+                                vb_output = smart_concat(output, name='output')
+                            output_list.append(vb_output)
+                        else:
+                            output_list.append(output)
+                else:
+                    output_list = func(layer, x)
 
-            if not type(output) is list:
-                output_list = [output]
-            else:
-                output_list = output
+            # if not type(output) is list:
+            #     print('95> not list')
+            #     output_list = [output]
+            # else:
+            #     output_list = output
 
             layer.output_shapes = []
             for o in output_list:
@@ -106,15 +119,18 @@ class Layer(object):
 
             # Set vb history
             # First convert output to Python object
-            vb_out = VBOutput(output)
+            vb_out = VBOutput(output_list)
             setattr(vb_out, '_vb_history', layer)
 
             return vb_out
 
         return call
 
-    def get_weights(self):
-        return []
+    @L.eval_params
+    def get_weights(self, eval_weights=True):
+        scope = tf.get_variable_scope().name + '/' + self.name
+        weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
+        return weights
 
     def get_config(self):
         config = {'name':self.name, 'n_branches':self.n_branches,
@@ -146,20 +162,20 @@ class Dense(Layer):
     number of `shared units`. All other weights are unique per branch.
     """
 
-    def __init__(self, units_list, n_branches, name, shared_units=0):
+    def __init__(self, units_list, n_branches, name, shared_units=0, merge=False):
         """
         Args:
             - units_list: number of units per branch
             - shared_units: number of shared units per branch (aka size of
             shared output)
         """
-
-        super().__init__(name, n_branches)
+        super().__init__(name, n_branches, merge)
 
         assert n_branches == len(units_list), 'n_branches != len(units_list)'
         self.units_list = units_list
         self.shared_units = shared_units
         self.shared_branch = None
+        # self.merge = merge
 
     @Layer.call
     def __call__(self, x):
@@ -168,7 +184,7 @@ class Dense(Layer):
 
         if self.shared_units == 0:
             for i in range(self.n_branches):
-                layer = L.Dense(self.units_list[i],self.name+'_vb'+str(i+1))
+                layer = L.Dense(self.units_list[i], 'vb'+str(i+1))
 
                 if type(x[i]) is list:
                     input_ = smart_concat(x[i], -1)
@@ -182,19 +198,20 @@ class Dense(Layer):
             return output_list
 
         # For efficiency, only apply computation to shared_in ONCE
-        self.shared_branch = L.Dense(self.shared_units,self.name+'_shared_to_shared')
+        self.shared_branch = L.Dense(self.shared_units, 'shared_to_shared')
 
         for i in range(self.n_branches):
-            assert self.units_list[i] >= self.shared_units, 'units < shared_units'
+            assert self.units_list[i] >= self.shared_units, \
+                'units < shared_units'
             unique_units = self.units_list[i] - self.shared_units
 
             # Operations to build the rest of the layer
             shared_to_unique = L.Dense(unique_units,
-                self.name+'_vb'+str(i+1)+'_shared_to_unique')
+                'vb'+str(i+1)+'_shared_to_unique')
             unique_to_shared = L.Dense(self.shared_units,
-                self.name+'_vb'+str(i+1)+'_unique_to_shared')
+                'vb'+str(i+1)+'_unique_to_shared')
             unique_to_unique = L.Dense(unique_units,
-                self.name+'_vb'+str(i+1)+'_unique_to_unique')
+                'vb'+str(i+1)+'_unique_to_unique')
 
             if type(x[i]) is list:
                 shared_in = x[i][0]
@@ -217,26 +234,6 @@ class Dense(Layer):
 
         return output_list
 
-    @L.eval_params
-    def get_weights(self, eval_weights=True):
-        # Get weights for shared branch
-        if self.shared_branch is None:
-            weights = [[], []]
-        else:
-            weights = [self.shared_branch.w, self.shared_branch.b]
-
-        # Get unique weights
-        if self.shared_units == 0:
-            for layer in self.branches:
-                weights += [layer.w, layer.b]
-        else:
-            for layer in self.branches:
-                weights += [layer.shared_to_unique.w, layer.shared_to_unique.b,
-                    layer.unique_to_shared.w, layer.unique_to_shared.b,
-                    layer.unique_to_unique.w, layer.unique_to_unique.b]
-
-        return weights
-
     def get_config(self, eval_weights=False):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'shared_units':self.shared_units, 'output_shapes':self.output_shapes,
@@ -249,8 +246,8 @@ class BatchNormalization(Layer):
     size of shared output from previous layer.
     """
 
-    def __init__(self, n_branches, name, epsilon=1e-8):
-        super().__init__(name, n_branches)
+    def __init__(self, n_branches, name, epsilon=1e-8, merge=False):
+        super().__init__(name, n_branches, merge)
         self.epsilon = epsilon
         self.shared_branch = None
 
@@ -264,12 +261,12 @@ class BatchNormalization(Layer):
 
         # For efficiency, only apply computation to shared_in ONCE
         if type(x[0]) is list:
-            self.shared_branch = L.BatchNormalization(self.name+'_shared_to_shared',
+            self.shared_branch = L.BatchNormalization('shared_to_shared',
                 self.epsilon)
 
         for i in range(self.n_branches):
             # Operations to build the rest of the layer
-            unique_to_unique = L.BatchNormalization(self.name+'_vb'+str(i+1)+\
+            unique_to_unique = L.BatchNormalization('vb'+str(i+1)+\
                 '_unique_to_unique', self.epsilon)
 
             if type(x[i]) is list:
@@ -283,20 +280,6 @@ class BatchNormalization(Layer):
 
         return output_list
 
-    @L.eval_params
-    def get_weights(self, eval_weights=True):
-        # Get weights for shared branch
-        if self.shared_branch is None:
-            weights = [[], []]
-        else:
-            weights = [self.shared_branch.beta, self.shared_branch.scale]
-
-        # Get unique weights
-        for layer in self.branches:
-            weights += [layer.beta, layer.scale]
-
-        return weights
-
     def get_config(self, eval_weights=False):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'epsilon':self.epsilon, 'output_shapes':self.output_shapes,
@@ -304,8 +287,8 @@ class BatchNormalization(Layer):
         return config
 
 class Activation(Layer):
-    def __init__(self, activation, n_branches, name):
-        super().__init__(name, n_branches)
+    def __init__(self, activation, n_branches, name, merge=False):
+        super().__init__(name, n_branches, merge)
         self.activation = activation
 
     @Layer.call
@@ -314,7 +297,7 @@ class Activation(Layer):
         output_list = []
 
         for i in range(self.n_branches):
-            layer = L.Activation(self.activation, self.name+'_vb'+str(i+1))
+            layer = L.Activation(self.activation, 'vb'+str(i+1))
 
             if type(x[i]) is list:
                 shared_out = layer(x[i][0])

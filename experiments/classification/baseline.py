@@ -109,7 +109,7 @@ def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
 
     print(model_id_list)
 
-    _, (X_test, y_test) = utils.get_data(dataset, arch, n_classes,
+    _, (X_test, y_test) = get_data(dataset, arch, n_classes,
         n_features, samples_per_class)
 
     test_outputs = []
@@ -123,7 +123,7 @@ def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
             tf.reset_default_graph()
 
             with tf.Session() as sess:
-                model_path = _get_model_path(dataset, arch, n_classes,
+                model_path = _model_path(dataset, arch, n_classes,
                     samples_per_class, model_id)
                 meta_path = os.path.join(model_path, 'ckpt.meta')
                 ckpt = tf.train.get_checkpoint_state(model_path)

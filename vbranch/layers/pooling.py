@@ -12,6 +12,7 @@ class AveragePooling2D(Layer):
     @Layer.call
     def __call__(self, x):
         shape_in = x.get_shape().as_list()
+
         ksize = (1, self.pool_size[0], self.pool_size[1], 1)
 
         if self.strides is None:
@@ -20,8 +21,8 @@ class AveragePooling2D(Layer):
             strides = (1, self.strides[0], self.strides[1], 1)
 
         output = tf.nn.avg_pool(x, ksize, strides, self.padding.upper(),
-            name=self.name)
-        # self.output_shape = output.get_shape().as_list()
+            name='output')
+
         return output
 
     def get_config(self):
@@ -36,6 +37,5 @@ class GlobalAveragePooling2D(Layer):
 
     @Layer.call
     def __call__(self, x):
-        output = tf.reduce_mean(x, axis=[1, 2], name=self.name)
-        # self.output_shape = output.get_shape().as_list()
+        output = tf.reduce_mean(x, axis=[1, 2], name='output')
         return output

@@ -3,8 +3,8 @@ from .core import Layer, smart_add, smart_concat, CrossWeights
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,
-            shared_filters=0, strides=1, padding='valid'):
-        super().__init__(name, n_branches)
+            shared_filters=0, strides=1, padding='valid', merge=False):
+        super().__init__(name, n_branches, merge)
 
         assert n_branches == len(filters_list),'n_branches != len(filters_list)'
         self.filters_list = filters_list
@@ -13,6 +13,7 @@ class Conv2D(Layer):
         self.padding = padding
         self.shared_filters = shared_filters
         self.shared_branch = None
+        # self.merge = merge
 
     @Layer.call
     def __call__(self, x):
@@ -22,8 +23,7 @@ class Conv2D(Layer):
         if self.shared_filters == 0:
             for i in range(self.n_branches):
                 layer = L.Conv2D(self.filters_list[i], self.kernel_size,
-                    self.name+'_vb'+str(i+1), strides=self.strides,
-                    padding=self.padding)
+                    'vb'+str(i+1), strides=self.strides, padding=self.padding)
 
                 if type(x[i]) is list:
                     input_ = smart_concat(x[i], -1)
@@ -38,21 +38,22 @@ class Conv2D(Layer):
 
         # For efficiency, only apply computation to shared_in ONCE
         self.shared_branch = L.Conv2D(self.shared_filters, self.kernel_size,
-            self.name+'_shared_to_shared',strides=self.strides,padding=self.padding)
+            'shared_to_shared',strides=self.strides,padding=self.padding)
 
         for i in range(self.n_branches):
-            assert self.filters_list[i] >= self.shared_filters, 'filters < shared_filters'
+            assert self.filters_list[i] >= self.shared_filters, \
+                'filters < shared_filters'
             unique_filters = self.filters_list[i] - self.shared_filters
 
             # Operations to build the rest of the layer
             shared_to_unique = L.Conv2D(unique_filters, self.kernel_size,
-                self.name+'_vb'+str(i+1)+'_shared_to_unique',strides=self.strides,
+                'vb'+str(i+1)+'_shared_to_unique', strides=self.strides,
                 padding=self.padding)
             unique_to_shared = L.Conv2D(self.shared_filters, self.kernel_size,
-                self.name+'_vb'+str(i+1)+'_unique_to_shared',strides=self.strides,
+                'vb'+str(i+1)+ '_unique_to_shared', strides=self.strides,
                 padding=self.padding)
             unique_to_unique = L.Conv2D(unique_filters, self.kernel_size,
-                self.name+'_vb'+str(i+1)+'_unique_to_unique',strides=self.strides,
+                'vb'+str(i+1) + '_unique_to_unique', strides=self.strides,
                 padding=self.padding)
 
             if type(x[i]) is list:
@@ -75,26 +76,6 @@ class Conv2D(Layer):
             output_list.append([shared_out, unique_out])
 
         return output_list
-
-    @L.eval_params
-    def get_weights(self, eval_weights=True):
-        # Get weights for shared branch
-        if self.shared_branch is None:
-            weights = [[], []]
-        else:
-            weights = [self.shared_branch.f, self.shared_branch.b]
-
-        # Get unique weights
-        if self.shared_filters == 0:
-            for layer in self.branches:
-                weights += [layer.f, layer.b]
-        else:
-            for layer in self.branches:
-                weights += [layer.shared_to_unique.f, layer.shared_to_unique.b,
-                    layer.unique_to_shared.f, layer.unique_to_shared.b,
-                    layer.unique_to_unique.f, layer.unique_to_unique.b]
-
-        return weights
 
     def get_config(self, eval_weights=False):
         config = {'name':self.name, 'n_branches':self.n_branches,

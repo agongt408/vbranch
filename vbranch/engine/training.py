@@ -231,6 +231,10 @@ class ModelVB(NetworkVB):
         mean_shared_grads = []
 
         for v, var in enumerate(self.shared_vars):
+            # print(v, var)
+            # for i in range(self.n_branches):
+            #     print(shared_grads[i][v][0])
+
             grad = tf.reduce_mean(
                 [shared_grads[i][v][0] for i in range(self.n_branches)],[0])
             mean_shared_grads.append((grad, var))
@@ -245,6 +249,7 @@ class ModelVB(NetworkVB):
         return train_ops
 
     def _get_acc_ops(self, labels):
+        # print(self.output)
         num_classes = self.output[0].get_shape().as_list()[-1]
 
         accs = {}

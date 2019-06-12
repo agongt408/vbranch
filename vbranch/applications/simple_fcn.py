@@ -1,96 +1,36 @@
-from .. import layers as L
-from .. import vb_layers as VBL
-
-from ..engine import Sequential, SequentialVB, Model, ModelVB
-
-import tensorflow as tf
+from ..slim import *
 
 def default(input_tensor, *layers_spec, name=None):
-    # Model created using Functional approach
     # NOTE: input_tensor is a single Tensor object
 
-    # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
     # Wrap input tensor in Input layer in order to retrieve inbound name
     # when printing model summary
-    ip = L.Input(input_tensor)
-    x = ip
+    ip = Input(input_tensor)
 
+    x = ip
     for i, units in enumerate(layers_spec[:-1]):
-        x = L.Dense(units, 'fc'+str(i + 1))(x)
-        x = L.BatchNormalization('bn'+str(i + 1))(x)
-        x = L.Activation('relu', 'relu'+str(i+1))(x)
+        x = Dense(x, units, name='fc'+str(i+1))
+        x = BatchNormalization(x, name='bn'+str(i+1))
+        x = Activation(x, 'relu', name='relu'+str(i+1))
 
-    # 7June2019: Don't apply batch norm or relu for last FC layer
-    x = L.Dense(layers_spec[-1], 'output')(x)
+    x = Dense(x, layers_spec[-1], name='output')
 
-    model = Model(ip, x, name=name)
+    return Model(ip, x, name=name)
 
-    return model
+def vbranch_default(inputs, *layers_spec, name=None):
+    # NOTE: inputs is a list of Tensors
+    assert type(inputs) is list
 
-def vbranch_default(inputs, *layers_spec, branches=1, name=None):
-    # NOTE: inputs can be single Tensor or list of Tensors
+    ip = Input(inputs)
 
-    # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-    ip = VBL.Input(inputs, branches)
     x = ip
+    for i, (units, shared) in enumerate(layers_spec[:-1]):
+        x = Dense(x, units, shared=shared, name='fc'+str(i+1))
+        print(x)
+        x = BatchNormalization(x, name='bn'+str(i+1))
+        x = Activation(x, 'relu', name='relu'+str(i+1))
 
-    for i, (units_list, shared_units) in enumerate(layers_spec[:-1]):
-        x = VBL.Dense(units_list,branches,'fc'+str(i + 1), shared_units)(x)
-        x = VBL.BatchNormalization(branches, 'bn'+str(i + 1))(x)
+    x = Dense(x, layers_spec[-1][0], shared=layers_spec[-1][1],
+            name='output', merge=True)
 
-        # activation_name = 'relu'+str(i + 1) if (i < len(layers_spec) - 1 or \
-        #     layers_spec[-1][-1] > 0) else 'output'
-        # x = VBL.Activation('relu', branches, activation_name)(x)
-
-        x = VBL.Activation('relu', branches, 'relu'+str(i + 1))(x)
-
-    # 7June2019: Don't apply batch norm or relu for last FC layer
-
-    if layers_spec[-1][-1] > 0:
-        # If using shared params
-        x = VBL.Dense(layers_spec[-1][0], branches, 'fc_output',
-                      layers_spec[-1][1])(x)
-        x = VBL.MergeSharedUnique(branches, 'output')(x)
-    else:
-        x = VBL.Dense(layers_spec[-1][0], branches, 'output',
-                      layers_spec[-1][1])(x)
-
-    model = ModelVB(ip, x, name=name)
-
-    return model
-
-# def seq_version(input_tensor, *layers_spec, name=None):
-#     # NOTE: input_tensor is a single Tensor object
-#
-#     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-#         model = Sequential(input_tensor, name=name)
-#
-#         for i, units in enumerate(layers_spec):
-#             model.add(L.Dense(units, 'fc'+str(i + 1)))
-#             model.add(L.BatchNormalization('bn'+str(i + 1)))
-#
-#             activation_name = 'relu'+str(i+1) if i<len(layers_spec)-1 else 'output'
-#             model.add(L.Activation('relu', activation_name))
-#
-#     return model
-#
-# def vbranch_seq(inputs, *layers_spec, branches=1, name=None):
-#     # NOTE: inputs can be single Tensor or list of Tensors
-#
-#     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-#         model = SequentialVB(inputs, name=name)
-#
-#         for i, (units_list, shared_units) in enumerate(layers_spec):
-#             model.add(VBL.Dense(units_list,branches,'fc'+str(i + 1),
-#                 shared_units))
-#             model.add(VBL.BatchNormalization(branches, 'bn'+str(i + 1)))
-#
-#             activation_name = 'relu'+str(i+1) if (i<len(layers_spec)-1 or \
-#                 layers_spec[-1][-1] > 0) else 'output'
-#             model.add(VBL.Activation('relu', branches, activation_name))
-#
-#         # If using shared params
-#         if layers_spec[-1][-1] > 0:
-#             model.add(VBL.MergeSharedUnique(branches, 'output'))
-#
-#     return model
+    return ModelVB(ip, x, name=name)

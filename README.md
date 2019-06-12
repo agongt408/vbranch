@@ -46,6 +46,10 @@ learning rate = 0.001; test = before mean acc
 
 Converges by around epoch 30
 
+Correlation and Strength (from Random Forest paper):
+
+![corr-strength](figs/correlation-strength.png)
+
 ### Omniglot
 
 ![omniglot-results](figs/omniglot-simple-2-concat-results.png)

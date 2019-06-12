@@ -51,7 +51,8 @@ class Layer(object):
                 output = EmptyOutput()
                 layer.output_shape = []
             else:
-                output = func(layer, x)
+                with tf.variable_scope(layer.name):
+                    output = func(layer, x)
 
                 # Catch empty output
                 if isinstance(output, EmptyOutput):
@@ -82,13 +83,13 @@ class Dense(Layer):
             return EmptyOutput()
 
         n_in = x.get_shape().as_list()[-1]
-        self.w = tf.get_variable(self.name + '_w', shape=[n_in, self.units])
+        self.w = tf.get_variable('weight', shape=[n_in, self.units])
 
         if self.use_bias:
-            self.b = tf.get_variable(self.name + '_b', shape=[self.units])
-            output = tf.nn.xw_plus_b(x, self.w, self.b, name=self.name)
+            self.b = tf.get_variable('bias', shape=[self.units])
+            output = tf.nn.xw_plus_b(x, self.w, self.b, name='output')
         else:
-            output = tf.matmul(x, self.w, name=self.name)
+            output = tf.matmul(x, self.w, name='output')
 
         return output
 
@@ -114,12 +115,11 @@ class BatchNormalization(Layer):
         n_out = x.get_shape().as_list()[-1]
 
         batch_mean, batch_var = tf.nn.moments(x, [0])
-        self.scale = tf.get_variable(self.name+'_scale',
-            initializer=tf.ones([n_out]))
-        self.beta = tf.get_variable(self.name+'_beta',
-            initializer=tf.zeros([n_out]))
+        self.scale = tf.get_variable('scale', initializer=tf.ones([n_out]))
+        self.beta = tf.get_variable('beta', initializer=tf.zeros([n_out]))
+
         output = tf.nn.batch_normalization(x, batch_mean, batch_var,
-            self.beta, self.scale, self.epsilon, name=self.name)
+            self.beta, self.scale, self.epsilon, name='output')
 
         return output
 
@@ -146,7 +146,7 @@ class Activation(Layer):
         if self.activation == 'linear':
             return x
         elif self.activation == 'relu':
-            return tf.nn.relu(x, name=self.name)
+            return tf.nn.relu(x, name='output')
         else:
             return None
 
@@ -163,7 +163,7 @@ class Flatten(Layer):
     def __call__(self, x):
         shape_in = x.get_shape().as_list()
         dim = np.prod(shape_in[1:])
-        output = tf.reshape(x, [-1, dim], name=self.name)
+        output = tf.reshape(x, [-1, dim], name='output')
         return output
 
 class InputLayer(Layer):

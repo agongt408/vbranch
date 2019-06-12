@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-def load_data(format):
+def load_data(format, one_hot=True):
     (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
 
     if format == 'fcn':
@@ -13,8 +13,9 @@ def load_data(format):
     else:
         raise ValueError('invalid format')
 
-    num_classes = 10
-    y_train_one_hot = tf.keras.utils.to_categorical(y_train, num_classes)
-    y_test_one_hot = tf.keras.utils.to_categorical(y_test, num_classes)
+    if one_hot:
+        num_classes = 10
+        y_train = tf.keras.utils.to_categorical(y_train, num_classes)
+        y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
-    return (X_train, y_train_one_hot), (X_test, y_test_one_hot)
+    return (X_train, y_train), (X_test, y_test)

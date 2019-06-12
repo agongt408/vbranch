@@ -2,8 +2,8 @@ from .core import Layer
 from .. import layers as L
 
 class Pooling(Layer):
-    def __init__(self, name, n_branches, layer):
-        super().__init__(name, n_branches)
+    def __init__(self, name, n_branches, layer, merge=False):
+        super().__init__(name, n_branches, merge)
         self.layer = layer
 
     @Layer.call
@@ -21,10 +21,12 @@ class Pooling(Layer):
         return output_list
 
 class AveragePooling2D(Pooling):
-    def __init__(self,pool_size,n_branches,name,strides=None,padding='valid'):
+    def __init__(self,pool_size,n_branches,name,strides=None,padding='valid', 
+            merge=False):
+
         layer = L.AveragePooling2D(pool_size, name, strides, padding)
 
-        super().__init__(name, n_branches, layer)
+        super().__init__(name, n_branches, layer, merge)
 
         self.pool_size = pool_size
         self.strides = strides
@@ -37,6 +39,6 @@ class AveragePooling2D(Pooling):
         return config
 
 class GlobalAveragePooling2D(Pooling):
-    def __init__(self, n_branches, name):
+    def __init__(self, n_branches, name, merge=False):
         layer = L.GlobalAveragePooling2D(name)
-        super().__init__(name, n_branches, layer)
+        super().__init__(name, n_branches, layer, merge)

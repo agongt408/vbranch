@@ -9,4 +9,4 @@ class Add(Layer):
     @Layer.call
     def __call__(self, x):
         # x: list of tensors
-        return tf.add_n(x, name=self.name)
+        return tf.add_n(x, name='output')

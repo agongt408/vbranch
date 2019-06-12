@@ -4,7 +4,7 @@ from .core import Layer, smart_add, smart_concat
 import tensorflow as tf
 
 class Add(Layer):
-    def __init__(self, name, n_branches):
+    def __init__(self, n_branches, name):
         super().__init__(name, n_branches)
 
     @Layer.call
@@ -17,7 +17,7 @@ class Add(Layer):
 
         for b in range(self.branches):
             input_list = []
-            layer = L.Add(self.name+'_vb'+str(i+1))
+            layer = L.Add('vb'+str(i+1))
 
             for i in range(len(x)):
                 if type(x[i][b]) is list:

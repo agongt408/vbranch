@@ -15,7 +15,7 @@ class Add(Layer):
         else:
             input_ = x
 
-        output = tf.reduce_sum(input_, [0], name=self.name)
+        output = tf.reduce_sum(input_, [0], name='output')
         return output
 
     def get_config(self):
@@ -34,7 +34,7 @@ class Average(Layer):
         else:
             input_ = x
 
-        output = tf.reduce_mean(input_, [0], name=self.name)
+        output = tf.reduce_mean(input_, [0], name='output')
         return output
 
     def get_config(self):
@@ -53,7 +53,7 @@ class Concatenate(Layer):
         else:
             input_ = x
 
-        output = tf.concat(input_, -1, name=self.name)
+        output = tf.concat(input_, -1, name='output')
         return output
 
     def get_config(self):
@@ -61,18 +61,20 @@ class Concatenate(Layer):
             'output_shapes':self.output_shapes}
         return config
 
-class MergeSharedUnique(Layer):
-    def __init__(self, n_branches, name):
-        super().__init__(name, n_branches)
-
-    @Layer.call
-    def __call__(self, x):
-        output = []
-        for i in range(self.n_branches):
-            output.append(smart_concat(x[i], -1, self.name+'_'+str(i+1)))
-        return output
-
-    def get_config(self):
-        config = {'name':self.name, 'n_branches':self.n_branches,
-            'output_shapes':self.output_shapes}
-        return config
+# class MergeSharedUnique(Layer):
+#     def __init__(self, n_branches, name):
+#         super().__init__(name, n_branches)
+#
+#     @Layer.call
+#     def __call__(self, x):
+#         output = []
+#         for i in range(self.n_branches):
+#             # 11June2019
+#             # Add vb suffix to be consistent with output of other vb layers
+#             output.append(smart_concat(x[i], -1, self.name+'_vb'+str(i+1)))
+#         return output
+#
+#     def get_config(self):
+#         config = {'name':self.name, 'n_branches':self.n_branches,
+#             'output_shapes':self.output_shapes}
+#         return config

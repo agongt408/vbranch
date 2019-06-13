@@ -1,37 +1,18 @@
+from ..utils.generic_utils import eval_params, EmptyOutput
+
 import tensorflow as tf
-
-def eval_params(func):
-    """
-    Decorator to evaluate the parameters returned by get_weights method
-    using a tf session. Initializes variables if needed."""
-
-    def inner(layer, eval_vars):
-        variables = func(layer)
-
-        if eval_vars:
-            with tf.Session() as sess:
-                try:
-                    weights = sess.run(variables)
-                except tf.errors.FailedPreconditionError:
-                    sess.run(tf.global_variables_initializer())
-                    weights = sess.run(variables)
-        else:
-            weights = variables
-
-        return weights
-    return inner
-
-class EmptyOutput(object):
-    pass
+from os.path import join
 
 class Layer(object):
     def __init__(self, name):
         self.name = name
         self.output_shape = None
 
-    # By default, return empty list for weights
-    def get_weights(self):
-        return []
+    @eval_params
+    def get_weights(self, eval_weights=True):
+        scope = join(self.model_scope, self.name) + '/'
+        weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
+        return weights
 
     def get_config(self):
         config = {'name':self.name, 'output_shape':self.output_shape}
@@ -41,6 +22,9 @@ class Layer(object):
     @staticmethod
     def call(func):
         def new_func(layer, x):
+            # Store model scope
+            layer.model_scope = tf.get_variable_scope().name
+
             # Set inbound nodes
             if type(x) is list:
                 layer._inbound_tensors = x
@@ -99,10 +83,6 @@ class Dense(Layer):
             'weights':self.get_weights(eval_weights)}
         return config
 
-    @eval_params
-    def get_weights(self, eval_weights=True):
-        return self.w, self.b
-
 class BatchNormalization(Layer):
     def __init__(self, name, epsilon=1e-8):
         super().__init__(name)
@@ -128,10 +108,6 @@ class BatchNormalization(Layer):
             'output_shape':self.output_shape,
             'weights':self.get_weights(eval_weights)}
         return config
-
-    @eval_params
-    def get_weights(self, eval_weights=True):
-        return self.beta, self.scale
 
 class Activation(Layer):
     def __init__(self, activation, name):

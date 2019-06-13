@@ -81,3 +81,33 @@ def compute_one_shot_acc(test_pred, train_pred, train_files, answers_files):
             correct += 1.0
 
     return correct / n_test
+
+def baseline_one_shot(sess, total_runs=20):
+    def get_feed_dict(X):
+        feed_dict = {'x:0': X, 'batch_size:0': len(X)}
+        return feed_dict
+
+    run_data = [get_run(r+1) for r in range(total_runs)]
+    train_runs = []
+    test_runs = []
+
+    for r in range(total_runs):
+        train_files,test_files,train_ims,test_ims,answers_files = run_data[r]
+
+        sess.run('test_init_op', feed_dict=get_feed_dict(train_ims))
+        train_runs.append(sess.run('output/output:0'))
+
+        sess.run('test_init_op', feed_dict=get_feed_dict(test_ims))
+        test_runs.append(sess.run('output/output:0'))
+
+    run_acc_list = []
+
+    for r in range(total_runs):
+        train_files = run_data[r][0]
+        answers_files = run_data[r][-1]
+
+        acc = compute_one_shot_acc(test_runs[r], train_runs[r],
+            train_files,answers_files)
+        run_acc_list.append(acc)
+
+    return np.mean(run_acc_list)

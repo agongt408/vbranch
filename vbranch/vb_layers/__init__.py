@@ -1,7 +1,7 @@
 from .core import Dense, BatchNormalization, Activation, Input, VBOutput
 from .convolutional import Conv2D
-from .pooling import AveragePooling2D, GlobalAveragePooling2D
-# from .vb_merge import MergeSharedUnique
+from .pooling import AveragePooling2D, GlobalAveragePooling2D, MaxPooling2D
+from .merge import Add
 
 # Re-name vb merge layers
 from .vb_merge import Add as AddVB

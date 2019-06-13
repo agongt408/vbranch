@@ -31,12 +31,14 @@ class Network(object):
         model_summary.add('', 'Input', input_shape, '', '', '')
 
         for i, l in enumerate(self.layers):
-            # Feed variable scope in order to get variable collection
-            with tf.variable_scope(self.name):
-                config = l.get_config()
+            config = l.get_config()
 
             name = '{} ({})'.format(config['name'], l.__class__.__name__)
+            # Limit name length
+            name = name[:30]
+
             output_shape = shape_to_str(config['output_shape'])
+            inbound_names = [ip._vb_history.name for ip in l._inbound_tensors]
 
             num_params = 0
             param_shapes = ''
@@ -44,8 +46,7 @@ class Network(object):
                 for weight in config['weights']:
                     num_params += get_num_params(weight)
                     param_shapes += get_shape_as_str(weight) + ' '
-
-            inbound_names = [ip._vb_history.name for ip in l._inbound_tensors]
+                param_shapes = param_shapes.strip()
 
             for n, in_name in enumerate(inbound_names):
                 if n == 0:
@@ -113,11 +114,10 @@ class NetworkVB(object):
             model_summary.add('', 'Input', input_shape, '', '')
 
         for i, l in enumerate(self.layers):
-            # Feed variable scope in order to get variable collection
-            with tf.variable_scope(self.name):
-                config = l.get_config()
-                
+            config = l.get_config()
             name = '{} ({})'.format(config['name'], l.__class__.__name__)
+            # Limit name length
+            name = name[:30]
 
             num_params = 0
             if 'weights' in config.keys():
@@ -133,6 +133,7 @@ class NetworkVB(object):
                 output_shape = ''
                 for shape in config['output_shapes'][b]:
                     output_shape += shape_to_str(shape) + ' '
+                output_shape = output_shape.strip()
 
                 if b < len(inbound_names):
                     in_name = inbound_names[b]

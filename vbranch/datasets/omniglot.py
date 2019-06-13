@@ -15,7 +15,7 @@ class Omniglot(object):
                 im_dir = os.path.join(self.dir_path, alpha, char)
                 self.files[alpha][char] = os.listdir(im_dir)
 
-    def next(self, A, P, K, flatten=True):
+    def next(self, A, P, K, flatten=True, preprocess=True):
         """
         Args:
             - A: number of alphabets per batch
@@ -42,6 +42,9 @@ class Omniglot(object):
                     batch.append(cv2.imread(im_path)[..., 0])
 
         batch = np.stack(batch)[..., np.newaxis]
+
+        if preprocess:
+            batch = batch / 127.5 - 1
 
         if not flatten:
             batch = np.reshape(batch, (A, P, K) + batch.shape[1:])

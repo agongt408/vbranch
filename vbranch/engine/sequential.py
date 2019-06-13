@@ -30,10 +30,7 @@ class Sequential(object):
         model_summary.add('','Input',get_shape_as_str(self.input),'','')
 
         for i, l in enumerate(self.layers):
-            # Feed variable scope in order to get variable collection
-            with tf.variable_scope(self.name):
-                config = l.get_config()
-
+            config = l.get_config()
             name = config['name']
             output_shape = shape_to_str(config['output_shape'])
 
@@ -85,10 +82,7 @@ class SequentialVB(object):
             model_summary.add('','Input',get_shape_as_str(self.input),'')
 
         for i, l in enumerate(self.layers):
-            # Feed variable scope in order to get variable collection
-            with tf.variable_scope(self.name):
-                config = l.get_config()
-                
+            config = l.get_config()
             name = config['name']
 
             num_params = 0

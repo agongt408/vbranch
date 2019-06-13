@@ -1,5 +1,6 @@
 from .. import layers as L
-from .core import Layer, smart_add, smart_concat, CrossWeights
+from .core import Layer, CrossWeights
+from ..utils.generic_utils import smart_add, smart_concat
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,
@@ -13,7 +14,6 @@ class Conv2D(Layer):
         self.padding = padding
         self.shared_filters = shared_filters
         self.shared_branch = None
-        # self.merge = merge
 
     @Layer.call
     def __call__(self, x):

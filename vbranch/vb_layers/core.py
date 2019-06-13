@@ -1,10 +1,11 @@
 # Virtual branching version of layers
 
 from .. import layers as L
-from ..layers.core import EmptyOutput
+from ..utils.generic_utils import eval_params, smart_add, smart_concat, EmptyOutput
 
 import tensorflow as tf
 import collections
+from os.path import join
 
 CrossWeights = collections.namedtuple('CrossWeights',
     ['shared_to_unique', 'unique_to_shared', 'unique_to_unique'])
@@ -63,6 +64,8 @@ class Layer(object):
         def call(layer, x):
             """All x must either be a single tensor, a VBOutput object,
             or a list of VBOutput objects."""
+            # Store model scope
+            layer.model_scope = tf.get_variable_scope().name
 
             # Set inbound nodes
             if type(x) is list:
@@ -81,8 +84,8 @@ class Layer(object):
                         assert isinstance(x_, VBOutput), \
                             'invalid input, not VBOutput object'
                     layer._inbound_tensors = x
-
             elif isinstance(x, VBOutput):
+                # `x` is already VBOutput object
                 layer._inbound_tensors = [x]
             else:
                 # `x` is a single tensor
@@ -103,18 +106,13 @@ class Layer(object):
                 else:
                     output_list = func(layer, x)
 
-            # if not type(output) is list:
-            #     print('95> not list')
-            #     output_list = [output]
-            # else:
-            #     output_list = output
-
             layer.output_shapes = []
-            for o in output_list:
-                if type(o) is list:
-                    out_shape = [get_shape(o[0]), get_shape(o[1])]
+
+            for output in output_list:
+                if type(output) is list:
+                    out_shape = [get_shape(output[0]), get_shape(output[1])]
                 else:
-                    out_shape = [get_shape(o)]
+                    out_shape = [get_shape(output)]
                 layer.output_shapes.append(out_shape)
 
             # Set vb history
@@ -126,9 +124,9 @@ class Layer(object):
 
         return call
 
-    @L.eval_params
+    @eval_params
     def get_weights(self, eval_weights=True):
-        scope = tf.get_variable_scope().name + '/' + self.name
+        scope = join(self.model_scope, self.name)
         weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
         return weights
 
@@ -136,25 +134,6 @@ class Layer(object):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'output_shapes':self.output_shapes}
         return config
-
-def smart_add(x, y):
-    # Intelligently add x and y to avoid error when adding EmptyOutput
-    if isinstance(x, EmptyOutput) and isinstance(y, EmptyOutput):
-        return EmptyOutput()
-    elif isinstance(x, EmptyOutput):
-        return y
-    elif isinstance(y, EmptyOutput):
-        return x
-    else:
-        return x + y
-
-def smart_concat(xs, axis=-1, name='concat'):
-    # Intelligently concat x and y to avoid error when concating EmptyOutput
-    x_concat = []
-    for x in xs:
-        if not isinstance(x, EmptyOutput):
-            x_concat.append(x)
-    return tf.concat(x_concat, axis=axis, name=name)
 
 class Dense(Layer):
     """
@@ -175,7 +154,6 @@ class Dense(Layer):
         self.units_list = units_list
         self.shared_units = shared_units
         self.shared_branch = None
-        # self.merge = merge
 
     @Layer.call
     def __call__(self, x):

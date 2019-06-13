@@ -1,4 +1,5 @@
-from .core import Layer, eval_params, EmptyOutput
+from .core import Layer
+from ..utils.generic_utils import eval_params, EmptyOutput
 
 import tensorflow as tf
 
@@ -48,10 +49,6 @@ class Conv2D(Layer):
             'weights':self.get_weights(eval_weights)}
         return config
 
-    @eval_params
-    def get_weights(self, eval_weights=True):
-        return self.f, self.b
-
 class Conv1D(Layer):
     def __init__(self, filters, kernel_size, name, strides=1, padding='valid',
             use_bias=True):
@@ -88,7 +85,3 @@ class Conv1D(Layer):
             'padding':self.padding, 'use_bias':self.use_bias,
             'output_shape':self.output_shape, 'weights':self.get_weights()}
         return config
-
-    @eval_params
-    def get_weights(self):
-        return self.f, self.b

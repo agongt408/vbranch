@@ -122,3 +122,10 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
 def p_console(*args):
     # Print to console
     print(bcolors.HEADER, *args, bcolors.ENDC)
+
+def wrap_iterator(generator, *args):
+    def func():
+        while True:
+            batch = generator.next(*args).astype('float32')
+            yield batch
+    return func

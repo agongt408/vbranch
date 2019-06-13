@@ -21,7 +21,7 @@ class Pooling(Layer):
         return output_list
 
 class AveragePooling2D(Pooling):
-    def __init__(self,pool_size,n_branches,name,strides=None,padding='valid', 
+    def __init__(self,pool_size,n_branches,name,strides=None,padding='valid',
             merge=False):
 
         layer = L.AveragePooling2D(pool_size, name, strides, padding)
@@ -42,3 +42,21 @@ class GlobalAveragePooling2D(Pooling):
     def __init__(self, n_branches, name, merge=False):
         layer = L.GlobalAveragePooling2D(name)
         super().__init__(name, n_branches, layer, merge)
+
+class MaxPooling2D(Pooling):
+    def __init__(self,pool_size,n_branches,name,strides=None,padding='valid',
+            merge=False):
+
+        layer = L.MaxPooling2D(pool_size, name, strides, padding)
+
+        super().__init__(name, n_branches, layer, merge)
+
+        self.pool_size = pool_size
+        self.strides = strides
+        self.padding = padding
+
+    def get_config(self):
+        config = {'name':self.name, 'n_branches':self.n_branches,
+            'output_shapes':self.output_shapes, 'pool_size':self.pool_size,
+            'strides':self.strides, 'padding':self.padding}
+        return config

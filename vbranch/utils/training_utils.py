@@ -3,6 +3,7 @@ from .. import datasets
 import os
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 
 class bcolors:
     HEADER = '\033[95m'
@@ -114,8 +115,12 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
         x_sample = X[choice]
         y_sample = Y[choice]
 
-        x_list.append(x_sample)
-        y_list.append(y_sample)
+        if n > 1:
+            x_list.append(x_sample)
+            y_list.append(y_sample)
+        else:
+            x_list = x_sample
+            y_list = y_sample
 
     return x_list, y_list
 
@@ -129,3 +134,64 @@ def wrap_iterator(generator, *args):
             batch = generator.next(*args).astype('float32')
             yield batch
     return func
+
+def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=False):
+    batch_size_ = tf.placeholder('int64', name='batch_size')
+
+    if share_xy or n == 1:
+        x = tf.placeholder('float32', x_shape, name='x')
+        y = tf.placeholder('float32', y_shape, name='y')
+
+    inputs = []
+    labels_one_hot = []
+    iterators = []
+
+    for i in range(n):
+        if not share_xy and not n == 1:
+            x = tf.placeholder('float32', x_shape, name='vb{:d}_x'.format(i+1))
+            y = tf.placeholder('float32', y_shape, name='vb{:d}_y'.format(i+1))
+
+        iter_ = tf.data.Dataset.from_tensor_slices((x,y)).\
+            repeat().batch(batch_size_).shuffle(buffer_size=4*batch_size).\
+            make_initializable_iterator()
+
+        input_, label_one_hot_ = iter_.get_next('input')
+
+        if n == 1:
+            inputs = input_
+            labels_one_hot = label_one_hot_
+            iterators = iter_
+        else:
+            inputs.append(input_)
+            labels_one_hot.append(label_one_hot_)
+            iterators.append(iter_)
+
+    return inputs, labels_one_hot, iterators
+
+def get_data_iterator_from_generator(trainer, input_dim, *args, n=1):
+    x = tf.placeholder('float32', input_dim, name='x')
+    batch_size = tf.placeholder('int64', name='batch_size')
+
+    inputs = []
+    train_init_op = []
+    test_init_op = []
+
+    for i in range(n):
+        train_dataset = tf.data.Dataset.\
+            from_generator(wrap_iterator(trainer, **args),
+                'float32', output_shapes=input_dim)
+        test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+        iterator = tf.data.Iterator.from_structure('float32', input_dim)
+
+        if n == 1:
+            inputs = iterator.get_next()
+            train_init_op = iterator.make_initializer(train_dataset)
+            test_init_op = iterator.make_initializer(test_dataset,
+                name='test_init_op')
+        else:
+            inputs.append(iterator.get_next(name='input_'+str(i+1)))
+            train_init_op.append(iterator.make_initializer(train_dataset))
+            test_init_op.append(iterator.make_initializer(test_dataset,
+                name='test_init_op_'+str(i+1)))
+
+    return inputs, train_init_op, test_init_op

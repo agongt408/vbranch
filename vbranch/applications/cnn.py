@@ -33,7 +33,8 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
             raise ValueError('invalid layers spec:', spec)
 
         for l in range(2):
-            x = Conv2D(x, filters, 3, name='conv2d_%d_%d'%(i+1,l+1), shared=shared)
+            x = Conv2D(x, filters, 3, name='conv2d_%d_%d'%(i+1,l+1),
+                    shared=shared)
             x = BatchNormalization(x, name='bn_%d_%d' % (i+1, l+1))
             x = Activation(x, 'relu', name='relu_%d_%d' % (i+1, l+1))
 
@@ -52,8 +53,7 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
                     final_units = final_spec
                     shared = shared_frac
                 elif type(final_spec) is tuple:
-                    final_units = final_spec[0]
-                    shared = final_spec[1]
+                    final_units, shared = final_spec
                 else:
                     raise ValueError('invalid final_spec:', final_spec)
 
@@ -65,3 +65,10 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
         return ModelVB(ip, x, name=name)
 
     return Model(ip, x, name=name)
+
+def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
+    return base(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
+
+def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None):
+    return base(inputs, (classes, 0), 32, 64, 128, 256, name=name,
+        shared_frac=shared_frac)

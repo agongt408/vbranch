@@ -1,5 +1,6 @@
 from .functional import Network, NetworkVB
 from ..losses import softmax_cross_entropy_with_logits, triplet_omniglot
+from ..utils import TFSessionGrow
 
 import tensorflow as tf
 import os
@@ -57,25 +58,16 @@ class Model(Network):
                 history['val_' + t] = []
 
         # Get feed_dicts
-        default_graph = tf.get_default_graph()
-
-        data_dict = {
-            default_graph.get_tensor_by_name('x:0'): x,
-            default_graph.get_tensor_by_name('y:0'): y,
-            default_graph.get_tensor_by_name('batch_size:0'): batch_size
-        }
+        data_dict = {'x:0': x, 'y:0': y, 'batch_size:0': batch_size}
 
         if validation is None:
-            val_data_dict = {}
+            val_dict = {}
         else:
-            val_data_dict = {
-                default_graph.get_tensor_by_name('x_test:0'): validation[0],
-                default_graph.get_tensor_by_name('y_test:0'): validation[1]
-            }
+            val_dict = {'x_test:0': validation[0], 'y_test:0': validation[1]}
 
         history = _fit(history, [iterator], data_dict, epochs,
             steps_per_epoch, tensors, validation_tensors,
-            self.train_op, val_data_dict, save_model_path)
+            self.train_op, val_dict, save_model_path)
 
         return history
 
@@ -114,25 +106,16 @@ class ModelVB(NetworkVB):
                     history['val_' + k] = []
 
         # Get feed_dicts
-        default_graph = tf.get_default_graph()
-
-        data_dict = {
-            default_graph.get_tensor_by_name('x:0'): x,
-            default_graph.get_tensor_by_name('y:0'): y,
-            default_graph.get_tensor_by_name('batch_size:0'): batch_size
-        }
+        data_dict = {'x:0': x, 'y:0': y, 'batch_size:0': batch_size}
 
         if validation is None:
-            val_data_dict = {}
+            val_dict = {}
         else:
-            val_data_dict = {
-                default_graph.get_tensor_by_name('x_test:0'): validation[0],
-                default_graph.get_tensor_by_name('y_test:0'): validation[1]
-            }
+            val_dict = {'x_test:0': validation[0], 'y_test:0': validation[1]}
 
         history = _fit(history, iterators, data_dict, epochs,
             steps_per_epoch, tensors, validation_tensors, self.train_ops,
-            val_data_dict, save_model_path)
+            val_dict, save_model_path)
 
         return history
 
@@ -290,7 +273,7 @@ def _fit(history, iterators, data_dict, epochs, steps_per_epoch,
         tensors, validation_tensors, ops, val_data_dict=None,
         save_model_path=None):
 
-    with tf.Session() as sess:
+    with TFSessionGrow() as sess:
         sess.run(tf.global_variables_initializer())
 
         for e in range(epochs):

@@ -1,3 +1,3 @@
-from . import simple_fcn
-from . import simple_cnn
+from . import fcn
+from . import cnn
 from . import resnet

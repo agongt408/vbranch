@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 
 class Summary(object):
     """Helper class used to print model summaries"""
@@ -101,3 +102,60 @@ def eval_params(func):
 
 class EmptyOutput(object):
     pass
+
+def TFSessionGrow():
+    # https://www.tensorflow.org/guide/using_gpu
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    return tf.Session(config=config)
+
+def restore_sess(sess, model_path):
+    meta_path = os.path.join(model_path, 'ckpt.meta')
+    ckpt = tf.train.get_checkpoint_state(model_path)
+
+    imported_graph = tf.train.import_meta_graph(meta_path)
+    imported_graph.restore(sess, ckpt.model_checkpoint_path)
+
+# Model path helper functions
+
+def _dir_path(dataset, arch, n_classes, samples_per_class):
+    if dataset == 'toy':
+        # Further organize results by number of classes and samples_per_class
+        dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%n_classes,
+            'SpC%d' % samples_per_class)
+    else:
+        dirpath = os.path.join('{}-{}'.format(dataset, arch))
+    return dirpath
+
+def get_model_path(dataset, arch, n_classes, samples_per_class, model_id):
+    # Get path to save model
+    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+    model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
+
+    if not os.path.isdir(model_path):
+        os.system('mkdir -p ' + model_path)
+
+    return model_path
+
+def _vb_dir_path(dataset,arch,n_branches,shared,n_classes,samples_per_class):
+    if dataset == 'toy':
+        # Further organize results by number of classes and samples_per_class
+        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
+            'C%d'%n_classes, 'SpC%d' % samples_per_class, 'B%d'%n_branches,
+            'S{:.2f}'.format(shared))
+    else:
+        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
+            'B%d'%n_branches, 'S{:.2f}'.format(shared))
+    return dirpath
+
+def get_vb_model_path(dataset, arch, n_branches, shared, n_classes,
+        samples_per_class, model_id):
+    # Get path to save model
+    dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
+        n_classes, samples_per_class)
+    model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
+
+    if not os.path.isdir(model_path):
+        os.system('mkdir -p ' + model_path)
+
+    return model_path

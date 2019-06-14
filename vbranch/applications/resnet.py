@@ -116,3 +116,8 @@ def ResNet152(input_tensor, classes, name=None, shared_frac=None):
     kernel_spec = [1, 3, 1]
     return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
         name=name, shared_frac=shared_frac)
+
+# https://keras.io/applications/#resnet
+# keras.applications.resnet.ResNet50(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)
+# keras.applications.resnet.ResNet101(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)
+# keras.applications.resnet.ResNet152(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)

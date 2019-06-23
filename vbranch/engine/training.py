@@ -4,148 +4,63 @@ from ..utils import TFSessionGrow
 
 import tensorflow as tf
 import os
+from copy import copy
+import numpy as np
 
 class Model(Network):
-    """The `Model` class adds training & evaluation routines to a `Network`.
-    """
+    """The `Model` class adds training & evaluation routines to a `Network`"""
 
-    def compile(self, optimizer, loss, test=False, **kwargs):
+    def compile(self, optimizer, loss, train_init_op, test_init_op,
+            callbacks={}, schedulers={}, **kwargs):
+        """
+        Args:
+            - optimizer: optimizer object
+            - train_init_op: single obj or list, train initializers
+            - test_init_op: single obj or list, test initializers
+            - loss: str, name of loss function
+            - callbacks: dict of callable objects
+            - schedulers: dict of callable objects
+        """
         self.optimizer = optimizer
 
-        # Set loss
         if loss == 'softmax_cross_entropy_with_logits':
-            labels_one_hot = kwargs['labels_one_hot']
-
-            self.loss = softmax_cross_entropy_with_logits(
-                labels=labels_one_hot, logits=self.output, name='loss')
-
-            # Set prediction
-            self.pred = tf.nn.softmax(self.output, name='pred')
-
-            # Set accuracy
-            num_classes = self.pred.get_shape().as_list()[-1]
-            pred_max = tf.one_hot(tf.argmax(self.pred,axis=-1),num_classes)
-            self.acc = tf.reduce_mean(
-                tf.reduce_sum(labels_one_hot*pred_max,[1]), name='acc')
-
+            loss = softmax_cross_entropy_with_logits(
+                labels=kwargs['labels_one_hot'], logits=self.output, name='loss')
         elif loss == 'triplet_omniglot':
-            self.loss = triplet_omniglot(self.output, A=kwargs['A'],
+            loss = triplet_omniglot(self.output, A=kwargs['A'],
                 P=kwargs['P'], K=kwargs['K'], name='loss')
         else:
-            # raise ValueError('invalid loss')
             print('Custom loss used...')
-            self.loss = loss
 
-        # Set training op
-        self.train_op = optimizer.minimize(self.loss)
+        self.loss = {'loss' : loss }
+        self.train_op = optimizer.minimize(self.loss['loss'])
+        self.train_init_op = train_init_op
+        self.test_init_op = test_init_op
+        self.callbacks = callbacks
+        self.schedulers = schedulers
 
-    def fit(self, iterator, x, y, epochs, steps_per_epoch, batch_size,
-            validation=None, test_model=None, save_model_path=None):
-
-        history = {}
-
-        # Get tensors
-        tensors = {}
-        validation_tensors = {}
-
-        for t in ['loss', 'acc']:
-            if hasattr(self, t):
-                tensors['train_' + t] = getattr(self, t)
-                history['train_' + t] = []
-
-            if not validation is None and hasattr(test_model, t):
-                validation_tensors['val_' + t] = getattr(test_model, t)
-                history['val_' + t] = []
-
-        # Get feed_dicts
-        data_dict = {'x:0': x, 'y:0': y, 'batch_size:0': batch_size}
-
-        if validation is None:
-            val_dict = {}
-        else:
-            val_dict = {'x_test:0': validation[0], 'y_test:0': validation[1]}
-
-        history = _fit(history, [iterator], data_dict, epochs,
-            steps_per_epoch, tensors, validation_tensors,
-            self.train_op, val_dict, save_model_path)
-
+    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
+        history = _fit(self.train_init_op, self.test_init_op, train_dict,
+            epochs, steps_per_epoch, self.loss, self.train_op, val_dict,
+            log_path, self.callbacks, self.schedulers)
         return history
 
 class ModelVB(NetworkVB):
-    def compile(self, optimizer, loss, test=False, **kwargs):
+    def compile(self, optimizer, loss, train_init_ops, test_init_ops,
+            callbacks={}, schedulers={}, **kwargs):
         self.optimizer = optimizer
-
-        # Get losses and training operations
         self.losses = self._get_losses(loss, **kwargs)
-
-        if loss == 'softmax_cross_entropy_with_logits':
-            # Get accurary operations
-            labels_one_hot = kwargs['labels_one_hot']
-            self.accs = self._get_acc_ops(labels_one_hot)
-
         self.train_ops = self._get_train_ops(optimizer)
 
-    def fit(self, iterators, x, y, epochs, steps_per_epoch, batch_size,
-            validation=None, test_model=None, save_model_path=None):
+        self.train_init_ops = train_init_ops
+        self.test_init_ops = test_init_ops
+        self.callbacks = callbacks
+        self.schedulers = schedulers
 
-        tensors = {}
-        validation_tensors = {}
-        history = {}
-
-        for t in ['losses', 'accs']:
-            if hasattr(self, t):
-                attr = getattr(self, t)
-                for k in attr.keys():
-                    tensors['train_' + k] = attr[k]
-                    history['train_' + k] = []
-
-            if not validation is None and hasattr(test_model, t):
-                attr = getattr(test_model, t)
-                for k in attr.keys():
-                    validation_tensors['val_' + k] = attr[k]
-                    history['val_' + k] = []
-
-        # Get feed_dicts
-        data_dict = {'x:0': x, 'y:0': y, 'batch_size:0': batch_size}
-
-        if validation is None:
-            val_dict = {}
-        else:
-            val_dict = {'x_test:0': validation[0], 'y_test:0': validation[1]}
-
-        history = _fit(history, iterators, data_dict, epochs,
-            steps_per_epoch, tensors, validation_tensors, self.train_ops,
-            val_dict, save_model_path)
-
-        return history
-
-    def fit_data(self, iterators, epochs, steps_per_epoch, batch_size,
-            data_dict, val_dict=None, test_model=None, save_model_path=None):
-
-        tensors = {}
-        validation_tensors = {}
-        history = {}
-
-        for t in ['losses', 'accs']:
-            if hasattr(self, t):
-                attr = getattr(self, t)
-                for k in attr.keys():
-                    tensors['train_' + k] = attr[k]
-                    history['train_' + k] = []
-
-            if not val_dict is None and hasattr(test_model, t):
-                attr = getattr(test_model, t)
-                for k in attr.keys():
-                    validation_tensors['val_' + k] = attr[k]
-                    history['val_' + k] = []
-
-        b_s = tf.get_default_graph().get_tensor_by_name('batch_size:0')
-        data_dict[b_s] = batch_size
-
-        history = _fit(history, iterators, data_dict, epochs, steps_per_epoch,
-            tensors, validation_tensors, self.train_ops,
-            val_dict, save_model_path)
-
+    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
+        history = _fit(self.train_init_ops, self.test_init_ops, train_dict,
+            epochs, steps_per_epoch, self.losses, self.train_ops, val_dict,
+            log_path, self.callbacks, self.schedulers, self.n_branches)
         return history
 
     def _get_shared_unshared_vars(self):
@@ -269,9 +184,17 @@ def _get_operations(attributes, operations):
             if isinstance(attr, tf.Operation):
                 operations[attr.name] = attr
 
-def _fit(history, iterators, data_dict, epochs, steps_per_epoch,
-        tensors, validation_tensors, ops, val_data_dict=None,
-        save_model_path=None):
+def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
+        loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
+        schedulers={}, n_branches=1):
+
+    history = {}
+
+    train_dict_copy = copy(train_dict)
+    # Classification
+    if 'batch_size:0' in list(train_dict.keys()) and \
+            'x:0' in list(train_dict.keys()):
+        train_dict_copy['batch_size:0'] = len(train_dict['x:0'])
 
     with TFSessionGrow() as sess:
         sess.run(tf.global_variables_initializer())
@@ -280,33 +203,51 @@ def _fit(history, iterators, data_dict, epochs, steps_per_epoch,
             print("Epoch {}/{}".format(e + 1, epochs))
             progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
 
-            # Training
-            sess.run([it.initializer for it in iterators], feed_dict=data_dict)
+            sess.run(train_init_op, feed_dict=train_dict)
+            sched_dict = {}
+            for name, func in schedulers.items():
+                sched_dict[name] = func(e + 1)
 
             for i in range(steps_per_epoch):
                 progbar_vals = []
-                train_tensors_v, _ = sess.run([tensors, ops])
-                for t in tensors.keys():
-                    progbar_vals.append((t, train_tensors_v[t]))
+                loss, _ = sess.run([loss_op, train_op], feed_dict=sched_dict)
 
-                if validation_tensors != {} and i == steps_per_epoch - 1:
-                    val_tensors_v = sess.run(validation_tensors,
-                        feed_dict=val_data_dict)
+                for name, l in loss.items():
+                    progbar_vals.append((name, l))
 
-                    for t in validation_tensors.keys():
-                        progbar_vals.append((t, val_tensors_v[t]))
+                if i == steps_per_epoch - 1:
+                    # For classification, evaluate callbacks (e.g., accuracy)
+                    # on training set
+                    if callbacks != {}:
+                        for _, func in callbacks.items():
+                            results = func(sess, train_dict_copy, n_branches)
+                            for name, r in results.items():
+                                hist_append(history, name, r)
+                                progbar_vals.append((name, r))
+
+                    if val_dict is not None:
+                        sess.run(test_init_op, feed_dict=val_dict)
+                        val_loss = sess.run(loss_op)
+
+                        for name, l in val_loss.items():
+                            progbar_vals.append((name, l))
+
+                        if callbacks != {}:
+                            for _, func in callbacks.items():
+                                results = func(sess, val_dict, n_branches)
+                                for name, r in results.items():
+                                    hist_append(history, 'val_'+name, r)
+                                    progbar_vals.append(('val_'+name, r))
 
                 # Update progress bar
                 progbar.update(i+1, values=progbar_vals)
 
-            # Add training to history
-            for t in train_tensors_v.keys():
-                history[t].append(train_tensors_v[t])
+            for name, l in loss.items():
+                hist_append(history, name, l)
 
-            # Add validation to history
-            if not val_data_dict is None:
-                for t in validation_tensors.keys():
-                    history[t].append(val_tensors_v[t])
+            if val_dict is not None:
+                for name, l in val_loss.items():
+                    hist_append(history, name, l)
 
         if not save_model_path is None:
             saver = tf.train.Saver()
@@ -314,3 +255,10 @@ def _fit(history, iterators, data_dict, epochs, steps_per_epoch,
             saver.save(sess, path)
 
     return history
+
+def hist_append(history, key, value):
+    if key in list(history.keys()):
+        history[key].append(value)
+    else:
+        history[key] = []
+        history[key].append(value)

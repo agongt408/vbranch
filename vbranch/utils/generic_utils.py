@@ -69,6 +69,10 @@ def smart_add_n(x_list, name='add'):
     for x in x_list:
         if not isinstance(x, EmptyOutput):
             x_add.append(x)
+
+    if len(x_add) == 0:
+        return EmptyOutput()
+
     return tf.add_n(x_add, name=name)
 
 def smart_concat(xs, axis=-1, name='concat'):
@@ -127,7 +131,7 @@ def _dir_path(dataset, arch, n_classes, samples_per_class):
         dirpath = os.path.join('{}-{}'.format(dataset, arch))
     return dirpath
 
-def get_model_path(dataset, arch, n_classes, samples_per_class, model_id):
+def get_model_path(dataset, arch, n_classes=None, samples_per_class=None, model_id=1):
     # Get path to save model
     dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
     model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
@@ -137,7 +141,9 @@ def get_model_path(dataset, arch, n_classes, samples_per_class, model_id):
 
     return model_path
 
-def _vb_dir_path(dataset,arch,n_branches,shared,n_classes,samples_per_class):
+def _vb_dir_path(dataset,arch,n_branches,shared, n_classes=None,
+        samples_per_class=None):
+
     if dataset == 'toy':
         # Further organize results by number of classes and samples_per_class
         dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
@@ -148,8 +154,8 @@ def _vb_dir_path(dataset,arch,n_branches,shared,n_classes,samples_per_class):
             'B%d'%n_branches, 'S{:.2f}'.format(shared))
     return dirpath
 
-def get_vb_model_path(dataset, arch, n_branches, shared, n_classes,
-        samples_per_class, model_id):
+def get_vb_model_path(dataset, arch, n_branches, shared, n_classes=None,
+        samples_per_class=None, model_id=1):
     # Get path to save model
     dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
         n_classes, samples_per_class)

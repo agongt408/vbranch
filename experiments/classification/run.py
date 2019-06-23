@@ -37,8 +37,7 @@ import os
 # MNIST
 
 cmd = 'python experiments/classification/baseline.py ' + \
-    '--architecture fcn2 ' + \
-    '--dataset mnist --epochs 15 --trials 8 '
+    '--architecture fcn2 --dataset mnist --epochs 15 --trials 8'
 os.system(cmd)
 
 for num_branches in range(2, 5):
@@ -47,8 +46,7 @@ for num_branches in range(2, 5):
         model_id_list += '%d ' % (i+1)
 
     cmd = 'python experiments/classification/baseline.py ' + \
-        '--architecture fcn2 ' + \
-        '--dataset mnist --epochs 15 --trials 4 ' + \
+        '--architecture fcn2 --dataset mnist ' + \
         '--test --trials 8 --model_id ' + model_id_list
     os.system(cmd)
 
@@ -59,3 +57,5 @@ for num_branches in range(2, 5):
             '--num_branches ' + str(num_branches) + ' ' + \
             '--shared_frac ' + str(shared_frac)
         os.system(cmd)
+
+# python experiments/classification/vbranch.py --architecture fcn2 --dataset mnist --epochs 15 --trials 4 --num_branches 2 --shared_frac 1

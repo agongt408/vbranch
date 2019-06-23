@@ -2,8 +2,13 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import bcolors, save_results, get_data, \
-    restore_sess, get_run, compute_one_shot_acc
+from vbranch.applications.cnn import *
+from vbranch.applications.resnet import *
+
+from vbranch.utils.generic_utils import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path
+from vbranch.utils.training_utils import p_console, save_results, get_data, get_data_iterator_from_generator
+from vbranch.utils.test_utils import compute_one_shot_acc, vbranch_one_shot
+from vbranch.callbacks import one_shot_acc
 
 import tensorflow as tf
 import numpy as np
@@ -40,189 +45,69 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
-def get_data_as_tensor(train_generator, num_branches, input_dim, A, P, K):
-    def batch_gen(A, P, K):
-        def func():
-            while True:
-                batch = train_generator.next(A, P, K)
-                batch = batch.astype('float32')
-                yield batch
-        return func
+def build_model(architecture, train_gen, input_dim, output_dim,
+        lr_scheduler, n_branches, shared, **kwargs):
 
-    # Placeholder for feeding test images
-    x = tf.placeholder('float32', input_dim, name='x')
-    batch_size = tf.placeholder('int64', name='batch_size')
+    inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
+        train_gen, input_dim, **kwargs)
 
-    train_datasets = []
-    test_datasets = []
-    inputs = [None] * num_branches
-    train_init_ops = []
-    test_init_ops = []
+    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+        if architecture == 'simple':
+            model = SimpleCNNLarge(inputs, output_dim, name=name, shared_frac=shared)
+        elif architecture == 'res':
+            model = ResNet18(inputs, output_dim, name=name, shared_frac=shared)
+        else:
+            raise ValueError('Invalid architecture')
 
-    for i in range(num_branches):
-        train_datasets.append(tf.data.Dataset.from_generator(batch_gen(A, P, K),
-                                'float32', output_shapes=input_dim))
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
-        test_datasets.append(tf.data.Dataset.from_tensor_slices(x).\
-            batch(batch_size))
-
-        iterator = tf.data.Iterator.from_structure('float32', input_dim)
-        inputs[i] = iterator.get_next(name='input_'+str(i+1))
-
-        train_init_ops.append(iterator.make_initializer(train_datasets[i]))
-        test_init_ops.append(iterator.make_initializer(test_datasets[i],
-                            name='test_init_op_'+str(i+1)))
-
-    return inputs, train_init_ops, test_init_ops
-
-def build_model(architecture,inputs,output_dim,num_branches,model_id,shared_frac):
-    if architecture == 'simple':
-        filters = [32, 64, 128, 256]
-        layers_spec = [([f]*num_branches, int(f*shared_frac)) for f in filters]
-
-        model = vb.vbranch_simple_cnn(inputs, (output_dim, 0), *layers_spec,
-            branches=num_branches, name='model_' + str(model_id))
-    else:
-        raise ValueError('invalid model')
+        # Compile model
+        model.compile(optimizer, 'triplet_omniglot', train_init_op, test_init_op,
+                      callbacks={'acc': one_shot_acc(n_branches)},
+                      schedulers={'lr:0': lr_scheduler}, **kwargs)
 
     return model
 
-def train(dataset, architecture, num_branches, model_id, A, P, K, epochs,
-        steps_per_epoch, shared_frac):
+def train(dataset, architecture, n_branches, model_id, epochs,
+        steps_per_epoch, shared_frac, **kwargs):
+    model_path = get_model_path(dataset, arch, model_id=model_id)
+    p_console('Save model path: '+ model_path)
 
-    if not os.path.isdir('models'):
-        os.system('mkdir models')
+    tf.reset_default_graph()
 
-    model_name = 'vb-{}-{}-B{:d}-S{:.2f}_{:d}'.format(dataset,architecture,
-        num_branches, shared_frac, model_id)
-    model_path = os.path.join('models', model_name)
-
-    print(bcolors.HEADER + 'Save model path: ' + model_path + bcolors.ENDC)
-
-    # Load data
     if dataset == 'omniglot':
         train_gen = vb.datasets.omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
         output_dim = 128
+        lr_scheduler = lr_exp_decay_scheduler(0.001, epochs//2, epochs, 0.001)
 
+    model = build_model(architecture, train_gen, input_dim, output_dim,
+        lr_scheduler, n_branches, shared_frac, **kwargs)
+    history = model.fit({}, epochs, steps_per_epoch, val_dict=None,
+        log_path=model_path)
+    save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
+
+def test(dataset, architecture, n_branches, model_id, shared_frac, message):
+    model_path = get_vb_model_path(dataset, arch, model_id=model_id)
     tf.reset_default_graph()
 
-    inputs, train_init_ops, test_init_ops = \
-        get_data_as_tensor(train_gen, num_branches, input_dim, A, P, K)
-
-    # Build and compile model
-    model = build_model(architecture,inputs,output_dim,num_branches,
-        model_id, shared_frac)
-
-    lr = tf.placeholder('float32', name='lr')
-    optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-    model.compile(optimizer, 'triplet_'+dataset, A=A, P=P, K=K)
-    model.summary()
-
-    # Run training ops
-    train_loss_hist = []
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        sess.run(train_init_ops)
-
-        lr_sched = lr_exp_decay_scheduler(0.001,epochs//3, epochs,0.001)
-
-        for e in range(epochs):
-            print("Epoch {}/{}".format(e + 1, epochs))
-            progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
-
-            learning_rate = lr_sched(e + 1)
-            for i in range(steps_per_epoch):
-                _, loss_values = sess.run([model.train_ops, model.losses],
-                                            feed_dict={lr:learning_rate})
-                train_loss_hist.append(loss_values)
-
-                # Update progress bar
-                values = []
-                for b in range(len(loss_values)):
-                    values.append(('loss_'+str(b+1), loss_values[b]))
-                values += [('lr', learning_rate),]
-                progbar.update(i + 1, values=values)
-
-        saver = tf.train.Saver()
-        path = os.path.join(model_path, 'ckpt')
-        saver.save(sess, path)
-
-    train_loss_hist = np.array(train_loss_hist)
-
-    # Store loss/acc values as csv
-    results_dict = {}
-    for i in range(num_branches):
-        results_dict['train_loss_'+str(i+1)] = train_loss_hist[:, i]
-
-    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
-        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    save_results(results_dict, dirname, 'train_{}.csv'.format(model_id))
-
-def test(dataset, architecture, num_branches, model_id, shared_frac, message):
-    model_path = './models/vb-{}-{}-B{:d}-S{:.2f}_{:d}'.\
-        format(dataset, architecture, num_branches, shared_frac, model_id)
-
-    print(bcolors.HEADER + 'Load model path: ' + model_path + bcolors.ENDC)
-
-    test_init_ops = ['test_init_op_'+str(i+1) for i in range(num_branches)]
-    model_outputs = ['model_1/output_vb{}:0'.format(i+1) \
-        for i in range(num_branches)]
-
-    total_runs = 20
-    train_pred_runs = []
-    test_pred_runs = []
-
-    run_data = [get_run(r+1) for r in range(total_runs)]
-
-    with tf.Session() as sess:
+    with TFSessionGrow() as sess:
         restore_sess(sess, model_path)
+        # average_acc, average_baseline = vbranch_one_shot(sess, n_branches,
+        #     mode='average')
+        concat_acc, concat_baseline = vbranch_one_shot(sess, n_branches,
+            mode='concat')
 
-        for r in range(total_runs):
-            train_files,test_files,train_imgs,test_imgs,answers_files = \
-                run_data[r]
+    print('Indiv accs:', concat_baseline)
+    print('Ensemble acc:', acc_v)
 
-            feed_dict = {'x:0':train_imgs, 'batch_size:0':len(train_imgs)}
-            sess.run(test_init_ops, feed_dict=feed_dict)
-            train_pred_runs.append(sess.run(model_outputs))
+    results_dict = {}
+    for i in range(n_branches):
+        results_dict['acc_'+str(i+1)] = concat_baseline[i]
+    results_dict['acc_ensemble'] = concat_acc
 
-            feed_dict = {'x:0':test_imgs, 'batch_size:0':len(test_imgs)}
-            sess.run(test_init_ops, feed_dict=feed_dict)
-            test_pred_runs.append(sess.run(model_outputs))
-
-    mean_acc_runs = []
-    for r in range(total_runs):
-        test_embed = np.mean(test_pred_runs[r], axis=0)
-        train_embed = np.mean(train_pred_runs[r], axis=0)
-        train_files = run_data[r][0]
-        answers_files = run_data[r][-1]
-
-        acc = compute_one_shot_acc(test_embed, train_embed,train_files,
-            answers_files)
-        mean_acc_runs.append(acc)
-    mean_acc = np.mean(mean_acc_runs)
-
-    concat_acc_runs = []
-    for r in range(total_runs):
-        test_embed = np.concatenate(test_pred_runs[r], axis=-1)
-        train_embed = np.concatenate(train_pred_runs[r], axis=-1)
-        train_files = run_data[r][0]
-        answers_files = run_data[r][-1]
-
-        acc = compute_one_shot_acc(test_embed, train_embed,train_files,
-            answers_files)
-        concat_acc_runs.append(acc)
-    concat_acc = np.mean(concat_acc_runs)
-
-    print('Average embedding acc:', mean_acc)
-    print('Concatenate embedding acc:', concat_acc)
-
-    results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
-
-    dirname = os.path.join('vb-{}-{}'.format(dataset, architecture),
-        'B'+str(num_branches), 'S{:.2f}'.format(shared_frac))
-    save_results(results_dict, dirname, 'test.csv', mode='a')
+    dirpath = _vb_dir_path(dataset, arch, n_branches, shared)
+    save_results(results_dict, dirpath, 'test.csv', mode='a')
 
 if __name__ == '__main__':
     args = parser.parse_args()

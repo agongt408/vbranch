@@ -135,7 +135,7 @@ def wrap_iterator(generator, *args):
             yield batch
     return func
 
-def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=False):
+def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
     batch_size_ = tf.placeholder('int64', name='batch_size')
 
     if share_xy or n == 1:
@@ -144,29 +144,35 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=False):
 
     inputs = []
     labels_one_hot = []
-    iterators = []
+    train_init_op = []
+    test_init_op = []
 
     for i in range(n):
         if not share_xy and not n == 1:
             x = tf.placeholder('float32', x_shape, name='vb{:d}_x'.format(i+1))
             y = tf.placeholder('float32', y_shape, name='vb{:d}_y'.format(i+1))
 
-        iter_ = tf.data.Dataset.from_tensor_slices((x,y)).\
-            repeat().batch(batch_size_).shuffle(buffer_size=4*batch_size).\
-            make_initializable_iterator()
+        train_dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
+            repeat().batch(batch_size_).shuffle(buffer_size=4*batch_size)
+        test_dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
+            repeat().batch(batch_size_)
 
+        iter_ = tf.data.Iterator.from_structure(('float32','float32'), (x_shape, y_shape))
         input_, label_one_hot_ = iter_.get_next('input')
 
         if n == 1:
             inputs = input_
             labels_one_hot = label_one_hot_
-            iterators = iter_
+            train_init_op = iter_.make_initializer(train_dataset)
+            test_init_op = iter_.make_initializer(test_dataset, name='test_init_op')
         else:
             inputs.append(input_)
             labels_one_hot.append(label_one_hot_)
-            iterators.append(iter_)
+            train_init_op.append(iter_.make_initializer(train_dataset))
+            test_init_op.append(iter_.make_initializer(test_dataset,
+                name='test_init_op_'+str(i+1)))
 
-    return inputs, labels_one_hot, iterators
+    return inputs, labels_one_hot, train_init_op, test_init_op
 
 def get_data_iterator_from_generator(trainer, input_dim, *args, n=1):
     x = tf.placeholder('float32', input_dim, name='x')
@@ -178,7 +184,7 @@ def get_data_iterator_from_generator(trainer, input_dim, *args, n=1):
 
     for i in range(n):
         train_dataset = tf.data.Dataset.\
-            from_generator(wrap_iterator(trainer, **args),
+            from_generator(wrap_iterator(trainer, *args),
                 'float32', output_shapes=input_dim)
         test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
         iterator = tf.data.Iterator.from_structure('float32', input_dim)

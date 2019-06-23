@@ -7,8 +7,8 @@ def base(input_, *layers_spec, name=None, shared_frac=None):
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
-        if shared_frac > 0:
-            assert type(shared_frac) is float
+        # if shared_frac > 0:
+        #     assert type(shared_frac) is float
 
     ip = Input(input_)
 

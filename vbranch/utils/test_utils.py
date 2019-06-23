@@ -31,45 +31,56 @@ def compute_acc_from_logits(logits, y_test_one_hot, num_classes=None, mode=None)
 
     return compute_acc_from_prob(pred, y_test_one_hot, num_classes)
 
-def baseline_classification(sess, X_test, y_test, model_name='',
-        num_classes=None, return_logits=False):
-    # Convert to one-hot if needed
-    if not isinstance(y_test, np.ndarray):
-        y_test = np.array(y_test)
-    if len(y_test.shape) == 1:
-        y_test = tf.keras.utils.to_categorical(y_test)
+def baseline_classification(sess, x, y, model_name='model', num_classes=None,
+        return_logits=False):
+    # Convert labels to one-hot if needed
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    if len(y.shape) == 1:
+        y = tf.keras.utils.to_categorical(y)
 
-    logits = sess.run(os.path.join(model_name, 'output/output:0'),
-        feed_dict={'x_test:0':X_test})
+    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
+    sess.run('test_init_op', feed_dict=feed_dict)
+    logits = sess.run(os.path.join(model_name, 'output/output:0'))
 
     if return_logits:
-        return compute_acc_from_logits(logits, y_test, num_classes), logits
+        return compute_acc_from_logits(logits, y, num_classes), logits
 
-    return compute_acc_from_logits(logits, y_test, num_classes)
+    results = {'acc' : compute_acc_from_logits(logits, y, num_classes)}
+    return results
 
-def vbranch_classification(sess, X_test, y_test, model_name='',
-        num_classes=None, mode='before', n_branches=1, return_logits=False):
+def vbranch_classification(sess, x, y, n_branches, model_name='model',
+        num_classes=None, mode='before', return_logits=False):
+    results = {}
+
     # Convert to one-hot if needed
-    if not isinstance(y_test, np.ndarray):
-        y_test = np.array(y_test)
-    if len(y_test.shape) == 1:
-        y_test = tf.keras.utils.to_categorical(y_test)
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    if len(y.shape) == 1:
+        y = tf.keras.utils.to_categorical(y)
 
     outputs = []
+    test_init_ops = []
     for i in range(n_branches):
         name = os.path.join(model_name, 'output/vb{}/output:0'.format(i+1))
         outputs.append(name)
+        test_init_ops.append('test_init_op_'+str(i+1))
 
-    logits_list = sess.run(outputs, feed_dict={'x_test:0':X_test})
-    vbranch_acc = compute_acc_from_logits(logits_list, y_test,
-        num_classes, mode=mode)
+    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
+    sess.run(test_init_ops, feed_dict=feed_dict)
+    logits_list = sess.run(outputs)
+    vbranch_acc = compute_acc_from_logits(logits_list, y, num_classes,mode=mode)
 
     baseline_acc_list = []
     for logits in logits_list:
-        acc = compute_acc_from_logits(logits, y_test, num_classes)
+        acc = compute_acc_from_logits(logits, y, num_classes)
         baseline_acc_list.append(acc)
 
-    return vbranch_acc, baseline_acc_list
+    results['acc_ensemble'] = vbranch_acc
+    for i, acc in enumerate(baseline_acc_list):
+        results['acc_' + str(i+1)] = acc
+
+    return results
 
 # One-shot
 
@@ -122,14 +133,17 @@ def compute_one_shot_acc(test_pred, train_pred, train_files, answers_files):
 
     return correct / n_test
 
-def baseline_one_shot(sess=None, total_runs=20, model_name='', train_runs=None,
-        test_runs=None):
+def baseline_one_shot(sess=None, total_runs=20, model_name='model',
+        train_runs=None, test_runs=None, return_outputs=False):
+
     def get_feed_dict(X):
         feed_dict = {'x:0': X, 'batch_size:0': len(X)}
         return feed_dict
 
     run_data = [get_run(r+1) for r in range(total_runs)]
     run_acc_list = []
+    train_outputs = []
+    test_outputs = []
 
     for r in range(total_runs):
         train_files,test_files,train_ims,test_ims,answers_files = run_data[r]
@@ -144,13 +158,18 @@ def baseline_one_shot(sess=None, total_runs=20, model_name='', train_runs=None,
             train_run = train_runs[r]
             test_run = test_runs[r]
 
+        train_outputs.append(train_run)
+        test_outputs.append(test_run)
         run_acc_list.append(compute_one_shot_acc(test_run, train_run,
             train_files,answers_files))
 
-    return np.mean(run_acc_list)
+    if return_outputs:
+        return np.mean(run_acc_list), train_outputs, test_outputs
 
-def vbranch_one_shot(sess, total_runs=20, mode='concat', model_name='model_1',
-        n_branches=1, baseline=True):
+    return {'acc' : np.mean(run_acc_list)}
+
+def vbranch_one_shot(sess, n_branches, total_runs=20, mode='concat',
+        model_name='model', baseline=True):
 
     assert mode in ['average', 'concat']
 

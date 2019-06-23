@@ -2,8 +2,13 @@ import sys
 sys.path.insert(0, '.')
 
 import vbranch as vb
-from vbranch.utils import bcolors, save_results, get_data, \
-    restore_sess, get_run, compute_one_shot_acc
+from vbranch.applications.cnn import *
+from vbranch.applications.resnet import *
+
+from vbranch.utils.generic_utils import restore_sess, _dir_path, get_model_path
+from vbranch.utils.training_utils import p_console, save_results, get_data, get_data_iterator_from_generator
+from vbranch.utils.test_utils import compute_one_shot_acc, baseline_one_shot
+from vbranch.callbacks import one_shot_acc
 
 import tensorflow as tf
 import numpy as np
@@ -37,160 +42,83 @@ parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
 
-def get_data_as_tensor(train_generator, input_dim, A, P, K):
-    def batch_gen(A, P, K):
-        def func():
-            while True:
-                batch = train_generator.next(A, P, K)
-                batch = batch.astype('float32')
-                yield batch
-        return func
+def build_model(architecture, train_gen, input_dim, output_dim,
+        lr_scheduler, **kwargs):
 
-    train_dataset = tf.data.Dataset.from_generator(batch_gen(A, P, K),'float32',
-                                                 output_shapes=input_dim)
+    inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
+        train_gen, input_dim, **kwargs)
 
-    # Dataset for feeding non-triplet batched images from memory
-    x = tf.placeholder('float32', input_dim, name='x')
-    batch_size = tf.placeholder('int64', name='batch_size')
-    test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+        if architecture == 'simple':
+            model = SimpleCNNLarge(inputs, output_dim, name=name)
+        elif architecture == 'res':
+            model = ResNet18(inputs, output_dim, name=name)
+        else:
+            raise ValueError('Invalid architecture')
 
-    iter_ = tf.data.Iterator.from_structure('float32', input_dim)
-    train_init_op = iter_.make_initializer(train_dataset)
-    test_init_op = iter_.make_initializer(test_dataset, name='test_init_op')
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
-    inputs = iter_.get_next()
-
-    return inputs, train_init_op, test_init_op
-
-def build_model(architecture, inputs, output_dim, model_id):
-    name = 'model_' + str(model_id)
-
-    if architecture == 'simple':
-        model = vb.simple_cnn(inputs, output_dim, 32, 64, 128, 256, name=name)
-    elif architecture == 'res':
-        model = vb.resnet(inputs, output_dim, 32, 64, 128, 256, name=name)
-    else:
-        raise ValueError('Invalid architecture')
+        # Compile model
+        model.compile(optimizer, 'triplet_omniglot', train_init_op, test_init_op,
+                      callbacks={'acc': one_shot_acc(n_branches=1)},
+                      schedulers={'lr:0': lr_scheduler}, **kwargs)
 
     return model
 
-def train(dataset, architecture, model_id, A, P, K, epochs,steps_per_epoch):
-    if not os.path.isdir('models'):
-        os.system('mkdir models')
+def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
+    model_path = get_model_path(dataset, arch, model_id=model_id)
+    p_console('Save model path: '+ model_path)
 
-    model_name = '{}-{}_{:d}'.format(dataset, architecture, model_id)
-    model_path = os.path.join('models', model_name)
+    tf.reset_default_graph()
 
-    print(bcolors.HEADER+'Save model path: '+ model_path+bcolors.ENDC)
-
-    # Load data
     if dataset == 'omniglot':
         train_gen = vb.datasets.omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
         output_dim = 128
+        lr_scheduler = lr_exp_decay_scheduler(0.001, epochs//2, epochs, 0.001)
 
-    tf.reset_default_graph()
+    model = build_model(architecture, train_gen, input_dim, output_dim,
+        lr_scheduler, **kwargs)
+    history = model.fit({}, epochs, steps_per_epoch, val_dict=None,
+        log_path=model_path)
+    save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
-    inputs, train_init_op, test_init_op = get_data_as_tensor(train_gen,
-        input_dim, A,P,K)
-
-    # Build and compile model
-    model = build_model(architecture, inputs, output_dim, model_id)
-
-    lr = tf.placeholder('float32', name='lr')
-    optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-    model.compile(optimizer, 'triplet_'+dataset, A=A, P=P, K=K)
-    model.summary()
-
-    # Train
-    train_loss_hist = []
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        sess.run(train_init_op)
-
-        lr_sched = lr_exp_decay_scheduler(0.001,epochs//3,
-            epochs,0.001)
-
-        for e in range(epochs):
-            print("Epoch {}/{}".format(e + 1, epochs))
-            progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
-            # start = time.time()
-
-            # Training
-            learning_rate = lr_sched(e + 1)
-            for i in range(steps_per_epoch):
-                _, loss_value = sess.run([model.train_op, model.loss],
-                                         feed_dict={lr:learning_rate})
-                progbar.update(i + 1, values=[('loss', loss_value),
-                    ('lr', learning_rate)])
-
-            # epoch_time = time.time() - start
-            # print(('Time={:.0f}, Loss={:.4f}'.format(epoch_time,loss_value)))
-            train_loss_hist.append(loss_value)
-
-        saver = tf.train.Saver()
-        path = os.path.join(model_path, 'ckpt')
-        saver.save(sess, path)
-
-    # Store loss/acc values as csv
-    save_results({'train_loss':train_loss_hist}, '{}-{}'.\
-        format(dataset, architecture),'train_{}.csv'.format(model_id),mode='w')
-
-def test(dataset, architecture, model_id_list,train_dict={},test_dict={}):
-
-    print(model_id_list)
-
+def test(dataset, arch, model_id_list,train_dict={},test_dict={}, acc_dict={}):
     # Load data
     total_runs = 20
     run_data = [get_run(r+1) for r in range(total_runs)]
 
+    baseline_acc_list = []
     model_train_runs = []
     model_test_runs = []
+    model_accs = []
 
-    for id in model_id_list:
-        if id in train_dict.keys() and id in test_dict.keys():
-            train_runs = train_dict[id]
-            test_runs = test_dict[id]
+    for model_id in model_id_list:
+        if model_id in train_dict.keys():
+            train_runs = train_dict[model_id]
+            test_runs = test_dict[model_id]
+            acc = acc_dict[model_id]
         else:
-            train_runs = []
-            test_runs = []
+            tf.reset_default_graph()
+            model_path = get_model_path(dataset, arch, model_id=model_id)
 
-            graph = tf.Graph()
-            sess = tf.Session(graph=graph)
-
-            with sess.as_default(), graph.as_default():
-                restore_sess(sess, './models/{}-{}_{}'.format(dataset,
-                    architecture, id))
-
-                for r in range(total_runs):
-                    train_files,test_files,train_ims,test_ims,answers_files = \
-                        run_data[r]
-
-                    feed_dict = {'x:0':train_ims,'batch_size:0':len(train_ims)}
-                    sess.run('test_init_op', feed_dict=feed_dict)
-                    train_runs.append(sess.run('model_%d'%id+'/'+'output:0'))
-
-                    feed_dict = {'x:0':test_ims, 'batch_size:0':len(test_ims)}
-                    sess.run('test_init_op', feed_dict=feed_dict)
-                    test_runs.append(sess.run('model_%d'%id+'/'+'output:0'))
-
-            train_dict[id] = train_runs
-            test_dict[id] = test_runs
+            with TFSessionGrow() as sess:
+                restore_sess(sess, model_path)
+                acc, train_runs, test_runs = baseline_one_shot(sess,
+                    return_outputs=True)
 
         model_train_runs.append(train_runs)
         model_test_runs.append(test_runs)
+        model_accs.append(acc)
 
     # Average embedding
     mean_acc_runs = []
-
     test_embed = np.mean(model_test_runs, axis=0)
     train_embed = np.mean(model_train_runs, axis=0)
 
     for r in range(total_runs):
         train_files = run_data[r][0]
         answers_files = run_data[r][-1]
-
         acc = compute_one_shot_acc(test_embed[r], train_embed[r],train_files,
             answers_files)
         mean_acc_runs.append(acc)
@@ -199,29 +127,28 @@ def test(dataset, architecture, model_id_list,train_dict={},test_dict={}):
 
     # Concatenate embedding
     concat_acc_runs = []
-
     test_embed = np.concatenate(model_test_runs, axis=-1)
     train_embed = np.concatenate(model_train_runs, axis=-1)
 
     for r in range(total_runs):
         train_files = run_data[r][0]
         answers_files = run_data[r][-1]
-
         acc = compute_one_shot_acc(test_embed[r], train_embed[r],train_files,
             answers_files)
         concat_acc_runs.append(acc)
 
     concat_acc = np.mean(concat_acc_runs)
 
+    print(model_id_list)
+    print('Individual accuracies:', model_accs)
     print('Average embedding acc:', mean_acc)
     print('Concatenate embedding acc:', concat_acc)
 
     results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
+    dirpath = _dir_path(dataset, arch)
+    save_results(results_dict, dirpath, 'B%d-test.csv'%len(model_id_list), 'a')
 
-    save_results(results_dict, '{}-{}'.format(dataset,architecture),
-        'B{}-test.csv'.format(len(model_id_list)), mode='a')
-
-    return train_dict, test_dict
+    return train_dict, test_dict, acc_dict
 
 if __name__ == '__main__':
     args = parser.parse_args()

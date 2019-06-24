@@ -11,7 +11,7 @@ class Model(Network):
     """The `Model` class adds training & evaluation routines to a `Network`"""
 
     def compile(self, optimizer, loss, train_init_op, test_init_op,
-            callbacks={}, schedulers={}, **kwargs):
+            callbacks={}, schedulers={}, assign_ops=None, **kwargs):
         """
         Args:
             - optimizer: optimizer object
@@ -38,16 +38,18 @@ class Model(Network):
         self.test_init_op = test_init_op
         self.callbacks = callbacks
         self.schedulers = schedulers
+        self.assign_ops = assign_ops
 
     def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
         history = _fit(self.train_init_op, self.test_init_op, train_dict,
             epochs, steps_per_epoch, self.loss, self.train_op, val_dict,
-            log_path, self.callbacks, self.schedulers)
+            log_path, self.callbacks, self.schedulers,
+            assign_ops=self.assign_ops)
         return history
 
 class ModelVB(NetworkVB):
     def compile(self, optimizer, loss, train_init_ops, test_init_ops,
-            callbacks={}, schedulers={}, **kwargs):
+            callbacks={}, schedulers={}, assign_ops=None, **kwargs):
         self.optimizer = optimizer
         self.losses = self._get_losses(loss, **kwargs)
         self.train_ops = self._get_train_ops(optimizer)
@@ -56,11 +58,13 @@ class ModelVB(NetworkVB):
         self.test_init_ops = test_init_ops
         self.callbacks = callbacks
         self.schedulers = schedulers
+        self.assign_ops = assign_ops
 
     def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
         history = _fit(self.train_init_ops, self.test_init_ops, train_dict,
             epochs, steps_per_epoch, self.losses, self.train_ops, val_dict,
-            log_path, self.callbacks, self.schedulers, self.n_branches)
+            log_path, self.callbacks, self.schedulers, self.n_branches,
+            self.assign_ops)
         return history
 
     def _get_shared_unshared_vars(self):
@@ -186,7 +190,12 @@ def _get_operations(attributes, operations):
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
-        schedulers={}, n_branches=1):
+        schedulers={}, n_branches=1, assign_ops=None):
+    """
+    Args:
+        - assign_ops: any additional ops to run before training, e.g., assign
+        ops for transferring pre-trained weights (imagenet)
+    """
 
     history = {}
 
@@ -198,6 +207,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
 
     with TFSessionGrow() as sess:
         sess.run(tf.global_variables_initializer())
+        sess.run(assign_ops)
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
@@ -230,7 +240,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                         val_loss = sess.run(loss_op)
 
                         for name, l in val_loss.items():
-                            progbar_vals.append((name, l))
+                            progbar_vals.append(('val_' + name, l))
 
                         if callbacks != {}:
                             for _, func in callbacks.items():
@@ -247,7 +257,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
 
             if val_dict is not None:
                 for name, l in val_loss.items():
-                    hist_append(history, name, l)
+                    hist_append(history, 'val_'+name, l)
 
         if not save_model_path is None:
             saver = tf.train.Saver()

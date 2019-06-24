@@ -154,8 +154,16 @@ def exist_scope(name):
     scope = curr_scope + '/' + name
 
     collection = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
-    if len(collection) > 0:
+
+    try:
+        tf.get_default_graph().get_operation_by_name(scope + '/output')
+        exist_op = True
+    except KeyError:
+        exist_op = False
+
+    if len(collection) > 0 or exist_op:
         return True
+
     return False
 
 def unused_scope(init_name):

@@ -83,25 +83,42 @@ def smart_concat(xs, axis=-1, name='concat'):
             x_concat.append(x)
     return tf.concat(x_concat, axis=axis, name=name)
 
+# def eval_params(func):
+#     """
+#     Decorator to evaluate the parameters returned by get_weights method
+#     using a tf session. Initializes variables if needed."""
+#
+#     def inner(layer, eval_vars=False):
+#         variables = func(layer)
+#
+#         if eval_vars:
+#             with tf.Session() as sess:
+#                 try:
+#                     weights = sess.run(variables)
+#                 except tf.errors.FailedPreconditionError:
+#                     print('FailedPreconditionError')
+#                     sess.run(tf.global_variables_initializer())
+#                     weights = sess.run(variables)
+#         else:
+#             weights = variables
+#         return weights
+#
+#     return inner
+
 def eval_params(func):
     """
     Decorator to evaluate the parameters returned by get_weights method
     using a tf session. Initializes variables if needed."""
 
-    def inner(layer, eval_vars=False):
+    def inner(layer, sess=None):
         variables = func(layer)
 
-        if eval_vars:
-            with tf.Session() as sess:
-                try:
-                    weights = sess.run(variables)
-                except tf.errors.FailedPreconditionError:
-                    sess.run(tf.global_variables_initializer())
-                    weights = sess.run(variables)
-        else:
+        if sess is None:
             weights = variables
-
+        else:
+            weights = sess.run(variables)
         return weights
+
     return inner
 
 class EmptyOutput(object):

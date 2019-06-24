@@ -7,7 +7,7 @@ from vbranch.applications.cnn import *
 
 from vbranch.utils.generic_utils import TFSessionGrow, restore_sess, _dir_path, get_model_path
 from vbranch.utils.training_utils import p_console, save_results, get_data, get_data_iterator
-from vbranch.utils.test_utils import compute_acc_from_logits
+from vbranch.utils.test_utils import compute_acc_from_logits, baseline_classification
 from vbranch.callbacks import classification_acc
 
 import tensorflow as tf
@@ -48,7 +48,8 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
     inputs, labels, train_init_op, test_init_op = get_data_iterator(x_shape,
         y_shape, batch_size, n=1, share_xy=True)
 
-    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+    name = 'model'
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'fcn':
             model = SimpleFCNv1(inputs, n_classes, name=name)
         elif architecture == 'fcn2':
@@ -65,7 +66,7 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
         model.compile(optimizer, 'softmax_cross_entropy_with_logits',
             train_init_op, test_init_op, labels_one_hot=labels,
-            callbacks={'acc':classification_acc(n_classes)}))
+            callbacks={'acc':classification_acc(n_branches=1)})
 
     return model
 
@@ -116,7 +117,6 @@ def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
                 # Compute accuracy
                 acc_dict[model_id], output_dict[model_id] = \
                     baseline_classification(sess, X_test, y_test,
-                    model_name='model_{}_1'.format(model_id),
                     num_classes=n_classes, return_logits=True)
 
         test_outputs.append(output_dict[model_id])

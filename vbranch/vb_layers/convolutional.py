@@ -77,10 +77,10 @@ class Conv2D(Layer):
 
         return output_list
 
-    def get_config(self, eval_weights=False):
+    def get_config(self, sess=None):
         config = {'name':self.name, 'n_branches':self.n_branches,
             'shared_filters':self.shared_filters,
             'output_shapes':self.output_shapes,
             'filters_list':self.filters_list,
-            'weights':self.get_weights(eval_weights)}
+            'weights':self.get_weights(sess)}
         return config

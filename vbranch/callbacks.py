@@ -6,7 +6,8 @@ def classification_acc(n_branches):
         return baseline_classification(sess, feed_dict['x:0'], feed_dict['y:0'])
 
     def vb_func(sess, feed_dict, n_branches):
-        return vbranch_classification(sess, y_test, n_branches)
+        return vbranch_classification(sess, feed_dict['x:0'], feed_dict['y:0'],
+            n_branches)
 
     if n_branches == 1:
         return func

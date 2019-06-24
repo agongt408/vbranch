@@ -41,12 +41,11 @@ class Conv2D(Layer):
 
         return output
 
-    def get_config(self, eval_weights=False):
+    def get_config(self, sess=None):
         config = {'name':self.name, 'filters':self.filters,
             'kernel_size':self.kernel_size, 'strides':self.strides,
             'padding':self.padding, 'use_bias':self.use_bias,
-            'output_shape':self.output_shape,
-            'weights':self.get_weights(eval_weights)}
+            'output_shape':self.output_shape, 'weights':self.get_weights(sess)}
         return config
 
 class Conv1D(Layer):

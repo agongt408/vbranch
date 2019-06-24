@@ -1,43 +1,58 @@
 from ..slim import *
-from tensorflow import Tensor
+from ..utils import TFSessionGrow
+from .. import layers
 
-def base(input_, classes, *layers_spec, kernel_spec=[3,3], name=None,
+from tensorflow import Tensor
+import pickle
+import pkgutil
+
+def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
         subsample_initial_block=True, shared_frac=None):
     """
     Args:
-        - input_tensor: Tensor object
+        - inputs: Tensor object
         - classes: number of classes or units in embedding
-        - layers_spec: list of (n_filters, n_layers) for residual blocks
-        - kernel_spec: list of kernel sizes for each residual layer
+        - layer_spec: tuple of n_layers per block
+        - kernel_spec: tuple of kernel sizes per layer
+        - filter_spec: list of tuples of filters per layer per block
         - name: model name
         - subsample_initial_block: if true, apply strides=2 and downsampling
     """
-    # Residual block (followed by pooling layer in model)
-    def _res_block(x, n_layers, n_filters, kernel_spec, name, shared):
-        strides = 1
-        x = _res_layer(x, n_filters, kernel_spec, strides, name+'_1',
-                shortcut=True, shared=shared)
-        for i in range(n_layers - 1):
-            x = _res_layer(x, n_filters, kernel_spec, 1, name+'_'+str(i+2),
-                    shortcut=False, shared=shared)
-        return x
 
-    # Pre-activation residual layer
-    def _res_layer(x, n_filters, kernel_spec, strides, name, shortcut=False,
-            shared=None):
-        pre = x
-        for i, kernel in enumerate(kernel_spec):
-            x = BatchNormalization(x, name=name + '_bn_'+str(i+1))
-            x = Activation(x, 'relu', name=name + '_relu_'+str(i+1))
-            x = Conv2D(x, n_filters, kernel, strides=strides, padding='same',
-                name=name+'_conv_'+str(i+1), shared=shared)
+    def conv_block(inputs, kernels, filters, stage, block, strides,
+            shortcut, shared):
 
-        # Add shortcut if channels do not match
+        conv_name_base = 'res' + str(stage) + block + '_branch'
+        bn_name_base = 'bn' + str(stage) + block + '_branch'
+
+        i = 0
+        x = inputs
+        for kernel, filter in zip(kernels, filters):
+            if i == 0:
+                s = strides
+            else:
+                s = 1
+            label = '2'+chr(97+i)
+
+            x = Conv2D(x, filter, kernel, strides=s, padding='same',
+                    name=conv_name_base + label, shared=shared)
+            x = BatchNormalization(x, name=bn_name_base + label)
+
+            if i < len(kernels) - 1:
+                x = Activation(x, 'relu')
+
+            i += 1
+
         if shortcut:
-            pre = Conv2D(pre, n_filters,1, strides=strides,
-                padding='same', name=name+'_conv_short', shared=shared)
+            short = Conv2D(inputs, filters[-1], 1, strides=strides,
+                        padding='same', name=conv_name_base+'1', shared=shared)
+            short = BatchNormalization(short, name=bn_name_base+'1')
+            x = Add([x, short])
+        else:
+            x = Add([x, inputs])
 
-        return Add([pre, x], name=name + '_add')
+        x = Activation(x, 'relu')
+        return x
 
     # Create model
     assert isinstance(input_, Tensor) or type(input_) is list
@@ -45,8 +60,6 @@ def base(input_, classes, *layers_spec, kernel_spec=[3,3], name=None,
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
-        if shared_frac > 0:
-            assert type(shared_frac) is float
 
     ip = Input(input_)
 
@@ -57,28 +70,36 @@ def base(input_, classes, *layers_spec, kernel_spec=[3,3], name=None,
     else:
         initial_kernel = 3
         initial_strides = 1
-    initial_filters = layers_spec[0][0]
+    initial_filters = filter_spec[0][0]
 
     x = Conv2D(ip, initial_filters, initial_kernel, strides=initial_strides,
-            name='pre_conv', padding='same', shared=shared_frac)
+            name='conv1', padding='same', shared=shared_frac)
 
     if subsample_initial_block:
-        x = BatchNormalization(x, name='pre_bn')
-        x = Activation(x, 'relu', name='pre_relu')
-        x = MaxPooling2D(x, (3, 3), strides=(2, 2), padding='same',
-            name='pre_max_pool2d')
+        x = BatchNormalization(x, name='bn_conv1')
+        x = Activation(x, 'relu')
+        x = MaxPooling2D(x, (3, 3), strides=(2, 2), padding='same')
 
-    for i, (n_filters, n_layers) in enumerate(layers_spec):
-        x = _res_block(x, n_layers, n_filters, kernel_spec, 'res_%d'%(i+1),
-                shared_frac)
+    for i, n_layers in enumerate(layer_spec):
+        if i == 0:
+            strides = 1
+        else:
+            strides = 2
 
-        if i < len(layers_spec) - 1:
-            x = AveragePooling2D(x, (2,2), name='avg_pool2d_'+str(i + 1))
+        for l in range(n_layers):
+            if l == 0 and i > 0:
+                strides = 2
+            else:
+                strides = 1
 
-    x = GlobalAveragePooling2D(x, name='global_pool2d')
-    x = Dense(x, layers_spec[-1][0], name='fc1', shared=shared_frac)
-    x = BatchNormalization(x, name='bn_fc1')
-    x = Activation(x, 'relu', name='relu_fc1')
+            x = conv_block(x, kernel_spec, filter_spec[i], stage=i+2,
+                    block=chr(97+l), strides=strides, shortcut=l==0,
+                    shared=shared_frac)
+
+    x = GlobalAveragePooling2D(x, name='avg_pool')
+    # x = Dense(x, layer_spec[-1][0], name='fc1', shared=shared_frac)
+    # x = BatchNormalization(x, name='bn_fc1')
+    # x = Activation(x, 'relu', name='relu_fc1')
     # Don't share parameters for last layers
     x = Dense(x, classes, name='output')
 
@@ -87,37 +108,58 @@ def base(input_, classes, *layers_spec, kernel_spec=[3,3], name=None,
 
     return Model(ip, x, name=name)
 
-def ResNet18(input_tensor, classes, name=None, shared_frac=None):
-    layers_spec = [(64, 2), (128, 2), (256, 2), (512, 2)]
-    kernel_spec = [3, 3]
-    return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
+def ResNet18(inputs, classes, name=None, shared_frac=None):
+    layer_spec = (2, 2, 2, 2)
+    kernel_spec = (3, 3)
+    filter_spec = [(64, 64), (128, 128), (256, 256), (512, 512)]
+    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
-def ResNet34(input_tensor, classes, name=None, shared_frac=None):
-    layers_spec = [(64, 3), (128, 4), (256, 6), (512, 3)]
-    kernel_spec = [3, 3]
-    return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
+def ResNet34(inputs, classes, name=None, shared_frac=None):
+    layer_spec = (3, 4, 6, 3)
+    kernel_spec = (3, 3)
+    filter_spec = [(64, 64), (128, 128), (256, 256), (512, 512)]
+    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
-def ResNet50(input_tensor, classes, name=None, shared_frac=None):
-    layers_spec = [(64, 3), (128, 4), (256, 6), (512, 3)]
-    kernel_spec = [1, 3, 1]
-    return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
+def ResNet50(inputs, classes, name=None, shared_frac=None, weights=None):
+    layer_spec = (3, 4, 6, 3)
+    kernel_spec = (1, 3, 1)
+    filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
+    model = base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
-def ResNet101(input_tensor, classes, name=None, shared_frac=None):
-    layers_spec = [(64, 3), (128, 4), (256, 23), (512, 3)]
-    kernel_spec = [1, 3, 1]
-    return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
+    if weights == 'imagenet' and isinstance(inputs, Tensor):
+        print('Loading weights for ResNet50...')
+
+        # Load weights
+        with open('weights/resnet50.pickle', 'rb') as pickle_in:
+            weights = pickle.load(pickle_in)
+
+        assign_ops = []
+        for layer in model.layers:
+            name = layer.name
+            if isinstance(layer, layers.Conv2D):
+                assign_ops.append(tf.assign(layer.f, weights[name]['filter']))
+                assign_ops.append(tf.assign(layer.b, weights[name]['bias']))
+            elif isinstance(layer, layers.BatchNormalization):
+                assign_ops.append(tf.assign(layer.scale, weights[name]['scale']))
+                assign_ops.append(tf.assign(layer.beta, weights[name]['beta']))
+
+        return model, assign_ops
+
+    return model
+
+def ResNet101(inputs, classes, name=None, shared_frac=None):
+    layers_spec = (3, 4, 23, 3)
+    kernel_spec = (1, 3, 1)
+    filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
+    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
-def ResNet152(input_tensor, classes, name=None, shared_frac=None):
-    layers_spec = [(64, 3), (128, 8), (256, 36), (512, 3)]
-    kernel_spec = [1, 3, 1]
-    return base(input_tensor, classes, *layers_spec, kernel_spec=kernel_spec,
+def ResNet152(inputs, classes, name=None, shared_frac=None):
+    layers_spec = (3, 8, 36, 3)
+    kernel_spec = (1, 3, 1)
+    filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
+    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
-
-# https://keras.io/applications/#resnet
-# keras.applications.resnet.ResNet50(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)
-# keras.applications.resnet.ResNet101(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)
-# keras.applications.resnet.ResNet152(include_top=True, weights='imagenet', input_tensor=None, input_shape=None, pooling=None, classes=1000)

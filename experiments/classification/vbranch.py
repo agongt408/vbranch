@@ -55,7 +55,8 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
     if n_branches > 1 and isinstance(inputs, tf.Tensor):
         inputs = [inputs] * n_branches
 
-    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+    name = 'model'
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'fcn':
             model = SimpleFCNv1(inputs, n_classes, name=name, shared_frac=shared)
         elif architecture == 'fcn2':

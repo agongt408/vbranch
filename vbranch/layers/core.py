@@ -9,7 +9,7 @@ class Layer(object):
         self.output_shape = None
 
     @eval_params
-    def get_weights(self, eval_weights=True):
+    def get_weights(self):
         scope = join(self.model_scope, self.name) + '/'
         weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
         return weights
@@ -77,10 +77,10 @@ class Dense(Layer):
 
         return output
 
-    def get_config(self, eval_weights=False):
+    def get_config(self, sess=None):
         config = {'name':self.name, 'units':self.units,
             'use_bias':self.use_bias, 'output_shape':self.output_shape,
-            'weights':self.get_weights(eval_weights)}
+            'weights':self.get_weights(sess)}
         return config
 
 class BatchNormalization(Layer):
@@ -103,10 +103,10 @@ class BatchNormalization(Layer):
 
         return output
 
-    def get_config(self, eval_weights=False):
+    def get_config(self, sess=None):
         config = {'name':self.name, 'epsilon':self.epsilon,
             'output_shape':self.output_shape,
-            'weights':self.get_weights(eval_weights)}
+            'weights':self.get_weights(sess)}
         return config
 
 class Activation(Layer):

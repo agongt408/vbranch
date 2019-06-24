@@ -183,12 +183,14 @@ if __name__ == '__main__':
         if args.trials == 1:
             for id in args.model_id:
                 # Run trial with specified model ids
-                train(args.dataset, args.architecture,id,args.A, args.P, args.K,
-                    args.epochs,args.steps_per_epoch)
+                train(args.dataset, args.architecture,id,
+                    args.epochs,args.steps_per_epoch,
+                    A=args.A, P=args.P, K=args.K)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
-                train(args.dataset, args.architecture,i+1,args.A, args.P, args.K,
-                    args.epochs,args.steps_per_epoch)
+                train(args.dataset, args.architecture,i+1,
+                    args.epochs,args.steps_per_epoch,
+                    A=args.A, P=args.P, K=args.K)
 
     print('Finished!')

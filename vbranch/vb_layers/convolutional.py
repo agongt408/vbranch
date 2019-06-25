@@ -1,6 +1,6 @@
 from .. import layers as L
 from .core import Layer, CrossWeights
-from ..utils.generic_utils import smart_add, smart_concat
+from ..utils.generic import smart_add, smart_concat
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,

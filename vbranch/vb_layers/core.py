@@ -1,7 +1,7 @@
 # Virtual branching version of layers
 
 from .. import layers as L
-from ..utils.generic_utils import eval_params, smart_add, smart_concat, EmptyOutput
+from ..utils.generic import eval_params, smart_add, smart_concat, EmptyOutput
 
 import tensorflow as tf
 import collections

@@ -1,1 +1,1 @@
-from .generic_utils import TFSessionGrow, restore_sess
+from .generic import TFSessionGrow, restore_sess

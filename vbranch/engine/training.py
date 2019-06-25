@@ -40,11 +40,12 @@ class Model(Network):
         self.schedulers = schedulers
         self.assign_ops = assign_ops
 
-    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
+    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None,
+            call_step=1):
         history = _fit(self.train_init_op, self.test_init_op, train_dict,
             epochs, steps_per_epoch, self.loss, self.train_op, val_dict,
             log_path, self.callbacks, self.schedulers,
-            assign_ops=self.assign_ops)
+            assign_ops=self.assign_ops, call_step=call_step)
         return history
 
 class ModelVB(NetworkVB):
@@ -60,11 +61,12 @@ class ModelVB(NetworkVB):
         self.schedulers = schedulers
         self.assign_ops = assign_ops
 
-    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None):
+    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None,
+            call_step=1):
         history = _fit(self.train_init_ops, self.test_init_ops, train_dict,
             epochs, steps_per_epoch, self.losses, self.train_ops, val_dict,
             log_path, self.callbacks, self.schedulers, self.n_branches,
-            self.assign_ops)
+            self.assign_ops, call_step=call_step)
         return history
 
     def _get_shared_unshared_vars(self):
@@ -190,7 +192,7 @@ def _get_operations(attributes, operations):
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
-        schedulers={}, n_branches=1, assign_ops=None):
+        schedulers={}, n_branches=1, assign_ops=None, call_step=1):
     """
     Args:
         - assign_ops: any additional ops to run before training, e.g., assign
@@ -228,7 +230,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                 if i == steps_per_epoch - 1:
                     # For classification, evaluate callbacks (e.g., accuracy)
                     # on training set
-                    if callbacks != {}:
+                    if callbacks != {} and (e + 1) % call_step == 0:
                         for _, func in callbacks.items():
                             results = func(sess, train_dict_copy, n_branches)
                             for name, r in results.items():
@@ -242,7 +244,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                         for name, l in val_loss.items():
                             progbar_vals.append(('val_' + name, l))
 
-                        if callbacks != {}:
+                        if callbacks != {} and (e + 1) % call_step == 0:
                             for _, func in callbacks.items():
                                 results = func(sess, val_dict, n_branches)
                                 for name, r in results.items():

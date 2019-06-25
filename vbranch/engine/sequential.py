@@ -1,6 +1,6 @@
 # Declare models sequentially
 
-from ..utils.generic_utils import Summary, get_shape_as_str, shape_to_str, get_num_params
+from ..utils.generic import Summary, get_shape_as_str, shape_to_str, get_num_params
 
 import tensorflow as tf
 import numpy as np

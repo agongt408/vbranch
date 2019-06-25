@@ -1,4 +1,4 @@
-from ..utils.generic_utils import eval_params, EmptyOutput
+from ..utils.generic import eval_params, EmptyOutput
 
 import tensorflow as tf
 from os.path import join

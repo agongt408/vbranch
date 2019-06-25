@@ -5,40 +5,6 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-def save_results(data, dirname, filename, mode='w'):
-    """Helper to save `data` dict to csv"""
-
-    # Create folder to store csv
-    csv_dir = os.path.join('results', dirname)
-    if not os.path.isdir(csv_dir):
-        os.system('mkdir -p ' + csv_dir)
-
-    csv_path = os.path.join(csv_dir, filename)
-
-    if mode == 'w':
-        results = pd.DataFrame(data=data)
-    elif mode == 'a':
-        results = pd.DataFrame(data=data, index=[0])
-    else:
-        raise ValueError('invalid file I/O mode ("w" or "a")')
-
-    if os.path.isfile(csv_path) and mode == 'a':
-        results.to_csv(csv_path, mode=mode, header=False)
-    else:
-        results.to_csv(csv_path, mode=mode)
-
-    return csv_path
-
 def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
     """NOTE: `episode` starts from 1"""
     def func(episode):
@@ -124,10 +90,6 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
 
     return x_list, y_list
 
-def p_console(*args):
-    # Print to console
-    print(bcolors.HEADER, *args, bcolors.ENDC)
-
 def wrap_iterator(generator, *args):
     def func():
         while True:
@@ -174,7 +136,17 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
 
     return inputs, labels_one_hot, train_init_op, test_init_op
 
-def get_data_iterator_from_generator(trainer, input_dim, *args, n=1):
+def get_data_iterator_from_generator(train_gen, input_dim, *args, n=1):
+    """
+    Create baseline/vbranch iterator from generator (train), and tensor slices
+    (test). E.g., used for Omniglot dataset.
+    Args:
+        - train_gen: object with next() method (not an iterator or Python
+        generator)
+        - input_dim: dimension of expected input
+        - n: number of branches
+    """
+
     x = tf.placeholder('float32', input_dim, name='x')
     batch_size = tf.placeholder('int64', name='batch_size')
 
@@ -184,7 +156,7 @@ def get_data_iterator_from_generator(trainer, input_dim, *args, n=1):
 
     for i in range(n):
         train_dataset = tf.data.Dataset.\
-            from_generator(wrap_iterator(trainer, *args),
+            from_generator(wrap_iterator(train_gen, *args),
                 'float32', output_shapes=input_dim)
         test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
         iterator = tf.data.Iterator.from_structure('float32', input_dim)

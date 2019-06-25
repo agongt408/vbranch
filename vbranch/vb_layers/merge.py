@@ -1,6 +1,6 @@
 from .. import layers as L
 from .core import Layer, VBOutput
-from ..utils.generic_utils import smart_add_n
+from ..utils.generic import smart_add_n
 
 from tensorflow import Tensor
 

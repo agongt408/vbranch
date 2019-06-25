@@ -1,8 +1,10 @@
 from ..slim import *
 from ..utils import TFSessionGrow
 from .. import layers
+from .. import vb_layers
 
 from tensorflow import Tensor
+from numpy import ndarray
 import pickle
 import pkgutil
 
@@ -97,9 +99,9 @@ def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
                     shared=shared_frac)
 
     x = GlobalAveragePooling2D(x, name='avg_pool')
-    # x = Dense(x, layer_spec[-1][0], name='fc1', shared=shared_frac)
-    # x = BatchNormalization(x, name='bn_fc1')
-    # x = Activation(x, 'relu', name='relu_fc1')
+    x = Dense(x, filter_spec[-1][-1] // 2, shared=shared_frac)
+    x = BatchNormalization(x)
+    x = Activation(x, 'relu')
     # Don't share parameters for last layers
     x = Dense(x, classes, name='output')
 
@@ -138,6 +140,10 @@ def ResNet50(inputs, classes, name=None, shared_frac=None, weights=None):
 
         assign_ops = []
         for layer in model.layers:
+            # Only load weights up to the GlobalAveragePooling2D layer
+            if isinstance(layer, layers.GlobalAveragePooling2D):
+                break
+
             name = layer.name
             if isinstance(layer, layers.Conv2D):
                 assign_ops.append(tf.assign(layer.f, weights[name]['filter']))
@@ -145,6 +151,7 @@ def ResNet50(inputs, classes, name=None, shared_frac=None, weights=None):
             elif isinstance(layer, layers.BatchNormalization):
                 assign_ops.append(tf.assign(layer.scale, weights[name]['scale']))
                 assign_ops.append(tf.assign(layer.beta, weights[name]['beta']))
+            # elif isinstance(layer, vb_layers.Conv2D):
 
         return model, assign_ops
 
@@ -163,3 +170,53 @@ def ResNet152(inputs, classes, name=None, shared_frac=None):
     filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
     return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
+
+def get_weight_partition(name, ref, value):
+    assert isinstance(ref, Tensor) and isinstance(value, ndarray)
+    assert name in [
+        'shared_to_shared', 'shared_to_unique',
+        'unique_to_shared', 'unique_to_unique'
+    ]
+
+    ref_shape = ref.get_shape().as_list()
+    value_shape = value.shape
+
+    if len(ref) == 4:
+        # Conv2D filter
+        if name == 'shared_to_shared':
+            return value[:, :, :ref_shape[-2], :ref_shape[-1]]
+        elif name == 'shared_to_unique':
+            return value[:, :, :ref_shape[-2], -ref_shape[-1]:]
+        elif name == 'unique_to_shared':
+            return value[:, :, -ref_shape[-2]:, :ref_shape[-1]]
+        elif name == 'unique_to_unique':
+            return value[:, :, -ref_shape[-2]:, -ref_shape[-1]:]
+    elif len(ref) == 1:
+        # BatchNormalization or Conv2D bias
+        if name == 'shared_to_shared':
+            return value[:ref_shape[0]]
+        else:
+            return value[-ref_shape[0]:]
+
+    return
+
+def get_vb_assign_conv(layer, filter_value, bias_value):
+
+    assign_ops = []
+
+    if hasattr(layer, 'shared_branch'):
+        ref = layer.shared_branch.f
+        assign_ops.append(tf.assign(ref, get_weight_partition('shared_to_shared',
+            ref, filter_value)))
+
+    # for weight in layer.get_weights():
+    #     if len(weight.get_shape().as_list()) == 4:
+    #         for name in name_list:
+    #             if weight.name.find(name) > -1:
+    #                 assign_ops.append(tf.assign(weight, get_weight_partition(name,
+    #                     weight, filter_value)))
+    #     elif len(weight.get_shape().as_list()) == 1:
+    #         for name in name_list:
+    #             if weight.name.find(name) > -1:
+    #                 assign_ops.append(tf.assign(weight, get_weight_partition(name,
+    #                     weight, bias_value)))

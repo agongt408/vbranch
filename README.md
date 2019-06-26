@@ -31,9 +31,9 @@ learning rate = 0.001; test = before mean acc
 
 ** No batch norm or relu for final FC layer (output layer); improves performance for shared_frac=1; for figures with batch norm/relu after final FC layer, see [old-fcn](old/figs)
 
-![cnn-results](old/06072019/old/figs/cnn-2-results.png)
-![cnn-results](old/06072019/old/figs/cnn-3-results.png)
-![cnn-results](old/06072019/old/figs/cnn-4-results.png)
+![cnn-results](old/04272019/old/figs/cnn-2-results.png)
+![cnn-results](old/04272019/old/figs/cnn-3-results.png)
+![cnn-results](old/04272019/old/figs/cnn-4-results.png)
 
 CNN = 1 (input) -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001; test = before mean acc
@@ -52,9 +52,9 @@ Correlation and Strength (from Random Forest paper):
 
 ### Omniglot
 
-![omniglot-results](06072019/figs/omniglot-simple-2-concat-results.png)
-![omniglot-results](06072019/figs/omniglot-simple-3-concat-results.png)
-![omniglot-results](06072019/figs/omniglot-simple-4-concat-results.png)
+![omniglot-results](old/06072019/figs/omniglot-simple-2-concat-results.png)
+![omniglot-results](old/06072019/figs/omniglot-simple-3-concat-results.png)
+![omniglot-results](old/06072019/figs/omniglot-simple-4-concat-results.png)
 
 CNN = 1 (input) -> 32 -> 32 -> 64 -> 64 -> 128 -> 128 -> 256 -> 256 filters; batch norm, relu; softmax; 90 epochs;
 learning rate = 0.001; concatenate embeddings

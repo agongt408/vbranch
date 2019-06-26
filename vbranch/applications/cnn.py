@@ -1,14 +1,28 @@
 from ..slim import *
 from tensorflow import Tensor
 
+def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
+    return base(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
+
+def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None):
+    return base(inputs, (classes, 0), 32, 64, 128, 256, name=name,
+        shared_frac=shared_frac)
+
 def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
     """
-    Declares both baseline and vbranch models in one function
+    Create SimpleCNN model; dynamically determine what type of model to use
+    (i.e., Model or ModelVB)
     Args:
-        - inputs: single Tensor or list of Tensors
-        - final_spec: tuple of (classes, shared_units) or scalar
-        - layers_spec: tuple(s) of (filters_list, shared_filters) or scalar
-        - branches: number of branches
+        - final_spec: scalar of number of units; or tuple of (units, shared);
+        if scalar, default to `shared_frac`
+        - layers_spec: list of layer sizes of list of (layer size, shared)
+        tuples; shared can be either float (fraction) or int (units); if list
+        of scalars, each layer will default to `shared_frac`
+        - name: model name
+        - shared_frac: fraction of each layer's parameters to share; only
+        used if creating ModelVB
+    Returns:
+        - Model or ModelVB instance
     """
 
     assert isinstance(input_, Tensor) or type(input_) is list
@@ -16,8 +30,6 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
-        if shared_frac > 0:
-            assert type(shared_frac) is float
 
     ip = Input(input_)
 
@@ -42,8 +54,6 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
             x = AveragePooling2D(x, (2,2),name='avg_pool2d_'+str(i+1))
         else:
             x = GlobalAveragePooling2D(x, name='global_avg_pool2d')
-
-            # Embedding layers
             x = Dense(x, filters, name='fc1', shared=shared)
             x = BatchNormalization(x, name='bn_fc1')
             x = Activation(x, 'relu', name='relu_fc1')
@@ -65,10 +75,3 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
         return ModelVB(ip, x, name=name)
 
     return Model(ip, x, name=name)
-
-def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
-
-def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, (classes, 0), 32, 64, 128, 256, name=name,
-        shared_frac=shared_frac)

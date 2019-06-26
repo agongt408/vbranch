@@ -2,34 +2,38 @@ import os
 import json
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
 
 class DataGenerator(object):
-    def __init__(self, dataset, split, verify=False, DATA_ROOT='../data'):
-        self.dataset = dataset
-        self.DATA_ROOT = DATA_ROOT
-        # self.camera = camera
+    def __init__(self, dataset, split, verify=False, data_root='../data'):
+        """
+        Get data for Market-1501 and DukeMTMC datasets. Both use same file
+        format. `files_dict` stores paths under each corresponding identity;
+        `files_arr` stores paths as list of (path, idt, camera) tuples.
+        Args:
+            - dataset: 'market', 'duke'
+            - split: 'train', 'test', 'query'
+            - verify: if true, verify that each query has corresponding groud
+            truth image in testing dataset; used for testing settting
+            - data_root: path to folder containing market and duke folders
+        Raises:
+            - AssertionError if invalid dataset or split"""
 
-        self.files_dict, self.files_arr = self._get_data(dataset, split)
+        assert dataset in ['market', 'duke']
+        assert split in ['train', 'test', 'query']
+
+        self.dataset = dataset
+        self.files_dict, self.files_arr = self._get_data(dataset,
+            split, data_root)
 
         if verify and split in ['test' , 'query']:
             self._verify(dataset)
 
-    def _get_data(self, dataset, split):
-        assert dataset in ['market', 'cuhk03', 'duke']
-        assert split in ['train', 'test', 'query']
-
+    @staticmethod
+    def _get_data(dataset, split, data_root):
         files_dict = {}
         files_arr = []
 
-        name_dict = {
-            'train' : 'train', # 'bounding_box_train',
-            'test'  : 'test', # 'bounding_box_test',
-            'query' : 'query'
-        }
-
-        if dataset == 'market' or dataset == 'duke':
-            dir = os.path.join(self.DATA_ROOT, dataset, name_dict[split])
+        dir = os.path.join(data_root, dataset, split)
 
         for f in os.listdir(dir):
             if f[-4:] == '.jpg':
@@ -56,7 +60,7 @@ class DataGenerator(object):
 
         missing = 0
         for q in range(len(query_arr)):
-            idt, camera = int(query_arr[q][1]), int(query_arr[q][2])
+            _, idt, camera = query_arr[q]
 
             b = np.logical_or(gallery_cams != camera, gallery_idts != idt)
 
@@ -76,11 +80,29 @@ class DataGenerator(object):
         print("Verification successful! All query have ground-truth samples.")
 
 class TripletDataGenerator(DataGenerator):
+    """Returns object that randomly samples triplets from the dataset"""
+
     def __init__(self, dataset, split):
         super().__init__(dataset, split)
 
     def next(self, P, K, preprocess=True, img_dim=(256,128,3), crop=False,
             flip=False, flatten=True, labels=False):
+        """
+        Args:
+            - P: number of identities
+            - K: number of samples per identity
+            - preprocess: if true, apply imagenet preprocessing (resnet)
+            - img_dim: image dimension of batch output, resizes if necessary
+            - crop: if true, apply random croppings of original image
+            - flip: if true, apply random horizontal flips of image
+            - flatten: if true, flatten batch to size (P*K, height, width, channels)
+            must be true when generating batches for training
+            - labels: if true, return corresponding identities of batch images
+        Returns:
+            - np array (batch)
+            - np array (labels, if `labels` is true)
+        """
+
         batch = []
         im_labels = []
 
@@ -118,6 +140,7 @@ class TripletDataGenerator(DataGenerator):
 
     @staticmethod
     def _imread_crop(path, shape, preprocess):
+        """Read image from path and take random crops"""
         crop_x = np.random.randint(0.125 * shape[1])
         crop_y = np.random.randint(0.125 * shape[0])
 
@@ -128,6 +151,13 @@ class TripletDataGenerator(DataGenerator):
 class TestingDataGenerator(DataGenerator):
     def __init__(self, dataset, split, preprocess=None, img_dim=(128,64,3),
             crop=False, flip=False, buffer=100):
+        """
+        Creates iterable object over the specified split of the dataset
+        (can be `train` split, despite name of class).
+        Args (see TripletDataGenerator):
+            - crop: if true, take central crop of image
+            - buffer: size of batch to return at each iteration"""
+
         super().__init__(dataset, split)
 
         self.preprocess = preprocess
@@ -177,6 +207,7 @@ class TestingDataGenerator(DataGenerator):
 
     @staticmethod
     def _imread_crop(path, shape, preprocess):
+        """Read image and take central crop"""
         crop_x = shape[1] // 16
         crop_y = shape[0] // 16
 
@@ -195,14 +226,17 @@ def _imread(img_path):
     return im
 
 def _imread_scale(img_path, shape, preprocess=True):
+    """Read image and resize if necessary to match shape"""
+
     im = _imread(img_path)
     if im.shape[:2] != shape[:2]:
         # print('resize')
         im = cv2.resize(im, (shape[1], shape[0]))
 
     if preprocess:
-        # return _densenet_preprocess(im.astype('float64'))
-        return _imagenet_preprocess(im)
+        # return _densenet_preprocess(im.astype('float32'))
+        return _resnet_preprocess(im.astype('float32'))
+
     # elif preprocess == 'norm':
     #     return _preprocess_norm(im)
 
@@ -221,6 +255,7 @@ def _densenet_preprocess(x):
     https://github.com/titu1994/DenseNet
     """
 
+    x = x[..., ::-1]
     # Zero-center by mean pixel
     x[..., 0] -= 103.939
     x[..., 1] -= 116.779
@@ -230,6 +265,11 @@ def _densenet_preprocess(x):
 
     return x
 
-def _imagenet_preprocess(x):
-    # return _preprocess_numpy_input(x, 'channels_last', 'tf')
-    return x / 127.5 - 1
+# https://github.com/keras-team/keras-applications/blob/master/keras_applications/resnet.py
+def _resnet_preprocess(x):
+    x = x[..., ::-1]
+    # Zero-center by mean pixel
+    x[..., 0] -= 103.939
+    x[..., 1] -= 116.779
+    x[..., 2] -= 123.68
+    return x

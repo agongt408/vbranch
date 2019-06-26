@@ -1,11 +1,12 @@
 from .core import Layer
 from ..utils.generic import eval_params, EmptyOutput
+from ..initializers import glorot_uniform
 
 import tensorflow as tf
 
 class Conv2D(Layer):
     def __init__(self, filters, kernel_size, name, strides=1, padding='valid',
-            use_bias=True):
+            use_bias=True, fan_in=None, fan_out=None):
         super().__init__(name)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -14,6 +15,8 @@ class Conv2D(Layer):
         self.use_bias = use_bias
         self.f = []
         self.b = []
+        self.fan_in = fan_in
+        self.fan_out = fan_out
 
     @Layer.call
     def __call__(self, x):
@@ -24,8 +27,13 @@ class Conv2D(Layer):
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]
 
-        self.f = tf.get_variable('filter', shape=[self.kernel_size,
-            self.kernel_size, channels_in, self.filters])
+        if self.fan_in is not None and self.fan_out is not None:
+            self.f = tf.get_variable('filter', initializer=\
+                glorot_uniform([self.kernel_size, self.kernel_size,
+                    channels_in, self.filters], self.fan_in, self.fan_out))
+        else:
+            self.f = tf.get_variable('filter', shape=[self.kernel_size,
+                self.kernel_size, channels_in, self.filters])
 
         strides = (1, self.strides, self.strides, 1)
 

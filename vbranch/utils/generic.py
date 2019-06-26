@@ -50,17 +50,6 @@ def get_num_params(tensor):
 
 # From VB layers
 
-# def smart_add(x, y):
-#     # Intelligently add x and y to avoid error when adding EmptyOutput
-#     if isinstance(x, EmptyOutput) and isinstance(y, EmptyOutput):
-#         return EmptyOutput()
-#     elif isinstance(x, EmptyOutput):
-#         return y
-#     elif isinstance(y, EmptyOutput):
-#         return x
-#     else:
-#         return x + y
-
 def smart_add(x, y, name='add'):
     return smart_add_n([x, y], name=name)
 
@@ -82,28 +71,6 @@ def smart_concat(xs, axis=-1, name='concat'):
         if not isinstance(x, EmptyOutput):
             x_concat.append(x)
     return tf.concat(x_concat, axis=axis, name=name)
-
-# def eval_params(func):
-#     """
-#     Decorator to evaluate the parameters returned by get_weights method
-#     using a tf session. Initializes variables if needed."""
-#
-#     def inner(layer, eval_vars=False):
-#         variables = func(layer)
-#
-#         if eval_vars:
-#             with tf.Session() as sess:
-#                 try:
-#                     weights = sess.run(variables)
-#                 except tf.errors.FailedPreconditionError:
-#                     print('FailedPreconditionError')
-#                     sess.run(tf.global_variables_initializer())
-#                     weights = sess.run(variables)
-#         else:
-#             weights = variables
-#         return weights
-#
-#     return inner
 
 def eval_params(func):
     """

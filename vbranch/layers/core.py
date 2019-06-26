@@ -1,4 +1,5 @@
 from ..utils.generic import eval_params, EmptyOutput
+from ..initializers import glorot_uniform
 
 import tensorflow as tf
 from os.path import join
@@ -53,12 +54,14 @@ class Layer(object):
         return new_func
 
 class Dense(Layer):
-    def __init__(self, units, name, use_bias=True):
+    def __init__(self, units, name, use_bias=True, fan_in=None, fan_out=None):
         super().__init__(name)
         self.units = units
         self.use_bias = use_bias
         self.w = []
         self.b = []
+        self.fan_in = fan_in
+        self.fan_out = fan_out
 
     @Layer.call
     def __call__(self, x):
@@ -67,10 +70,14 @@ class Dense(Layer):
             return EmptyOutput()
 
         n_in = x.get_shape().as_list()[-1]
-        self.w = tf.get_variable('weight', shape=[n_in, self.units])
+        if self.fan_in is not None and self.fan_out is not None:
+            self.w = tf.get_variable('weight', initializer=\
+                glorot_uniform([n_in, self.units], self.fan_in, self.fan_out))
+        else:
+            self.w = tf.get_variable('weight', shape=[n_in, self.units])
 
         if self.use_bias:
-            self.b = tf.get_variable('bias', shape=[self.units])
+            self.b = tf.get_variable('bias', initializer=tf.zeros([self.units]))
             output = tf.nn.xw_plus_b(x, self.w, self.b, name='output')
         else:
             output = tf.matmul(x, self.w, name='output')

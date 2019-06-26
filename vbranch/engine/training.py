@@ -1,5 +1,5 @@
 from .functional import Network, NetworkVB
-from ..losses import softmax_cross_entropy_with_logits, triplet_omniglot
+from .. import losses as LL
 from ..utils import TFSessionGrow
 
 import tensorflow as tf
@@ -8,40 +8,50 @@ from copy import copy
 import numpy as np
 
 class Model(Network):
-    """The `Model` class adds training & evaluation routines to a `Network`"""
+    """The `Model` class adds training routine to `Network`"""
 
     def compile(self, optimizer, loss, train_init_op, test_init_op,
-            callbacks={}, schedulers={}, assign_ops=None, **kwargs):
+            callbacks={}, schedulers={}, assign_ops=[], labels=None):
         """
+        Compiles model
         Args:
             - optimizer: optimizer object
-            - train_init_op: single obj or list, train initializers
-            - test_init_op: single obj or list, test initializers
-            - loss: str, name of loss function
+            - train_init_op: training initializer
+            - test_init_op: testing initializer
+            - loss: str, function (see `losses.py`)
             - callbacks: dict of callable objects
             - schedulers: dict of callable objects
+            - assign_ops: tf ops to initialize weights with pretrained values
         """
+
         self.optimizer = optimizer
-
-        if loss == 'softmax_cross_entropy_with_logits':
-            loss = softmax_cross_entropy_with_logits(
-                labels=kwargs['labels_one_hot'], logits=self.output, name='loss')
-        elif loss == 'triplet_omniglot':
-            loss = triplet_omniglot(self.output, A=kwargs['A'],
-                P=kwargs['P'], K=kwargs['K'], name='loss')
-        else:
-            print('Custom loss used...')
-
-        self.loss = {'loss' : loss }
+        self.loss = {'loss' : loss(labels, self.output, name='loss') }
         self.train_op = optimizer.minimize(self.loss['loss'])
+
         self.train_init_op = train_init_op
         self.test_init_op = test_init_op
         self.callbacks = callbacks
         self.schedulers = schedulers
         self.assign_ops = assign_ops
 
-    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None,
-            call_step=1):
+    def fit(self, epochs, steps_per_epoch, train_dict={}, val_dict=None,
+            log_path=None, call_step=1):
+        """
+        Train model given training and validation data
+        Args:
+            - epochs: number of epochs to train model, loss logged at end of
+            each epoch to history
+            - steps_per_epoch: number of steps per epoch
+            - train_dict: dict of np arrays to initialize training iterators
+            (optional, can be empty dict if using generators)
+            - val_dict: optional, dict of np arrays to initialize tesing
+            iterators
+            - log_path: path to save model checkpoints
+            - call_step: run callbacks after every `call_step` epochs
+        Returns:
+            - dict of losses and callbacks evaluated on training (and
+            validation data if supplied)"""
+
         history = _fit(self.train_init_op, self.test_init_op, train_dict,
             epochs, steps_per_epoch, self.loss, self.train_op, val_dict,
             log_path, self.callbacks, self.schedulers,
@@ -50,9 +60,27 @@ class Model(Network):
 
 class ModelVB(NetworkVB):
     def compile(self, optimizer, loss, train_init_ops, test_init_ops,
-            callbacks={}, schedulers={}, assign_ops=None, **kwargs):
+            callbacks={}, schedulers={}, assign_ops=[], labels=None):
+        """
+        Compiles virtual branching model
+        Args:
+            - optimizer: optimizer object
+            - train_init_op: list of training initializers
+            - test_init_op: list of testing initializers
+            - loss: str, function (see `losses.py`)
+            - callbacks: dict of callable objects
+            - schedulers: dict of callable objects
+            - assign_ops: tf ops to initialize weights with pretrained values
+        """
+
         self.optimizer = optimizer
-        self.losses = self._get_losses(loss, **kwargs)
+
+        if type(labels) is list:
+            labels_list = labels
+        else:
+            labels_list = [labels] * self.n_branches
+
+        self.losses = self._get_losses(loss, labels_list)
         self.train_ops = self._get_train_ops(optimizer)
 
         self.train_init_ops = train_init_ops
@@ -61,8 +89,27 @@ class ModelVB(NetworkVB):
         self.schedulers = schedulers
         self.assign_ops = assign_ops
 
-    def fit(self, train_dict, epochs, steps_per_epoch, val_dict, log_path=None,
-            call_step=1):
+    def fit(self, epochs, steps_per_epoch, train_dict={}, val_dict=None,
+            log_path=None, call_step=1):
+        """
+        Train virtual branching model given training and validation data
+        Args:
+            - epochs: number of epochs to train model, loss logged at end of
+            each epoch to history
+            - steps_per_epoch: number of steps per epoch
+            - train_dict: dict of np arrays to initialize training iterators
+            (optional, can be empty dict if using generators); note that
+            different (x, y) data be need to be supplied for each branch if
+            using bagging
+            - val_dict: optional, dict of np arrays to initialize tesing
+            iterators
+            - log_path: path to save model checkpoints
+            - call_step: run callbacks after every `call_step` epochs
+        Returns:
+            - dict of losses and callbacks evaluated on training (and
+            validation data if supplied); both ensemble and per-branch metrics
+            will be calculated"""
+
         history = _fit(self.train_init_ops, self.test_init_ops, train_dict,
             epochs, steps_per_epoch, self.losses, self.train_ops, val_dict,
             log_path, self.callbacks, self.schedulers, self.n_branches,
@@ -71,7 +118,7 @@ class ModelVB(NetworkVB):
 
     def _get_shared_unshared_vars(self):
         """
-        Get shared variables (in order to later average gradients)
+        Returns shared variables (in order to later average gradients)
         and unshared variables (unique to each branch)"""
 
         shared_vars = []
@@ -90,38 +137,24 @@ class ModelVB(NetworkVB):
 
         return shared_vars, unshared_vars
 
-    def _get_losses(self, loss, **kwargs):
+    def _get_losses(self, loss, labels):
+        # Apply losses to each branch individually
         losses = {}
-
         for i in range(self.n_branches):
             name = 'loss_'+str(i+1)
-
-            if loss == 'softmax_cross_entropy_with_logits':
-                labels = kwargs['labels_one_hot'][i]
-                losses[name] = softmax_cross_entropy_with_logits(labels=labels,
-                    logits=self.output[i], name=name)
-            elif loss == 'triplet_omniglot':
-                losses[name] = triplet_omniglot(self.output[i], A=kwargs['A'],
-                    P=kwargs['P'], K=kwargs['K'], name=name)
-            else:
-                raise ValueError('invalid loss')
-
+            losses[name] = loss(labels[i], self.output[i], name=name)
         return losses
 
     def _get_train_ops(self, optimizer):
-        # Get variables
         self.shared_vars, self.unshared_vars = self._get_shared_unshared_vars()
-
-        # Store gradients from shared variables over each branch
         shared_grads = []
         unshared_train_ops = []
 
         for i in range(self.n_branches):
-            # Get loss from losses dict, key names can be predicted because
-            # train ops only declared once
             loss = self.losses['loss_' + str(i+1)]
 
-            # Compute gradients of shared vars for each branch (but don't apply)
+            # Compute gradients of shared vars for each branch
+            # (but don't apply)
             if len(self.shared_vars) > 0:
                 shared_grads.append(optimizer.compute_gradients(loss,
                     var_list=self.shared_vars))
@@ -135,10 +168,6 @@ class ModelVB(NetworkVB):
         mean_shared_grads = []
 
         for v, var in enumerate(self.shared_vars):
-            # print(v, var)
-            # for i in range(self.n_branches):
-            #     print(shared_grads[i][v][0])
-
             grad = tf.reduce_mean(
                 [shared_grads[i][v][0] for i in range(self.n_branches)],[0])
             mean_shared_grads.append((grad, var))
@@ -149,60 +178,15 @@ class ModelVB(NetworkVB):
             shared_train_op = []
 
         train_ops = [unshared_train_ops, shared_train_op]
-
         return train_ops
-
-    def _get_acc_ops(self, labels):
-        # print(self.output)
-        num_classes = self.output[0].get_shape().as_list()[-1]
-
-        accs = {}
-
-        # Train accuracies
-        for i in range(self.n_branches):
-            name = 'acc_'+str(i+1)
-            pred_max = tf.one_hot(tf.argmax(tf.nn.softmax(self.output[i]),
-                axis=-1), num_classes)
-            accs[name] = tf.reduce_mean(
-                tf.reduce_sum(labels[i]*pred_max,[1]), name=name)
-
-        # Test accuracy (before average accuracy)
-        pred = tf.nn.softmax(tf.reduce_mean(self.output.to_list(), [0]))
-        pred_max = tf.one_hot(tf.argmax(pred, axis=-1), num_classes)
-        accs['acc_ensemble'] = tf.reduce_mean(tf.reduce_sum(labels[0] * \
-            pred_max, [1]), name='acc_ensemble')
-
-        return accs
-
-def _get_tensors(attributes, tensors):
-    for attr in attributes:
-        if type(attr) is list:
-            _get_tensors(attr, tensors)
-        else:
-            if isinstance(attr, tf.Tensor):
-                tensors[attr.name] = attr
-
-def _get_operations(attributes, operations):
-    for attr in attributes:
-        if type(attr) is list:
-            _get_operations(attr, operations)
-        else:
-            if isinstance(attr, tf.Operation):
-                operations[attr.name] = attr
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
-        schedulers={}, n_branches=1, assign_ops=None, call_step=1):
-    """
-    Args:
-        - assign_ops: any additional ops to run before training, e.g., assign
-        ops for transferring pre-trained weights (imagenet)
-    """
-
+        schedulers={}, n_branches=1, assign_ops=[], call_step=1):
     history = {}
 
+    # Classification (training accuracy calculation)
     train_dict_copy = copy(train_dict)
-    # Classification
     if 'batch_size:0' in list(train_dict.keys()) and \
             'x:0' in list(train_dict.keys()):
         train_dict_copy['batch_size:0'] = len(train_dict['x:0'])

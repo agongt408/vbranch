@@ -36,9 +36,19 @@ class Conv2D(Layer):
 
             return output_list
 
+        # Calculate `fan_in` for weight initialization
+        if type(x[0]) is list:
+            fan_in = np.sum([x_.get_shape().as_list()[-1] for x_ in x[0]])
+        else:
+            fan_in = x[0].get_shape().as_list()[-1]
+
+        fan_out = int(np.mean(self.units_list))
+        assert all([fan_out == units for units in self.units_list])
+
         # For efficiency, only apply computation to shared_in ONCE
         self.shared_branch = L.Conv2D(self.shared_filters, self.kernel_size,
-            'shared_to_shared',strides=self.strides,padding=self.padding)
+            'shared_to_shared', strides=self.strides, padding=self.padding,
+            fan_in=fan_in, fan_out=fan_out)
 
         for i in range(self.n_branches):
             assert self.filters_list[i] >= self.shared_filters, \
@@ -48,13 +58,13 @@ class Conv2D(Layer):
             # Operations to build the rest of the layer
             shared_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 'vb'+str(i+1)+'_shared_to_unique', strides=self.strides,
-                padding=self.padding)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
             unique_to_shared = L.Conv2D(self.shared_filters, self.kernel_size,
                 'vb'+str(i+1)+ '_unique_to_shared', strides=self.strides,
-                padding=self.padding)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
             unique_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 'vb'+str(i+1) + '_unique_to_unique', strides=self.strides,
-                padding=self.padding)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
 
             if type(x[i]) is list:
                 shared_in = x[i][0]

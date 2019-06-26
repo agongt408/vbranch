@@ -6,6 +6,7 @@ from ..utils.generic import eval_params, smart_add, smart_concat, EmptyOutput
 import tensorflow as tf
 import collections
 from os.path import join
+import numpy as np
 
 CrossWeights = collections.namedtuple('CrossWeights',
     ['shared_to_unique', 'unique_to_shared', 'unique_to_unique'])
@@ -175,8 +176,18 @@ class Dense(Layer):
 
             return output_list
 
+        # Calculate `fan_in` for weight initialization
+        if type(x[0]) is list:
+            fan_in = np.sum([x_.get_shape().as_list()[-1] for x_ in x[0]])
+        else:
+            fan_in = x[0].get_shape().as_list()[-1]
+
+        fan_out = int(np.mean(self.units_list))
+        assert all([fan_out == units for units in self.units_list])
+
         # For efficiency, only apply computation to shared_in ONCE
-        self.shared_branch = L.Dense(self.shared_units, 'shared_to_shared')
+        self.shared_branch = L.Dense(self.shared_units, 'shared_to_shared',
+            fan_in=fan_in, fan_out=fan_out)
 
         for i in range(self.n_branches):
             assert self.units_list[i] >= self.shared_units, \
@@ -185,11 +196,11 @@ class Dense(Layer):
 
             # Operations to build the rest of the layer
             shared_to_unique = L.Dense(unique_units,
-                'vb'+str(i+1)+'_shared_to_unique')
+                'vb'+str(i+1)+'_shared_to_unique', fan_in=fan_in, fan_out=fan_out)
             unique_to_shared = L.Dense(self.shared_units,
-                'vb'+str(i+1)+'_unique_to_shared')
+                'vb'+str(i+1)+'_unique_to_shared', fan_in=fan_in, fan_out=fan_out)
             unique_to_unique = L.Dense(unique_units,
-                'vb'+str(i+1)+'_unique_to_unique')
+                'vb'+str(i+1)+'_unique_to_unique', fan_in=fan_in, fan_out=fan_out)
 
             if type(x[i]) is list:
                 shared_in = x[i][0]

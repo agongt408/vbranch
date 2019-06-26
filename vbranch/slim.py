@@ -8,6 +8,9 @@ import tensorflow as tf
 # Conventional layers and virtual branching layers are packaged into same function
 # Automatically determine n_branches based on input
 # If ambiguous, user can supply n_branches arg when declaring layer
+# For vbranch version, if last layer (name='output'), then automatically
+# merge shared and unique portions of output using MergeSharedUnique layer
+# Dynamically determine layer name based on existing names in scope
 
 # Core
 
@@ -18,11 +21,6 @@ def Input(x):
 
 def Dense(x, units, use_bias=True, name=None, n_branches=None, shared=0,
         merge=False):
-    """
-    NOTE: For vbranch version, if last layer (name='output'), then automatically
-    merge shared and unique portions of output using MergeSharedUnique layer
-    """
-
     if name is None:
         name = unused_scope('fc')
 
@@ -64,13 +62,6 @@ def Activation(x, activation, name=None, n_branches=None, merge=False):
         return VBL.Activation(activation, n_branches, name, merge=merge)(x)
 
     return L.Activation(activation, name)(x)
-
-# def Conv1D(x, filters, kernel_size, strides=1, padding='valid',
-#         use_bias=True, name=None, n_branches=None, shared_filters=0):
-#     if name is None:
-#         name = 'conv1d'
-#     return L.Conv1D(filters, kernel_size, unused_scope(name), strides,
-#         padding, use_bias)(x)
 
 def Conv2D(x, filters, kernel_size, strides=1, padding='valid',
         use_bias=True, name=None, n_branches=None, shared=0, merge=False):

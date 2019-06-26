@@ -5,16 +5,15 @@ import vbranch as vb
 from vbranch.applications.fcn import *
 from vbranch.applications.cnn import *
 
-from vbranch.utils.generic_utils import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path
-from vbranch.utils.training_utils import p_console, save_results, get_data, get_data_iterator
-from vbranch.utils.test_utils import compute_acc_from_logits
+from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path
+from vbranch.utils.training import p_console, save_results, get_data, get_data_iterator
+from vbranch.utils.test.classification import compute_acc_from_logits
 from vbranch.callbacks import classification_acc
 
 import tensorflow as tf
 import numpy as np
 import os
 import argparse
-import pandas as pd
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()

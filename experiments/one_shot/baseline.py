@@ -5,19 +5,14 @@ import vbranch as vb
 from vbranch.applications.cnn import *
 from vbranch.applications.resnet import *
 
-from vbranch.utils.generic_utils import restore_sess, _dir_path, get_model_path
-from vbranch.utils.training_utils import p_console, save_results, get_data, get_data_iterator_from_generator
-from vbranch.utils.test_utils import compute_one_shot_acc, baseline_one_shot
+from vbranch.utils.generic import restore_sess, _dir_path, get_model_path
+from vbranch.utils.training import p_console, save_results, get_data, get_data_iterator_from_generator
+from vbranch.utils.test.one_shot import compute_one_shot_acc, baseline_one_shot
 from vbranch.callbacks import one_shot_acc
 
 import tensorflow as tf
 import numpy as np
-import os
-from scipy.special import softmax
-import matplotlib.pyplot as plt
 import argparse
-import time
-import pandas as pd
 from glob import glob
 
 # Parse command line arguments

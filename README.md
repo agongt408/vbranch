@@ -15,31 +15,31 @@ Datasets:
 
 ### MNIST
 
-![fcn-results](06072019/figs/fcn-2-results.png)
-![fcn-results](06072019/figs/fcn-3-results.png)
-![fcn-results](06072019/figs/fcn-4-results.png)
+![fcn-results](old/06072019/figs/fcn-2-results.png)
+![fcn-results](old/06072019/figs/fcn-3-results.png)
+![fcn-results](old/06072019/figs/fcn-4-results.png)
 
 FCN = 784 (input) -> 512 -> 10 (output); batch norm, relu; softmax; 15 epochs;
 learning rate = 0.001; test = before mean acc
 
-![fcn2-results](06072019/figs/fcn2-2-results.png)
-![fcn2-results](06072019/figs/fcn2-3-results.png)
-![fcn2-results](06072019/figs/fcn2-4-results.png)
+![fcn2-results](old/06072019/figs/fcn2-2-results.png)
+![fcn2-results](old/06072019/figs/fcn2-3-results.png)
+![fcn2-results](old/06072019/figs/fcn2-4-results.png)
 
 FCN = 784 (input) -> 512 -> 256 -> 10 (output); batch norm, relu; softmax; 15 epochs;
 learning rate = 0.001; test = before mean acc
 
 ** No batch norm or relu for final FC layer (output layer); improves performance for shared_frac=1; for figures with batch norm/relu after final FC layer, see [old-fcn](old/figs)
 
-![cnn-results](06072019/old/figs/cnn-2-results.png)
-![cnn-results](06072019/old/figs/cnn-3-results.png)
-![cnn-results](06072019/old/figs/cnn-4-results.png)
+![cnn-results](old/06072019/old/figs/cnn-2-results.png)
+![cnn-results](old/06072019/old/figs/cnn-3-results.png)
+![cnn-results](old/06072019/old/figs/cnn-4-results.png)
 
 CNN = 1 (input) -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001; test = before mean acc
 
 Training graph:
-![mnist-val-acc](06072019/figs/mnist-val-acc.png)
+![mnist-val-acc](old/06072019/figs/mnist-val-acc.png)
 
 CNN = 1 (input) -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001; test = before mean acc
@@ -48,7 +48,7 @@ Converges by around epoch 30
 
 Correlation and Strength (from Random Forest paper):
 
-![corr-strength](06072019/figs/correlation-strength.png)
+![corr-strength](old/06072019/figs/correlation-strength.png)
 
 ### Omniglot
 

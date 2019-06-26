@@ -29,11 +29,11 @@ learning rate = 0.001; test = before mean acc
 FCN = 784 (input) -> 512 -> 256 -> 10 (output); batch norm, relu; softmax; 15 epochs;
 learning rate = 0.001; test = before mean acc
 
-** No batch norm or relu for final FC layer (output layer); improves performance for shared_frac=1; for figures with batch norm/relu after final FC layer, see [old-fcn](old/figs)
+** No batch norm or relu for final FC layer (output layer); improves performance for shared_frac=1; for figures with batch norm/relu after final FC layer, see [old-fcn](old/04272019/figs)
 
-![cnn-results](old/04272019/old/figs/cnn-2-results.png)
-![cnn-results](old/04272019/old/figs/cnn-3-results.png)
-![cnn-results](old/04272019/old/figs/cnn-4-results.png)
+![cnn-results](old/04272019/figs/cnn-2-results.png)
+![cnn-results](old/04272019/figs/cnn-3-results.png)
+![cnn-results](old/04272019/figs/cnn-4-results.png)
 
 CNN = 1 (input) -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
 learning rate = 0.001; test = before mean acc

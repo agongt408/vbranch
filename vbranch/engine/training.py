@@ -146,38 +146,43 @@ class ModelVB(NetworkVB):
         return losses
 
     def _get_train_ops(self, optimizer):
-        self.shared_vars, self.unshared_vars = self._get_shared_unshared_vars()
-        shared_grads = []
-        unshared_train_ops = []
+        # self.shared_vars, self.unshared_vars = self._get_shared_unshared_vars()
+        # shared_grads = []
+        # unshared_train_ops = []
+        #
+        # for i in range(self.n_branches):
+        #     loss = self.losses['loss_' + str(i+1)]
+        #
+        #     # Compute gradients of shared vars for each branch
+        #     # (but don't apply)
+        #     if len(self.shared_vars) > 0:
+        #         shared_grads.append(optimizer.compute_gradients(loss,
+        #             var_list=self.shared_vars))
+        #
+        #     # Apply gradients for unshared vars for each branch
+        #     if len(self.unshared_vars[i]) > 0:
+        #         unshared_train_ops.append(optimizer.minimize(loss,
+        #             var_list=self.unshared_vars[i]))
+        #
+        # # Take average of the gradients over each branch
+        # mean_shared_grads = []
+        #
+        # for v, var in enumerate(self.shared_vars):
+        #     grad = tf.reduce_mean(
+        #         [shared_grads[i][v][0] for i in range(self.n_branches)],[0])
+        #     mean_shared_grads.append((grad, var))
+        #
+        # if len(self.shared_vars) > 0:
+        #     shared_train_op = optimizer.apply_gradients(mean_shared_grads)
+        # else:
+        #     shared_train_op = []
+        #
+        # train_ops = [unshared_train_ops, shared_train_op]
+        # return train_ops
 
-        for i in range(self.n_branches):
-            loss = self.losses['loss_' + str(i+1)]
-
-            # Compute gradients of shared vars for each branch
-            # (but don't apply)
-            if len(self.shared_vars) > 0:
-                shared_grads.append(optimizer.compute_gradients(loss,
-                    var_list=self.shared_vars))
-
-            # Apply gradients for unshared vars for each branch
-            if len(self.unshared_vars[i]) > 0:
-                unshared_train_ops.append(optimizer.minimize(loss,
-                    var_list=self.unshared_vars[i]))
-
-        # Take average of the gradients over each branch
-        mean_shared_grads = []
-
-        for v, var in enumerate(self.shared_vars):
-            grad = tf.reduce_mean(
-                [shared_grads[i][v][0] for i in range(self.n_branches)],[0])
-            mean_shared_grads.append((grad, var))
-
-        if len(self.shared_vars) > 0:
-            shared_train_op = optimizer.apply_gradients(mean_shared_grads)
-        else:
-            shared_train_op = []
-
-        train_ops = [unshared_train_ops, shared_train_op]
+        train_ops = []
+        for name, loss in self.losses.items():
+            train_ops.append(optimizer.minimize(loss))
         return train_ops
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,

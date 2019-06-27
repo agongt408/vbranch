@@ -3,7 +3,7 @@ import os
 # Omniglot
 
 cmd = 'python experiments/one_shot/baseline.py ' + \
-    '--architecture simple --dataset omniglot --epochs 1'
+    '--architecture simple --dataset omniglot --epochs 60'
 os.system(cmd)
 
 for num_branches in range(2, 5):
@@ -18,7 +18,7 @@ for num_branches in range(2, 5):
 
     for shared_frac in [0, 0.25, 0.5, 0.75, 1]:
         cmd = 'python experiments/one_shot/vbranch.py ' + \
-            '--architecture simple --dataset omniglot --epochs 1 ' + \
+            '--architecture simple --dataset omniglot --epochs 60 ' + \
             '--num_branches ' + str(num_branches) + ' ' + \
             '--shared_frac ' + str(shared_frac)
         os.system(cmd)

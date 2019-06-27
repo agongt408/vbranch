@@ -79,7 +79,7 @@ def train(dataset, arch, n_branches, model_id, epochs,
         train_gen = omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
         output_dim = 128
-        lr_scheduler = lr_exp_decay_scheduler(0.001, epochs//2, epochs, 0.001)
+        lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
 
     model = build_model(arch, train_gen, input_dim, output_dim,
         lr_scheduler, n_branches, shared_frac, **kwargs)

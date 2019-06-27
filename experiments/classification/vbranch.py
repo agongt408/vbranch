@@ -1,14 +1,14 @@
 import sys
 sys.path.insert(0, '.')
 
-import vbranch as vb
 from vbranch.applications.fcn import *
 from vbranch.applications.cnn import *
 
-from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path
-from vbranch.utils.training import p_console, save_results, get_data, get_data_iterator
+from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path, p_console, save_results
+from vbranch.utils.training import get_data, get_data_iterator
 from vbranch.utils.test.classification import compute_acc_from_logits
 from vbranch.callbacks import classification_acc
+from vbranch.losses import softmax_cross_entropy_with_logits
 
 import tensorflow as tf
 import numpy as np
@@ -75,9 +75,8 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
             labels_list = [labels] * n_branches
 
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-        model.compile(optimizer, 'softmax_cross_entropy_with_logits',
-                      train_init_ops, test_init_ops,
-                      labels_one_hot=labels_list,
+        model.compile(optimizer, softmax_cross_entropy_with_logits(),
+                      train_init_ops, test_init_ops, labels=labels_list,
                       callbacks={'acc':classification_acc(n_branches)})
 
     return model
@@ -100,8 +99,8 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
 
     train_dict = {'x:0': X_train, 'y:0': y_train, 'batch_size:0': batch_size}
     val_dict = {'x:0': X_test, 'y:0': y_test, 'batch_size:0': len(X_test)}
-    history = model.fit(train_dict, epochs, steps_per_epoch, val_dict=val_dict,
-        log_path=model_path)
+    history = model.fit(epochs, steps_per_epoch, train_dict=train_dict,
+        val_dict=val_dict, log_path=model_path)
 
     dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
         n_classes, samples_per_class)

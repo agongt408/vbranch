@@ -4,7 +4,7 @@ def softmax_cross_entropy_with_logits():
     """Cross entropy loss"""
     return _softmax_cross_entropy_with_logits
 
-def triplet(P, K, margin):
+def triplet(P, K, margin=0.2):
     """
     Triplet loss (batch-hard variant)
     (https://arxiv.org/pdf/1703.07737.pdf)
@@ -19,7 +19,7 @@ def triplet(P, K, margin):
         return _triplet(pred, P, K, margin, name)
     return func
 
-def triplet_omniglot(A, P, K, margin):
+def triplet_omniglot(A, P, K, margin=0.2):
     """
     Returns triplet loss for omniglot dataset
     Args:
@@ -59,15 +59,15 @@ def _triplet(pred, P, K, margin=0.2, name=None):
                 loss = tf.maximum(margin + hard_pos - hard_neg, 0.0)
             batch_losses.append(loss)
 
-    return tf.reduce_mean(batch_losses, name=name)
+    return tf.reduce_sum(batch_losses, name=name)
 
 def _triplet_omniglot(pred, A, P, K, margin=0.2, name=None):
     alpha_losses = []
     for i in range(A):
         alpha_pred = pred[P*K*i : P*K*(i+1)]
-        alpha_losses.append(triplet(alpha_pred, P, K, margin))
+        alpha_losses.append(_triplet(alpha_pred, P, K, margin))
 
-    return tf.reduce_mean(alpha_losses, name=name)
+    return tf.reduce_sum(alpha_losses, name=name)
 
 def log1p(x):
     """Soft margin function"""

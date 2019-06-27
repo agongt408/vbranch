@@ -145,6 +145,10 @@ def vbranch_one_shot(sess, n_branches, total_runs=20, mode='concat',
     for i in range(n_branches):
         acc = baseline_one_shot(total_runs=total_runs,
             train_runs=train_run_list[:, i], test_runs=test_run_list[:, i])
-        baseline_acc_list.append(acc)
+        baseline_acc_list.append(acc['acc'])
 
-    return np.mean(run_acc_list), baseline_acc_list
+    results = {'acc_ensemble': np.mean(run_acc_list)}
+    for i in range(n_branches):
+        results['acc_{}'.format(i+1)] = baseline_acc_list[i]
+
+    return results

@@ -1,14 +1,15 @@
 import sys
 sys.path.insert(0, '.')
 
-import vbranch as vb
 from vbranch.applications.cnn import *
 from vbranch.applications.resnet import *
+from vbranch.datasets import omniglot
 
-from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path
-from vbranch.utils.training import p_console, save_results, get_data, get_data_iterator_from_generator
+from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path, p_console, save_results
+from vbranch.utils.training import get_data, get_data_iterator_from_generator, lr_exp_decay_scheduler
 from vbranch.utils.test.one_shot import compute_one_shot_acc, vbranch_one_shot
 from vbranch.callbacks import one_shot_acc
+from vbranch.losses import triplet_omniglot
 
 import tensorflow as tf
 import numpy as np
@@ -47,9 +48,11 @@ def build_model(architecture, train_gen, input_dim, output_dim,
         lr_scheduler, n_branches, shared, **kwargs):
 
     inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
-        train_gen, input_dim, **kwargs)
+        train_gen, input_dim, kwargs['A'], kwargs['P'], kwargs['K'], n=n_branches)
+    lr = tf.placeholder('float32', name='lr')
 
-    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+    name = 'model'
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'simple':
             model = SimpleCNNLarge(inputs, output_dim, name=name, shared_frac=shared)
         elif architecture == 'res':
@@ -58,31 +61,32 @@ def build_model(architecture, train_gen, input_dim, output_dim,
             raise ValueError('Invalid architecture')
 
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-
-        # Compile model
-        model.compile(optimizer, 'triplet_omniglot', train_init_op, test_init_op,
+        model.compile(optimizer, triplet_omniglot(**kwargs),
+                      train_init_op, test_init_op,
                       callbacks={'acc': one_shot_acc(n_branches)},
-                      schedulers={'lr:0': lr_scheduler}, **kwargs)
-
+                      schedulers={'lr:0': lr_scheduler})
     return model
 
-def train(dataset, architecture, n_branches, model_id, epochs,
+def train(dataset, arch, n_branches, model_id, epochs,
         steps_per_epoch, shared_frac, **kwargs):
-    model_path = get_model_path(dataset, arch, model_id=model_id)
+    model_path = get_vb_model_path(dataset, arch, n_branches, shared_frac,
+        model_id=model_id)
     p_console('Save model path: '+ model_path)
 
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = vb.datasets.omniglot.load_generator(set='train')
+        train_gen = omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
         output_dim = 128
         lr_scheduler = lr_exp_decay_scheduler(0.001, epochs//2, epochs, 0.001)
 
-    model = build_model(architecture, train_gen, input_dim, output_dim,
+    model = build_model(arch, train_gen, input_dim, output_dim,
         lr_scheduler, n_branches, shared_frac, **kwargs)
-    history = model.fit({}, epochs, steps_per_epoch, val_dict=None,
-        log_path=model_path)
+    model.summary()
+
+    history = model.fit(epochs, steps_per_epoch, log_path=model_path)
+    dirpath = _vb_dir_path(dataset, arch, n_branches, shared_frac)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, architecture, n_branches, model_id, shared_frac, message):
@@ -111,22 +115,22 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        p_console('MODE: TEST')
         for id in args.model_id:
             test(args.dataset,args.architecture,args.num_branches,id,
                 args.shared_frac,args.m)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        p_console('MODE: TRAIN')
 
         if args.trials == 1:
             for id in args.model_id:
                 train(args.dataset,args.architecture, args.num_branches, id,
-                    args.A, args.P,args.K,args.epochs,args.steps_per_epoch,
-                    args.shared_frac)
+                    args.epochs,args.steps_per_epoch, args.shared_frac,
+                    A=args.A, P=args.P, K=args.K)
         else:
             for i in range(args.trials):
                 train(args.dataset, args.architecture, args.num_branches, i+1,
-                    args.A, args.P,args.K,args.epochs,args.steps_per_epoch,
-                    args.shared_frac)
+                    args.epochs,args.steps_per_epoch, args.shared_frac,
+                    A=args.A, P=args.P, K=args.K)
 
     print('Finished!')

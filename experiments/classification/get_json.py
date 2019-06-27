@@ -2,8 +2,6 @@ import pandas as pd
 import os
 import numpy as np
 from glob import glob
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import json
 import argparse
 

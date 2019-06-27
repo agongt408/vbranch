@@ -1,7 +1,6 @@
 import sys
 sys.path.insert(0, '.')
 
-import vbranch as vb
 from vbranch.applications.fcn import *
 from vbranch.applications.cnn import *
 
@@ -9,6 +8,7 @@ from vbranch.utils.generic import TFSessionGrow, restore_sess, _dir_path, get_mo
 from vbranch.utils.training import get_data, get_data_iterator
 from vbranch.utils.test.classification import compute_acc_from_logits, baseline_classification
 from vbranch.callbacks import classification_acc
+from vbranch.losses import softmax_cross_entropy_with_logits
 
 import tensorflow as tf
 import numpy as np
@@ -42,6 +42,9 @@ parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1 then model_id used')
 
+parser.add_argument('--path', action='store', nargs='?', default=None,
+                    help='manually specify path to save model checkpoint and results')
+
 def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
     inputs, labels, train_init_op, test_init_op = get_data_iterator(x_shape,
         y_shape, batch_size, n=1, share_xy=True)
@@ -62,16 +65,24 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
             raise ValueError('Invalid architecture')
 
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-        model.compile(optimizer, 'softmax_cross_entropy_with_logits',
-            train_init_op, test_init_op, labels_one_hot=labels,
+        model.compile(optimizer, softmax_cross_entropy_with_logits(),
+            train_init_op, test_init_op, labels=labels,
             callbacks={'acc':classification_acc(n_branches=1)})
 
     return model
 
 def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
-        epochs, steps_per_epoch,batch_size):
-    # Get path to save model
-    model_path = get_model_path(dataset, arch, n_classes, samples_per_class,model_id)
+        epochs, steps_per_epoch,batch_size, path):
+    if path is None:
+        model_path = get_model_path(dataset, arch, n_classes,
+            samples_per_class,model_id)
+        dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+    else:
+        model_path = os.path.join('models', path, 'model_{}'.format(model_id))
+        if not os.path.isdir(model_path):
+            os.system('mkdir -p ' + model_path)
+        dirpath = path
+
     p_console('Save model path: ' + model_path)
 
     # Load data
@@ -85,10 +96,9 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
 
     train_dict = {'x:0': X_train, 'y:0': y_train, 'batch_size:0': batch_size}
     val_dict = {'x:0': X_test, 'y:0': y_test, 'batch_size:0': len(X_test)}
-    history = model.fit(train_dict, epochs, steps_per_epoch, val_dict=val_dict,
-        log_path=model_path)
+    history = model.fit(epochs, steps_per_epoch, train_dict=train_dict,
+        val_dict=val_dict, log_path=model_path)
 
-    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
@@ -175,12 +185,12 @@ if __name__ == '__main__':
                 # Run trial with specified model id
                 train(args.dataset, args.architecture,model_id,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size)
+                    args.steps_per_epoch, args.batch_size, args.path)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
                 train(args.dataset, args.architecture,i+1,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size)
+                    args.steps_per_epoch, args.batch_size, args.path)
 
     print('Finished!')

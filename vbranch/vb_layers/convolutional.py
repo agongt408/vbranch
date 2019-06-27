@@ -1,6 +1,8 @@
 from .. import layers as L
-from .core import Layer, CrossWeights
+from .core import Layer, CrossWeights, EmptyOutput
 from ..utils.generic import smart_add, smart_concat
+
+import numpy as np
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,
@@ -38,12 +40,16 @@ class Conv2D(Layer):
 
         # Calculate `fan_in` for weight initialization
         if type(x[0]) is list:
-            fan_in = np.sum([x_.get_shape().as_list()[-1] for x_ in x[0]])
+            fan_in_list = []
+            for x_ in x[0]:
+                if not isinstance(x_, EmptyOutput):
+                    fan_in_list.append(x_.get_shape().as_list()[-1])
+            fan_in = np.sum(fan_in_list)
         else:
             fan_in = x[0].get_shape().as_list()[-1]
 
-        fan_out = int(np.mean(self.units_list))
-        assert all([fan_out == units for units in self.units_list])
+        fan_out = int(np.mean(self.filters_list))
+        assert all([fan_out == units for units in self.filters_list])
 
         # For efficiency, only apply computation to shared_in ONCE
         self.shared_branch = L.Conv2D(self.shared_filters, self.kernel_size,

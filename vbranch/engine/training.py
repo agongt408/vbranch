@@ -206,6 +206,8 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
 
             for i in range(steps_per_epoch):
                 progbar_vals = []
+                for name, sched in sched_dict.items():
+                    progbar_vals.append((name, sched))
                 loss, _ = sess.run([loss_op, train_op], feed_dict=sched_dict)
 
                 for name, l in loss.items():

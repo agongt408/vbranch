@@ -1,14 +1,15 @@
 import sys
 sys.path.insert(0, '.')
 
-import vbranch as vb
 from vbranch.applications.cnn import *
 from vbranch.applications.resnet import *
+from vbranch.datasets import omniglot
 
-from vbranch.utils.generic import restore_sess, _dir_path, get_model_path
-from vbranch.utils.training import p_console, save_results, get_data, get_data_iterator_from_generator
+from vbranch.utils.generic import restore_sess, _dir_path, get_model_path, p_console, save_results
+from vbranch.utils.training import get_data, get_data_iterator_from_generator, lr_exp_decay_scheduler
 from vbranch.utils.test.one_shot import compute_one_shot_acc, baseline_one_shot
 from vbranch.callbacks import one_shot_acc
+from vbranch.losses import triplet_omniglot
 
 import tensorflow as tf
 import numpy as np
@@ -41,9 +42,11 @@ def build_model(architecture, train_gen, input_dim, output_dim,
         lr_scheduler, **kwargs):
 
     inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
-        train_gen, input_dim, **kwargs)
+        train_gen, input_dim, kwargs['A'], kwargs['P'], kwargs['K'])
+    lr = tf.placeholder('float32', name='lr')
 
-    with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+    name = 'model'
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'simple':
             model = SimpleCNNLarge(inputs, output_dim, name=name)
         elif architecture == 'res':
@@ -54,10 +57,9 @@ def build_model(architecture, train_gen, input_dim, output_dim,
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
         # Compile model
-        model.compile(optimizer, 'triplet_omniglot', train_init_op, test_init_op,
-                      callbacks={'acc': one_shot_acc(n_branches=1)},
-                      schedulers={'lr:0': lr_scheduler}, **kwargs)
-
+        model.compile(optimizer, triplet_omniglot(**kwargs), train_init_op,
+                      test_init_op, callbacks={'acc':one_shot_acc(n_branches=1)},
+                      schedulers={'lr:0': lr_scheduler})
     return model
 
 def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
@@ -67,15 +69,17 @@ def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = vb.datasets.omniglot.load_generator(set='train')
+        train_gen = omniglot.load_generator(set='train')
         input_dim = [None, 105, 105, 1]
         output_dim = 128
-        lr_scheduler = lr_exp_decay_scheduler(0.001, epochs//2, epochs, 0.001)
+        lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
 
-    model = build_model(architecture, train_gen, input_dim, output_dim,
+    model = build_model(arch, train_gen, input_dim, output_dim,
         lr_scheduler, **kwargs)
-    history = model.fit({}, epochs, steps_per_epoch, val_dict=None,
-        log_path=model_path)
+    model.summary()
+
+    history = model.fit(epochs, steps_per_epoch, log_path=model_path)
+    dirpath = _dir_path(dataset, arch)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, arch, model_id_list,train_dict={},test_dict={}, acc_dict={}):
@@ -149,7 +153,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.test:
-        print(bcolors.HEADER + 'MODE: TEST' + bcolors.ENDC)
+        p_console('MODE: TEST')
 
         if args.trials == 1:
             # args.model_id is a list of model ids
@@ -173,7 +177,7 @@ if __name__ == '__main__':
                 train_dict, test_dict = test(args.dataset, args.architecture,
                     model_ids, train_dict,test_dict)
     else:
-        print(bcolors.HEADER + 'MODE: TRAIN' + bcolors.ENDC)
+        p_console('MODE: TRAIN')
 
         if args.trials == 1:
             for id in args.model_id:

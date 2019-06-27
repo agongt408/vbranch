@@ -58,18 +58,18 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
             x = BatchNormalization(x, name='bn_fc1')
             x = Activation(x, 'relu', name='relu_fc1')
 
-            if vb_mode:
-                if type(final_spec) is int:
-                    final_units = final_spec
-                    shared = shared_frac
-                elif type(final_spec) is tuple:
-                    final_units, shared = final_spec
-                else:
-                    raise ValueError('invalid final_spec:', final_spec)
+            if type(final_spec) is int:
+                final_units = final_spec
+                shared = shared_frac
+            elif type(final_spec) is tuple:
+                final_units, shared = final_spec
+            else:
+                raise ValueError('invalid final_spec:', final_spec)
 
+            if vb_mode:
                 x = Dense(x,final_units,shared=shared,merge=True, name='output')
             else:
-                x = Dense(x, final_spec, name='output')
+                x = Dense(x, final_units, name='output')
 
     if type(input_) is list:
         return ModelVB(ip, x, name=name)

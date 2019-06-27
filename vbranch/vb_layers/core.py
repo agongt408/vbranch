@@ -178,7 +178,11 @@ class Dense(Layer):
 
         # Calculate `fan_in` for weight initialization
         if type(x[0]) is list:
-            fan_in = np.sum([x_.get_shape().as_list()[-1] for x_ in x[0]])
+            fan_in_list = []
+            for x_ in x[0]:
+                if not isinstance(x_, EmptyOutput):
+                    fan_in_list.append(x_.get_shape().as_list()[-1])
+            fan_in = np.sum(fan_in_list)
         else:
             fan_in = x[0].get_shape().as_list()[-1]
 

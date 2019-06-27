@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
+import pandas as pd
 
 class Summary(object):
     """Helper class used to print model summaries"""
@@ -106,7 +107,7 @@ def restore_sess(sess, model_path):
 
 # Model path helper functions
 
-def _dir_path(dataset, arch, n_classes, samples_per_class):
+def _dir_path(dataset, arch, n_classes=None, samples_per_class=None):
     if dataset == 'toy':
         # Further organize results by number of classes and samples_per_class
         dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%n_classes,

@@ -41,6 +41,8 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1 then model_id used')
+parser.add_argument('--train_frac', action='store', default=1., type=float,
+                    help='fraction of original dataset to use for training')
 
 parser.add_argument('--path', action='store', nargs='?', default=None,
                     help='manually specify path to save model checkpoint and results')
@@ -67,7 +69,7 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
         model.compile(optimizer, softmax_cross_entropy_with_logits(),
             train_init_op, test_init_op, labels=labels,
-            callbacks={'acc':classification_acc(n_branches=1)})
+            callbacks={'acc':classification_acc(n_classes=n_classes)})
 
     return model
 
@@ -93,6 +95,7 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
 
     tf.reset_default_graph()
     model = build_model(arch, n_classes, x_shape, y_shape, batch_size)
+    model.summary()
 
     train_dict = {'x:0': X_train, 'y:0': y_train, 'batch_size:0': batch_size}
     val_dict = {'x:0': X_test, 'y:0': y_test, 'batch_size:0': len(X_test)}

@@ -15,7 +15,7 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
     return func
 
 def get_data(dataset, architecture, num_classes=10, num_features=784,
-        samples_per_class=1000, one_hot=True):
+        samples_per_class=1000, one_hot=True, train_frac=1, seed=100):
     """
     Load (or generate) data
     Args:
@@ -50,10 +50,17 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
             datasets.toy.generate_from_hypercube(num_samples=num_samples,
                 num_features=num_features, num_classes=num_classes)
 
-        print('Training set:', X_train.shape)
-        print('Testing set:', X_test.shape)
+        print('Training set:', X_train.shape, y_train.shape)
+        print('Testing set:', X_test.shape, y_test.shape)
     else:
         raise ValueError('invalid dataset: ' + dataset)
+
+    if train_frac < 1:
+        np.random.seed(seed)
+        subsample = np.random.choice(len(X_train), int(train_frac*len(X_train)),
+            replace=False)
+        X_train = X_train[subsample]
+        y_train = y_train[subsample]
 
     return (X_train, y_train), (X_test, y_test)
 

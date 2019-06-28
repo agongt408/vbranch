@@ -34,7 +34,7 @@ def baseline_classification(sess, x, y, model_name='model', num_classes=None,
     if not isinstance(y, np.ndarray):
         y = np.array(y)
     if len(y.shape) == 1:
-        y = tf.keras.utils.to_categorical(y)
+        y = tf.keras.utils.to_categorical(y, num_classes)
 
     feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
     sess.run('test_init_op', feed_dict=feed_dict)
@@ -54,7 +54,7 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     if not isinstance(y, np.ndarray):
         y = np.array(y)
     if len(y.shape) == 1:
-        y = tf.keras.utils.to_categorical(y)
+        y = tf.keras.utils.to_categorical(y, num_classes)
 
     outputs = []
     test_init_ops = []

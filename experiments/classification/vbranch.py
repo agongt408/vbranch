@@ -51,9 +51,6 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
     inputs, labels, train_init_ops, test_init_ops = get_data_iterator(x_shape,
         y_shape, batch_size=batch_size, n=n_branches)
 
-    if n_branches > 1 and isinstance(inputs, tf.Tensor):
-        inputs = [inputs] * n_branches
-
     name = 'model'
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'fcn':
@@ -69,15 +66,10 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
         else:
             raise ValueError('Invalid architecture')
 
-        if type(labels) is list:
-            labels_list = labels
-        else:
-            labels_list = [labels] * n_branches
-
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
         model.compile(optimizer, softmax_cross_entropy_with_logits(),
-                      train_init_ops, test_init_ops, labels=labels_list,
-                      callbacks={'acc':classification_acc(n_branches)})
+                      train_init_ops, test_init_ops, labels=labels,
+                      callbacks={'acc':classification_acc(n_branches, n_classes)})
 
     return model
 

@@ -115,8 +115,7 @@ def test(dataset, arch, n_branches, model_id, shared, n_classes,
     with TFSessionGrow() as sess:
         restore_sess(sess, model_path)
         acc_v, indiv_accs_v = vbranch_classification(sess, X_test, y_test,
-            model_name='model_{}_1'.format(model_id), num_classes=n_classes,
-            mode='before', n_branches=n_branches)
+            num_classes=n_classes, mode='before', n_branches=n_branches)
 
     # print('Losses:', losses_v)
     print('Indiv accs:', indiv_accs_v)

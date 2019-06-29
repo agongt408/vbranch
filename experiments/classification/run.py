@@ -2,29 +2,29 @@ import os
 
 # # Toy dataset
 #
-for num_classes in [400]:
-    for samples_per_class in [100, 200, 400]:
-        cmd = 'python experiments/classification/baseline.py ' + \
-            '--architecture fcn ' + \
-            '--dataset toy --epochs 15 --trials 8 ' + \
-            '--num_classes ' + str(num_classes) + ' ' + \
-            '--samples_per_class ' + str(samples_per_class)
-        os.system(cmd)
+for num_classes in [200]:
+    for samples_per_class in [400]:
+        # cmd = 'python experiments/classification/baseline.py ' + \
+        #     '--architecture fcn ' + \
+        #     '--dataset toy --epochs 15 --trials 8 ' + \
+        #     '--num_classes ' + str(num_classes) + ' ' + \
+        #     '--samples_per_class ' + str(samples_per_class)
+        # os.system(cmd)
 
-        for num_branches in range(2, 7):
-            model_id_list = ''
-            for i in range(num_branches):
-                model_id_list += '%d ' % (i+1)
+        for num_branches in range(6, 7):
+        #     model_id_list = ''
+        #     for i in range(num_branches):
+        #         model_id_list += '%d ' % (i+1)
+        #
+        #     cmd = 'python experiments/classification/baseline.py ' + \
+        #         '--architecture fcn ' + \
+        #         '--dataset toy --trials 8 ' + \
+        #         '--num_classes ' + str(num_classes) + ' ' + \
+        #         '--samples_per_class ' + str(samples_per_class) + ' ' + \
+        #         '--test --model_id ' + model_id_list
+        #     os.system(cmd)
 
-            cmd = 'python experiments/classification/baseline.py ' + \
-                '--architecture fcn ' + \
-                '--dataset toy --trials 8 ' + \
-                '--num_classes ' + str(num_classes) + ' ' + \
-                '--samples_per_class ' + str(samples_per_class) + ' ' + \
-                '--test --model_id ' + model_id_list
-            os.system(cmd)
-
-            for shared_frac in [0, 0.25, 0.5, 0.75, 1]:
+            for shared_frac in [0., 0.25, 0.5, 0.75, 1.]:
                 cmd = 'python experiments/classification/vbranch.py ' + \
                     '--architecture fcn ' + \
                     '--dataset toy --epochs 15 --trials 4 ' + \

@@ -104,12 +104,9 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
 
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
-def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
-        output_dict={}, acc_dict={}):
+def test(dataset,arch,model_id_list,n_classes,samples_per_class,
+        X_test, y_test, output_dict={}, acc_dict={}):
     print(model_id_list)
-
-    _, (X_test, y_test) = get_data(dataset, arch, n_classes,
-        n_features, samples_per_class)
 
     test_outputs = []
     test_accs = []
@@ -126,12 +123,14 @@ def test(dataset,arch,model_id_list,n_classes,n_features,samples_per_class,
                 restore_sess(sess, model_path)
 
                 # Compute accuracy
-                acc_dict[model_id], output_dict[model_id] = \
-                    baseline_classification(sess, X_test, y_test,
+                acc, output = baseline_classification(sess, X_test, y_test,
                     num_classes=n_classes, return_logits=True)
 
-        test_outputs.append(output_dict[model_id])
-        test_accs.append(acc_dict[model_id])
+                # output_dict[model_id] = output
+                # acc_dict[model_id] = acc
+
+        test_outputs.append(output)
+        test_accs.append(acc)
 
     before_mean_acc = compute_acc_from_logits(test_outputs, y_test,
         num_classes=n_classes, mode='before')
@@ -160,10 +159,13 @@ if __name__ == '__main__':
     if args.test:
         p_console('MODE: TEST')
 
+        _, (X_test, y_test) = get_data(args.dataset, args.architecture,
+            args.num_classes, args.num_features, args.samples_per_class)
+
         if args.trials == 1:
             # args.model_id is a list of model ids
             test(args.dataset,args.architecture,args.model_id,args.num_classes,
-                args.num_features, args.samples_per_class)
+                args.samples_per_class, X_test, y_test)
         else:
             # Store output, acc, and dict in case need to be reused
             output_dict = {}
@@ -177,9 +179,9 @@ if __name__ == '__main__':
             for i in range(args.trials):
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
-                output_dict,acc_dict = test(args.dataset, args.architecture,
-                    model_ids, args.num_classes, args.num_features,
-                    args.samples_per_class, output_dict, acc_dict)
+                test(args.dataset, args.architecture,
+                    model_ids, args.num_classes, args.samples_per_class,
+                    X_test, y_test, output_dict, acc_dict)
     else:
         p_console('MODE: TRAIN')
 

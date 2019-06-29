@@ -45,6 +45,7 @@ def get_baseline_acc_from_file(dataset, arch, num_classes, samples_per_class):
         last_row = csv.iloc[-1]
         acc_list.append(last_row['val_acc'])
 
+    assert len(acc_list) > 0, '{} {}'.format(num_classes, samples_per_class)
     return np.mean(acc_list), np.std(acc_list)
 
 def get_ensemble_acc_from_file(dataset, arch, num_classes, samples_per_class,
@@ -57,6 +58,7 @@ def get_ensemble_acc_from_file(dataset, arch, num_classes, samples_per_class,
         f = os.path.join(dirpath, 'B%d-test.csv' % b)
         csv = pd.read_csv(f)
         acc_list = csv['before_mean_acc']
+        assert len(acc_list) > 0, '{} {} {}'.format(num_classes, samples_per_class, b)
         ensemble_results[b] = [np.mean(acc_list), np.std(acc_list)]
 
     return ensemble_results
@@ -78,6 +80,7 @@ def get_vbranch_acc_from_file(dataset, arch, num_classes, samples_per_class,
                 last_row = csv.iloc[-1]
                 acc_list.append(last_row['val_acc_ensemble'])
 
+            assert len(acc_list) > 0, '{} {} {} {}'.format(num_classes, samples_per_class, b, s)
             vbranch_results[b][s] = \
                 [np.mean(acc_list), np.std(acc_list)]
 

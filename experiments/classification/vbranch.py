@@ -44,6 +44,11 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
+parser.add_argument('--train_frac', action='store', default=1., type=float,
+                    help='fraction of original dataset to use for training')
+
+parser.add_argument('--path', action='store', nargs='?', default=None,
+                    help='manually specify path to save model checkpoint and results')
 
 def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
         n_branches, shared):
@@ -74,14 +79,25 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
     return model
 
 def train(dataset, arch, n_branches, model_id, n_classes, n_features,
-        samples_per_class, epochs, steps_per_epoch, batch_size, shared):
+        samples_per_class, epochs, steps_per_epoch, batch_size, shared,
+        path, train_frac):
+    if path is None:
+        model_path = get_vb_model_path(dataset, arch, n_branches, shared,
+            n_classes, samples_per_class, model_id)
+        dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
+            n_classes, samples_per_class)
+    else:
+        path = os.path.join(path, 'B{}'.format(n_branches), 'S{:.2f}'.format(shared))
+        model_path = os.path.join('models', path, 'model_{}'.format(model_id))
+        if not os.path.isdir(model_path):
+            os.system('mkdir -p ' + model_path)
+        dirpath = path
 
-    model_path = get_vb_model_path(dataset, arch, n_branches, shared,
-        n_classes, samples_per_class, model_id)
     p_console('Save model path: ' + model_path)
 
     (X_train, y_train), (X_test, y_test) = get_data(dataset,arch,n_classes,
-                                            n_features, samples_per_class)
+                                            n_features, samples_per_class,
+                                            train_frac=train_frac)
     x_shape = (None,) + X_train.shape[1:]
     y_shape = (None, n_classes)
 
@@ -93,10 +109,6 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
     val_dict = {'x:0': X_test, 'y:0': y_test, 'batch_size:0': len(X_test)}
     history = model.fit(epochs, steps_per_epoch, train_dict=train_dict,
         val_dict=val_dict, log_path=model_path)
-
-    dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
-        n_classes, samples_per_class)
-
     save_results(history, dirpath, 'train_{}.csv'.format(model_id))
 
 def test(dataset, arch, n_branches, model_id, shared, n_classes,
@@ -150,12 +162,12 @@ if __name__ == '__main__':
                 train(args.dataset, args.architecture, args.num_branches,id,
                     args.num_classes, args.num_features,args.samples_per_class,
                     args.epochs, args.steps_per_epoch, args.batch_size,
-                    args.shared_frac)
+                    args.shared_frac, args.path, args.train_frac)
         else:
             for i in range(args.trials):
                 train(args.dataset, args.architecture, args.num_branches,i+1,
                     args.num_classes, args.num_features,args.samples_per_class,
                     args.epochs, args.steps_per_epoch,args.batch_size,
-                    args.shared_frac)
+                    args.shared_frac, args.path, args.train_frac)
 
     print('Finished!')

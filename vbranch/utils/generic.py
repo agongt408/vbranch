@@ -107,13 +107,32 @@ def restore_sess(sess, model_path):
 
 # Model path helper functions
 
+def get_path(dataset, arch, *prefixes, vb=False, model_id=None, **kwargs):
+    path = '{}-{}'.format(dataset, arch)
+    if vb:
+        path = 'vb-' + path
+
+    for name, val in kwargs.items():
+        if type(val) is int:
+            path = os.path.join(path, '{}{}'.format(name, val))
+        elif type(val) is float:
+            path = os.path.join(path, '{}{:.2f}'.format(name, val))
+        else:
+            raise ValueError('invalid value')
+
+    if model_id is not None:
+        path = os.path.join('models', path, 'model_{}'.format(model_id))
+
+    for prefix in prefixes[::-1]:
+        path = os.path.join(prefix, path)
+
+    return path
+
 def _dir_path(dataset, arch, n_classes=None, samples_per_class=None):
     if dataset == 'toy':
-        # Further organize results by number of classes and samples_per_class
-        dirpath = os.path.join('{}-{}'.format(dataset, arch),'C%d'%n_classes,
-            'SpC%d' % samples_per_class)
+        dirpath = get_path(dataset, arch, C=n_classes, SpC=samples_per_class)
     else:
-        dirpath = os.path.join('{}-{}'.format(dataset, arch))
+        dirpath = get_path(dataset, arch)
     return dirpath
 
 def get_model_path(dataset, arch, n_classes=None, samples_per_class=None, model_id=1):
@@ -128,15 +147,11 @@ def get_model_path(dataset, arch, n_classes=None, samples_per_class=None, model_
 
 def _vb_dir_path(dataset,arch,n_branches,shared, n_classes=None,
         samples_per_class=None):
-
     if dataset == 'toy':
-        # Further organize results by number of classes and samples_per_class
-        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
-            'C%d'%n_classes, 'SpC%d' % samples_per_class, 'B%d'%n_branches,
-            'S{:.2f}'.format(shared))
+        dirpath = get_path(dataset, arch, vb=True, C=n_classes,
+            SpC=samples_per_class, B=n_branches, S=shared)
     else:
-        dirpath = os.path.join('vb-{}-{}'.format(dataset, arch),
-            'B%d'%n_branches, 'S{:.2f}'.format(shared))
+        dirpath = get_path(dataset, arch, vb=True, B=n_branches, S=shared)
     return dirpath
 
 def get_vb_model_path(dataset, arch, n_branches, shared, n_classes=None,

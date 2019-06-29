@@ -74,7 +74,7 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size):
     return model
 
 def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
-        epochs, steps_per_epoch,batch_size, path):
+        epochs, steps_per_epoch,batch_size, path, train_frac):
     if path is None:
         model_path = get_model_path(dataset, arch, n_classes,
             samples_per_class,model_id)
@@ -89,7 +89,10 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
 
     # Load data
     (X_train, y_train), (X_test, y_test) = get_data(dataset, arch,
-        n_classes, n_features, samples_per_class)
+        n_classes, n_features, samples_per_class, train_frac=train_frac)
+    print('93>', X_train.shape, y_train.shape)
+    print('94>', X_test.shape, y_test.shape)
+
     x_shape = (None,) + X_train.shape[1:]
     y_shape = (None, n_classes)
 
@@ -105,9 +108,8 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset,arch,model_id_list,n_classes,samples_per_class,
-        X_test, y_test, output_dict={}, acc_dict={}):
+        X_test, y_test, path, output_dict={}, acc_dict={}, ):
     print(model_id_list)
-
     test_outputs = []
     test_accs = []
 
@@ -118,16 +120,15 @@ def test(dataset,arch,model_id_list,n_classes,samples_per_class,
         else:
             tf.reset_default_graph()
             with TFSessionGrow() as sess:
-                model_path = get_model_path(dataset, arch, n_classes,
-                    samples_per_class, model_id)
+                model_path = os.path.join('models',path,'model_{}'.format(model_id))
                 restore_sess(sess, model_path)
 
                 # Compute accuracy
                 acc, output = baseline_classification(sess, X_test, y_test,
                     num_classes=n_classes, return_logits=True)
 
-                # output_dict[model_id] = output
-                # acc_dict[model_id] = acc
+                output_dict[model_id] = output
+                acc_dict[model_id] = acc
 
         test_outputs.append(output)
         test_accs.append(acc)
@@ -148,8 +149,8 @@ def test(dataset,arch,model_id_list,n_classes,samples_per_class,
     results_dict['before_mean_acc'] = before_mean_acc
     results_dict['after_mean_acc'] = after_mean_acc
 
-    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
-    save_results(results_dict, dirpath, 'B%d-test.csv'%len(model_id_list), 'a')
+    print('158>', path)
+    save_results(results_dict, path, 'B%d-test.csv'%len(model_id_list), 'a')
 
     return output_dict, acc_dict
 
@@ -171,17 +172,21 @@ if __name__ == '__main__':
             output_dict = {}
             acc_dict = {}
 
-            dirpath = os.path.join('models', _dir_path(args.dataset,
-                args.architecture, args.num_classes, args.samples_per_class))
-            avail_runs = glob(dirpath + '/model_*')
-            avail_ids = [int(path[path.index('_')+1:]) for path in avail_runs]
+            if args.path is None:
+                path = _dir_path(args.dataset, args.architecture,
+                    args.num_classes, args.samples_per_class)
+            else:
+                path = args.path
+
+            avail_runs = glob(os.path.join('models', path) + '/model_*')
+            avail_ids = [int(p[-p[::-1].index('_'):]) for p in avail_runs]
 
             for i in range(args.trials):
                 model_ids = np.random.choice(avail_ids, len(args.model_id),
                     replace=False)
                 test(args.dataset, args.architecture,
                     model_ids, args.num_classes, args.samples_per_class,
-                    X_test, y_test, output_dict, acc_dict)
+                    X_test, y_test, path, output_dict, acc_dict)
     else:
         p_console('MODE: TRAIN')
 
@@ -190,12 +195,12 @@ if __name__ == '__main__':
                 # Run trial with specified model id
                 train(args.dataset, args.architecture,model_id,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size, args.path)
+                    args.steps_per_epoch, args.batch_size, args.path, args.train_frac)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
                 train(args.dataset, args.architecture,i+1,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size, args.path)
+                    args.steps_per_epoch, args.batch_size, args.path, args.train_frac)
 
     print('Finished!')

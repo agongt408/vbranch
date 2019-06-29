@@ -1,3 +1,5 @@
+from vbranch.utils.generic import get_path
+
 import pandas as pd
 import os
 import numpy as np
@@ -5,22 +7,32 @@ from glob import glob
 import json
 import argparse
 
-# Parse command line arguments
-parser = argparse.ArgumentParser()
+# # Parse command line arguments
+# parser = argparse.ArgumentParser()
+#
+# parser.add_argument('--dataset', action='store', default='mnist',
+#                     nargs='?', choices=['mnist', 'toy'], help='dataset')
+# parser.add_argument('--architecture', action='store', default='fcn',
+#                     nargs='?', help='model architecture, i.e., fcn or cnn')
+# parser.add_argument('--num_classes', action='store', nargs='*', type=int,
+#                     help='number of classes in toy dataset (list)')
+# parser.add_argument('--samples_per_class', action='store', nargs='*', type=int,
+#                     help='samples per class (list)')
+# parser.add_argument('--shared_frac', action='store', nargs='*', type=float,
+#                     default=[0, 0.25, 0.5, 0.75, 1],
+#                     help='shared frac list')
+# parser.add_argument('--num_branches', action='store', nargs='*', type=int,
+#                     help='number of branches (list)')
 
-parser.add_argument('--dataset', action='store', default='mnist',
-                    nargs='?', choices=['mnist', 'toy'], help='dataset')
-parser.add_argument('--architecture', action='store', default='fcn',
-                    nargs='?', help='model architecture, i.e., fcn or cnn')
-parser.add_argument('--num_classes', action='store', nargs='*', type=int,
-                    help='number of classes in toy dataset (list)')
-parser.add_argument('--samples_per_class', action='store', nargs='*', type=int,
-                    help='samples per class (list)')
-parser.add_argument('--shared_frac', action='store', nargs='*', type=float,
-                    default=[0, 0.25, 0.5, 0.75, 1],
-                    help='shared frac list')
-parser.add_argument('--num_branches', action='store', nargs='*', type=int,
-                    help='number of branches (list)')
+dataset = 'mnist'
+architecture = 'fcn'
+shared_frac = {'S': [0, 0.25, 0.5, 0.75, 1]}
+num_branches = {'B': range(2, 7)}
+
+param1 = {'F' : [0.01, 0.05, 0.1, 0.2]}
+param2 = {'Ba' : [32]}
+
+# baseline_kwargs = 
 
 def _get_results_path(dataset, arch, num_classes, samples_per_class, vb=False):
     if dataset == 'toy':

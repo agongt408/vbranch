@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0, '.')
+
 from vbranch.utils.generic import get_path
 
 import pandas as pd
@@ -24,31 +27,22 @@ import argparse
 # parser.add_argument('--num_branches', action='store', nargs='*', type=int,
 #                     help='number of branches (list)')
 
+# Params
 dataset = 'mnist'
 architecture = 'fcn'
-shared_frac = {'S': [0, 0.25, 0.5, 0.75, 1]}
-num_branches = {'B': range(2, 7)}
+shared_frac = [0, 0.25, 0.5, 0.75, 1]
+num_branches = range(2, 7)
 
-param1 = {'F' : [0.01, 0.05, 0.1, 0.2]}
-param2 = {'Ba' : [32]}
+param1 = [0.01, 0.05, 0.1, 0.2]
+param2 = [32]
 
-# baseline_kwargs = 
+def _get_results_path(dataset, arch, p1, p2, vb=False):
+    # Set kwargs manually before running
+    dirpath = get_path(dataset, arch, 'results', 'data_exp', vb=vb, F=p1, Ba=p2)
+    return dirpath
 
-def _get_results_path(dataset, arch, num_classes, samples_per_class, vb=False):
-    if dataset == 'toy':
-        # Further organize results by number of classes and samples_per_class
-        dirpath = os.path.join('{}-{}'.format(dataset, arch),
-            'C%d'%num_classes, 'SpC%d' % samples_per_class)
-    else:
-        dirpath = os.path.join('{}-{}'.format(dataset, arch))
-
-    if vb:
-        dirpath = 'vb-' + dirpath
-
-    return os.path.join('results', dirpath)
-
-def get_baseline_acc_from_file(dataset, arch, num_classes, samples_per_class):
-    dirpath = _get_results_path(dataset, arch, num_classes, samples_per_class)
+def get_baseline_acc_from_file(dataset, arch, p1, p2):
+    dirpath = _get_results_path(dataset, arch, p1, p2)
     print(dirpath)
 
     acc_list = []
@@ -57,29 +51,24 @@ def get_baseline_acc_from_file(dataset, arch, num_classes, samples_per_class):
         last_row = csv.iloc[-1]
         acc_list.append(last_row['val_acc'])
 
-    assert len(acc_list) > 0, '{} {}'.format(num_classes, samples_per_class)
+    assert len(acc_list) > 0, '{} {}'.format(p1, p2)
     return np.mean(acc_list), np.std(acc_list)
 
-def get_ensemble_acc_from_file(dataset, arch, num_classes, samples_per_class,
-        branches):
-
-    dirpath = _get_results_path(dataset, arch, num_classes, samples_per_class)
+def get_ensemble_acc_from_file(dataset, arch, p1, p2, branches):
+    dirpath = _get_results_path(dataset, arch, p1, p2)
 
     ensemble_results = {}
     for b in branches:
         f = os.path.join(dirpath, 'B%d-test.csv' % b)
         csv = pd.read_csv(f)
         acc_list = csv['before_mean_acc']
-        assert len(acc_list) > 0, '{} {} {}'.format(num_classes, samples_per_class, b)
+        assert len(acc_list) > 0, '{} {} {}'.format(p1, p2, b)
         ensemble_results[b] = [np.mean(acc_list), np.std(acc_list)]
 
     return ensemble_results
 
-def get_vbranch_acc_from_file(dataset, arch, num_classes, samples_per_class,
-        branches, shared_frac):
-
-    dirpath = _get_results_path(dataset, arch, num_classes, samples_per_class,
-        vb=True)
+def get_vbranch_acc_from_file(dataset, arch, p1, p2, branches, shared_frac):
+    dirpath = _get_results_path(dataset, arch, p1, p2, vb=True)
 
     vbranch_results = {}
     for b in branches:
@@ -92,39 +81,37 @@ def get_vbranch_acc_from_file(dataset, arch, num_classes, samples_per_class,
                 last_row = csv.iloc[-1]
                 acc_list.append(last_row['val_acc_ensemble'])
 
-            assert len(acc_list) > 0, '{} {} {} {}'.format(num_classes, samples_per_class, b, s)
+            assert len(acc_list) > 0, '{} {} {} {}'.format(p1, p2, b, s)
             vbranch_results[b][s] = \
                 [np.mean(acc_list), np.std(acc_list)]
 
     return vbranch_results
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
     baseline_results = {}
-    for num_classes in args.num_classes:
-        baseline_results[num_classes] = {}
-        for samples_per_class in args.samples_per_class:
-            baseline_results[num_classes][samples_per_class] = \
-                get_baseline_acc_from_file(args.dataset, args.architecture,
-                    num_classes, samples_per_class)
+    for p1 in param1:
+        baseline_results[p1] = {}
+        for p2 in param2:
+            baseline_results[p1][p2] = \
+                get_baseline_acc_from_file(dataset, architecture, p1, p2)
 
     ensemble_results = {}
-    for num_classes in args.num_classes:
-        ensemble_results[num_classes] = {}
-        for samples_per_class in args.samples_per_class:
-            ensemble_results[num_classes][samples_per_class] = \
-                get_ensemble_acc_from_file(args.dataset, args.architecture,
-                    num_classes, samples_per_class, args.num_branches)
+    for p1 in param1:
+        ensemble_results[p1] = {}
+        for p2 in param2:
+            ensemble_results[p1][p2] = \
+                get_ensemble_acc_from_file(dataset, architecture,
+                    p1, p2, num_branches)
 
     vbranch_results = {}
-    for num_classes in args.num_classes:
-        vbranch_results[num_classes] = {}
-        for samples_per_class in args.samples_per_class:
-            vbranch_results[num_classes][samples_per_class] = \
-                get_vbranch_acc_from_file(args.dataset, args.architecture,
-                    num_classes, samples_per_class, args.num_branches,
-                    args.shared_frac)
+    for p1 in param1:
+        vbranch_results[p1] = {}
+        for p2 in param2:
+            vbranch_results[p1][p2] = \
+                get_vbranch_acc_from_file(dataset, architecture,
+                    p1, p2, num_branches, shared_frac)
 
     results = {
         'baseline':baseline_results,
@@ -132,8 +119,7 @@ if __name__ == '__main__':
         'vbranch':vbranch_results
     }
 
-    path = os.path.join('results','{}-{}.json'.format(args.dataset,
-        args.architecture))
+    path = os.path.join('results','{}-{}.json'.format(dataset, architecture))
 
     with open(path, 'w') as fp:
         json.dump(results, fp)

@@ -58,9 +58,9 @@ import os
 #             '--shared_frac ' + str(shared_frac)
 #         os.system(cmd)
 
-for train_frac in [0.2]:
-    for batch_size in [32]:
-        baseline_path = os.path.join('data_exp/mnist-fcn',
+for train_frac in [0.05, 0.1, 0.2]:
+    for batch_size in [8, 16, 32, 64, 128]:
+        baseline_path = os.path.join('data_exp-2/mnist-fcn',
             'F{:.2f}'.format(train_frac), 'Ba{}'.format(batch_size))
 
         cmd = 'python experiments/classification/baseline.py ' + \
@@ -79,12 +79,12 @@ for train_frac in [0.2]:
                 '--path ' + baseline_path + ' --model_id ' + model_id_list
             os.system(cmd)
 
-            vb_path = os.path.join('data_exp/vb-mnist-fcn',
+            vb_path = os.path.join('data_exp-2/vb-mnist-fcn',
                 'F{:.2f}'.format(train_frac), 'Ba{}'.format(batch_size))
 
             for shared_frac in [0., 0.25, 0.5, 0.75, 1.]:
                 cmd = 'python experiments/classification/vbranch.py ' + \
-                    '--architecture fcn --dataset mnist --epochs 10 --trials 4 ' + \
+                    '--architecture fcn --dataset mnist --epochs 10 --trials 8 ' + \
                     '--train_frac {} --batch_size {} '.format(train_frac, batch_size) + \
                     '--num_branches ' + str(num_branches) + ' ' + \
                     '--shared_frac ' + str(shared_frac) + ' ' + \

@@ -34,11 +34,11 @@ shared_frac = [0, 0.25, 0.5, 0.75, 1]
 num_branches = range(2, 7)
 
 param1 = [0.01, 0.05, 0.1, 0.2]
-param2 = [32]
+param2 = [8, 16, 32, 64, 128]
 
 def _get_results_path(dataset, arch, p1, p2, vb=False):
     # Set kwargs manually before running
-    dirpath = get_path(dataset, arch, 'results', 'data_exp', vb=vb, F=p1, Ba=p2)
+    dirpath = get_path(dataset, arch, 'results', 'data_exp-2', vb=vb, F=p1, Ba=p2)
     return dirpath
 
 def get_baseline_acc_from_file(dataset, arch, p1, p2):

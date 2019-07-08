@@ -108,7 +108,7 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset,arch,model_id_list,n_classes,samples_per_class,
-        X_test, y_test, path, output_dict={}, acc_dict={}, ):
+        X_test, y_test, path, output_dict={}, acc_dict={}):
     print(model_id_list)
     test_outputs = []
     test_accs = []

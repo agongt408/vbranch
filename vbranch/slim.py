@@ -63,6 +63,8 @@ def Activation(x, activation, name=None, n_branches=None, merge=False):
 
     return L.Activation(activation, name)(x)
 
+# Convolutional
+
 def Conv2D(x, filters, kernel_size, strides=1, padding='valid',
         use_bias=True, name=None, n_branches=None, shared=0, merge=False):
     if name is None:
@@ -84,6 +86,17 @@ def Conv2D(x, filters, kernel_size, strides=1, padding='valid',
             shared_filters, strides, padding, merge=merge)(x)
 
     return L.Conv2D(filters, kernel_size, name, strides, padding, use_bias)(x)
+
+def ZeroPadding2D(x, padding=(1,1), n_branches=None, name=None, merge=False):
+    if name is None:
+        name = unused_scope('zero_pad')
+
+    if isinstance(x, VBOutput) or n_branches is not None:
+        if n_branches is None:
+            n_branches = len(x)
+        return VBL.ZeroPadding2D(padding, n_branches, name, merge=merge)(x)
+
+    return L.ZeroPadding2D(name, padding)(x)
 
 # Pooling
 

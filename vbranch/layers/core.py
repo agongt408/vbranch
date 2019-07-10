@@ -49,6 +49,8 @@ class Layer(object):
             # Similar to Keras Functional API
             # construct model later from input/output tensors only
             setattr(output, '_vb_history', layer)
+            # Add output handle to layer for easy reference
+            setattr(layer, 'output', output)
 
             return output
         return new_func
@@ -91,17 +93,22 @@ class Dense(Layer):
         return config
 
 class BatchNormalization(Layer):
-    def __init__(self, name, epsilon=1e-8):
+    def __init__(self, name, epsilon=1e3, axis=-1):
         super().__init__(name)
         self.epsilon = epsilon
         self.beta = []
         self.scale = []
+        self.axis = axis
 
     @Layer.call
     def __call__(self, x):
-        n_out = x.get_shape().as_list()[-1]
+        shape_in = x.get_shape().as_list()
+        n_out = shape_in[-1]
 
-        batch_mean, batch_var = tf.nn.moments(x, [0])
+        axes = list(range(len(shape_in)))
+        axes.pop(self.axis)
+
+        batch_mean, batch_var = tf.nn.moments(x, axes)
         self.scale = tf.get_variable('scale', initializer=tf.ones([n_out]))
         self.beta = tf.get_variable('beta', initializer=tf.zeros([n_out]))
 

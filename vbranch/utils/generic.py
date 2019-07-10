@@ -203,3 +203,14 @@ def save_results(data, dirname, filename, mode='w'):
 def p_console(*args):
     # Print to console
     print(bcolors.HEADER, *args, bcolors.ENDC)
+
+def check_2d_param(p):
+    """Returns correctly formatted parameter for pool_size, kernel_size, strides"""
+    if type(p) is int:
+        p_list = [p, p]
+    elif type(p) is tuple or type(p) is list:
+        p_list = list(p)
+    else:
+        raise ValueError('parameter must be int or tuple')
+
+    return p_list

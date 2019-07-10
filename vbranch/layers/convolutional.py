@@ -1,5 +1,5 @@
 from .core import Layer
-from ..utils.generic import eval_params, EmptyOutput
+from ..utils.generic import eval_params, EmptyOutput, check_2d_param
 from ..initializers import glorot_uniform
 
 import tensorflow as tf
@@ -26,16 +26,17 @@ class Conv2D(Layer):
 
         shape_in = x.get_shape().as_list()
         channels_in = shape_in[-1]
+        kernel_size = check_2d_param(self.kernel_size)
 
         if self.fan_in is not None and self.fan_out is not None:
             self.f = tf.get_variable('filter', initializer=\
-                glorot_uniform([self.kernel_size, self.kernel_size,
-                    channels_in, self.filters], self.fan_in, self.fan_out))
+                glorot_uniform(kernel_size + [channels_in, self.filters],
+                    self.fan_in, self.fan_out))
         else:
-            self.f = tf.get_variable('filter', shape=[self.kernel_size,
-                self.kernel_size, channels_in, self.filters])
+            self.f = tf.get_variable('filter', shape=kernel_size + \
+                [channels_in, self.filters])
 
-        strides = (1, self.strides, self.strides, 1)
+        strides = (1, *check_2d_param(self.strides), 1)
 
         if self.use_bias:
             output = tf.nn.conv2d(x, self.f, strides, self.padding.upper())
@@ -56,39 +57,51 @@ class Conv2D(Layer):
             'output_shape':self.output_shape, 'weights':self.get_weights(sess)}
         return config
 
-class Conv1D(Layer):
-    def __init__(self, filters, kernel_size, name, strides=1, padding='valid',
-            use_bias=True):
+# class Conv1D(Layer):
+#     def __init__(self, filters, kernel_size, name, strides=1, padding='valid',
+#             use_bias=True):
+#         super().__init__(name)
+#         self.filters = filters
+#         self.kernel_size = kernel_size
+#         self.strides = strides
+#         self.padding = padding
+#         self.use_bias = use_bias
+#
+#     @Layer.call
+#     def __call__(self, x):
+#         shape_in = x.get_shape().as_list()
+#         channels_in = shape_in[-1]
+#
+#         self.f = tf.get_variable('filter', shape=[self.kernel_size,
+#             channels_in, self.filters])
+#
+#         if self.use_bias:
+#             output = tf.nn.conv1d(x,self.f,self.strides,self.padding.upper())
+#             self.b = tf.get_variable('bias', initializer=tf.zeros([self.filters]))
+#
+#             b = tf.reshape(self.b, [-1, 1, self.filters])
+#             output = tf.add(output, b, name='output')
+#         else:
+#             output = tf.nn.conv1d(x, self.f, strides, self.padding.upper(),
+#                 name='output')
+#
+#         return output
+#
+#     def get_config(self):
+#         config = {'name':self.name, 'filters':self.filters,
+#             'kernel_size':self.kernel_size, 'strides':self.strides,
+#             'padding':self.padding, 'use_bias':self.use_bias,
+#             'output_shape':self.output_shape, 'weights':self.get_weights()}
+#         return config
+
+class ZeroPadding2D(Layer):
+    def __init__(self, name, padding=(1,1)):
         super().__init__(name)
-        self.filters = filters
-        self.kernel_size = kernel_size
-        self.strides = strides
         self.padding = padding
-        self.use_bias = use_bias
 
     @Layer.call
     def __call__(self, x):
-        shape_in = x.get_shape().as_list()
-        channels_in = shape_in[-1]
-
-        self.f = tf.get_variable('filter', shape=[self.kernel_size,
-            channels_in, self.filters])
-
-        if self.use_bias:
-            output = tf.nn.conv1d(x,self.f,self.strides,self.padding.upper())
-            self.b = tf.get_variable('bias', initializer=tf.zeros([self.filters]))
-
-            b = tf.reshape(self.b, [-1, 1, self.filters])
-            output = tf.add(output, b, name='output')
-        else:
-            output = tf.nn.conv1d(x, self.f, strides, self.padding.upper(),
-                name='output')
-
+        dim_pad = check_2d_param(self.padding)
+        padding_list = [[0,0], dim_pad, dim_pad, [0,0]]
+        output = tf.pad(x, padding_list, mode='constant', name='output')
         return output
-
-    def get_config(self):
-        config = {'name':self.name, 'filters':self.filters,
-            'kernel_size':self.kernel_size, 'strides':self.strides,
-            'padding':self.padding, 'use_bias':self.use_bias,
-            'output_shape':self.output_shape, 'weights':self.get_weights()}
-        return config

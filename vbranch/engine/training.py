@@ -35,7 +35,7 @@ class Model(Network):
         self.assign_ops = assign_ops
 
     def fit(self, epochs, steps_per_epoch, train_dict={}, val_dict=None,
-            log_path=None, call_step=1):
+            log_path=None, call_step=1, verbose=2):
         """
         Train model given training and validation data
         Args:
@@ -55,7 +55,7 @@ class Model(Network):
         history = _fit(self.train_init_op, self.test_init_op, train_dict,
             epochs, steps_per_epoch, self.loss, self.train_op, val_dict,
             log_path, self.callbacks, self.schedulers,
-            assign_ops=self.assign_ops, call_step=call_step)
+            assign_ops=self.assign_ops, call_step=call_step, verbose=verbose)
         return history
 
 class ModelVB(NetworkVB):
@@ -187,7 +187,7 @@ class ModelVB(NetworkVB):
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
-        schedulers={}, n_branches=1, assign_ops=[], call_step=1):
+        schedulers={}, n_branches=1, assign_ops=[], call_step=1, verbose=2):
     history = {}
 
     # Classification (training accuracy calculation)
@@ -197,17 +197,25 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         train_dict_copy['batch_size:0'] = len(train_dict['x:0'])
 
     with TFSessionGrow() as sess:
-        sess.run(tf.global_variables_initializer())
+        if 'beta1:0' in schedulers.keys():
+            sess.run(tf.global_variables_initializer(), feed_dict={'beta1:0':0.9})
+        else:
+            sess.run(tf.global_variables_initializer())
         sess.run(assign_ops)
+        # print(sess.run('model/conv1/bias:0'))
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
-            progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=2)
+            progbar = tf.keras.utils.Progbar(steps_per_epoch, verbose=verbose)
 
             sess.run(train_init_op, feed_dict=train_dict)
             sched_dict = {}
             for name, func in schedulers.items():
                 sched_dict[name] = func(e + 1)
+
+            if e == 0:
+                batch = sess.run('input:0')
+                print(batch.min(), batch.max())
 
             for i in range(steps_per_epoch):
                 progbar_vals = []
@@ -223,7 +231,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                     # on training set
                     if callbacks != {} and (e + 1) % call_step == 0:
                         for _, func in callbacks.items():
-                            results = func(sess, train_dict_copy, n_branches)
+                            results = func(sess, train_dict_copy)
                             for name, r in results.items():
                                 hist_append(history, name, r)
                                 progbar_vals.append((name, r))
@@ -237,7 +245,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
 
                         if callbacks != {} and (e + 1) % call_step == 0:
                             for _, func in callbacks.items():
-                                results = func(sess, val_dict, n_branches)
+                                results = func(sess, val_dict)
                                 for name, r in results.items():
                                     hist_append(history, 'val_'+name, r)
                                     progbar_vals.append(('val_'+name, r))

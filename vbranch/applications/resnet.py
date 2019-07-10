@@ -62,7 +62,7 @@ def ResNet152(inputs, classes, name=None, shared_frac=None):
         name=name, shared_frac=shared_frac)
 
 def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
-        subsample_initial_block=True, shared_frac=None):
+        shared_frac=None):
     """
     Construct ResNet model with additional FC layers
     Args:
@@ -72,7 +72,6 @@ def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
         - kernel_spec: tuple of kernel sizes per layer
         - filter_spec: list of tuples of filters per layer per block
         - name: model name
-        - subsample_initial_block: if true, apply strides=2 and downsampling
     Returns:
         - Model or ModelVB instance
     """
@@ -122,21 +121,13 @@ def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
     ip = Input(input_)
 
     # Initial convolution
-    if subsample_initial_block:
-        initial_kernel = 7
-        initial_strides = 2
-    else:
-        initial_kernel = 3
-        initial_strides = 1
-    initial_filters = filter_spec[0][0]
-
-    x = Conv2D(ip, initial_filters, initial_kernel, strides=initial_strides,
-            name='conv1', padding='same', shared=shared_frac)
-
-    if subsample_initial_block:
-        x = BatchNormalization(x, name='bn_conv1')
-        x = Activation(x, 'relu')
-        x = MaxPooling2D(x, (3, 3), strides=(2, 2), padding='same')
+    x = ZeroPadding2D(ip, padding=(3,3), name='conv1_pad')
+    x = Conv2D(x, 64, (7,7), strides=(2,2), name='conv1', padding='valid',
+            shared=shared_frac)
+    x = BatchNormalization(x, name='bn_conv1')
+    x = Activation(x, 'relu')
+    x = ZeroPadding2D(x, padding=(1,1), name='pool1_pad')
+    x = MaxPooling2D(x, (3, 3), strides=(2, 2))
 
     for i, n_layers in enumerate(layer_spec):
         if i == 0:
@@ -160,6 +151,7 @@ def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
     x = Activation(x, 'relu')
     x = Dense(x, classes, name='output')
 
+    # x = GlobalAveragePooling2D(x, name='output')
     if type(input_) is list:
         return ModelVB(ip, x, name=name)
 

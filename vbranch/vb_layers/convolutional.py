@@ -100,3 +100,23 @@ class Conv2D(Layer):
             'filters_list':self.filters_list,
             'weights':self.get_weights(sess)}
         return config
+
+class ZeroPadding2D(Layer):
+    def __init__(self, padding, n_branches, name, merge=False):
+        super().__init__(name, n_branches, merge)
+        self.padding = padding
+
+    @Layer.call
+    def __call__(self, x):
+        pad_layer = L.ZeroPadding2D(self.name, self.padding)
+        output_list = []
+
+        for i in range(self.n_branches):
+            if type(x[i]) is list:
+                shared_out = pad_layer(x[i][0])
+                unique_out = pad_layer(x[i][1])
+                output_list.append([shared_out, unique_out])
+            else:
+                output_list.append(pad_layer(x[i]))
+
+        return output_list

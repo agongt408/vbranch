@@ -14,6 +14,13 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
         return lr
     return func
 
+def beta1_scheduler(t0, beta_init=0.9, beta_final=0.5):
+    def func(episode):
+        if episode > t0:
+            return beta_final
+        return beta_init
+    return func
+
 def get_data(dataset, architecture, num_classes=10, num_features=784,
         samples_per_class=1000, one_hot=True, train_frac=1, seed=100):
     """
@@ -169,7 +176,7 @@ def get_data_iterator_from_generator(train_gen, input_dim, *args, n=1):
         iterator = tf.data.Iterator.from_structure('float32', input_dim)
 
         if n == 1:
-            inputs = iterator.get_next()
+            inputs = iterator.get_next('input')
             train_init_op = iterator.make_initializer(train_dataset)
             test_init_op = iterator.make_initializer(test_dataset,
                 name='test_init_op')

@@ -1,4 +1,5 @@
 from .core import Layer
+from ..utils.generic import check_2d_param
 
 import tensorflow as tf
 
@@ -12,18 +13,14 @@ class AveragePooling2D(Layer):
     @Layer.call
     def __call__(self, x):
         shape_in = x.get_shape().as_list()
-
-        ksize = (1, self.pool_size[0], self.pool_size[1], 1)
-
+        ksize = (1, *check_2d_param(self.pool_size), 1)
         if self.strides is None:
             strides = ksize
         else:
-            strides = (1, self.strides[0], self.strides[1], 1)
+            strides = (1, *check_2d_param(self.strides), 1)
 
-        output = tf.nn.avg_pool(x, ksize, strides, self.padding.upper(),
+        return tf.nn.avg_pool(x, ksize, strides, self.padding.upper(),
             name='output')
-
-        return output
 
     def get_config(self):
         config = {'name':self.name, 'pool_size':self.pool_size,
@@ -50,18 +47,14 @@ class MaxPooling2D(Layer):
     @Layer.call
     def __call__(self, x):
         shape_in = x.get_shape().as_list()
-
-        ksize = (1, self.pool_size[0], self.pool_size[1], 1)
-
+        ksize = (1, *check_2d_param(self.pool_size), 1)
         if self.strides is None:
             strides = ksize
         else:
-            strides = (1, self.strides[0], self.strides[1], 1)
+            strides = (1, *check_2d_param(self.strides), 1)
 
-        output = tf.nn.max_pool(x, ksize, strides, self.padding.upper(),
+        return tf.nn.max_pool(x, ksize, strides, self.padding.upper(),
             name='output')
-
-        return output
 
     def get_config(self):
         config = {'name':self.name, 'pool_size':self.pool_size,

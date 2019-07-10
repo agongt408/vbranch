@@ -15,7 +15,7 @@ def triplet(P, K, margin=0.2):
     Returns:
         - callable function"""
 
-    def func(y, pred, name):
+    def func(y, pred, name='loss'):
         return _triplet(pred, P, K, margin, name)
     return func
 

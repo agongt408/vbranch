@@ -2,6 +2,8 @@ import os
 import json
 import numpy as np
 import cv2
+from keras.applications import resnet50
+from keras.applications import densenet
 
 class DataGenerator(object):
     def __init__(self, dataset, split, verify=False, data_root='../data'):
@@ -233,43 +235,43 @@ def _imread_scale(img_path, shape, preprocess=True):
         # print('resize')
         im = cv2.resize(im, (shape[1], shape[0]))
 
-    if preprocess:
-        # return _densenet_preprocess(im.astype('float32'))
-        return _resnet_preprocess(im.astype('float32'))
-
-    # elif preprocess == 'norm':
-    #     return _preprocess_norm(im)
+    if preprocess == 'resnet':
+        return resnet50.preprocess_input(im.astype('float32'))
+    elif preprocess == 'densenet':
+        return densenet.preprocess_input(im.astype('float32'))
+    elif preprocess == True:
+        im = im / 127.5 - 1
 
     return im
 
-def _densenet_preprocess(x):
-    """Preprocesses a tensor encoding a batch of images.
-
-    # Arguments
-        x: input Numpy tensor, 4D.
-        data_format: data format of the image tensor.
-
-    # Returns
-        Preprocessed tensor.
-
-    https://github.com/titu1994/DenseNet
-    """
-
-    x = x[..., ::-1]
-    # Zero-center by mean pixel
-    x[..., 0] -= 103.939
-    x[..., 1] -= 116.779
-    x[..., 2] -= 123.68
-
-    x *= 0.017 # scale values
-
-    return x
-
-# https://github.com/keras-team/keras-applications/blob/master/keras_applications/resnet.py
-def _resnet_preprocess(x):
-    x = x[..., ::-1]
-    # Zero-center by mean pixel
-    x[..., 0] -= 103.939
-    x[..., 1] -= 116.779
-    x[..., 2] -= 123.68
-    return x
+# def _densenet_preprocess(x):
+#     """Preprocesses a tensor encoding a batch of images.
+#
+#     # Arguments
+#         x: input Numpy tensor, 4D.
+#         data_format: data format of the image tensor.
+#
+#     # Returns
+#         Preprocessed tensor.
+#
+#     https://github.com/titu1994/DenseNet
+#     """
+#
+#     x = x[..., ::-1]
+#     # Zero-center by mean pixel
+#     x[..., 0] -= 103.939
+#     x[..., 1] -= 116.779
+#     x[..., 2] -= 123.68
+#
+#     x *= 0.017 # scale values
+#
+#     return x
+#
+# # https://github.com/keras-team/keras-applications/blob/master/keras_applications/resnet.py
+# def _resnet_preprocess(x):
+#     x = x[..., ::-1]
+#     # Zero-center by mean pixel
+#     x[..., 0] -= 103.939
+#     x[..., 1] -= 116.779
+#     x[..., 2] -= 123.68
+#     return x

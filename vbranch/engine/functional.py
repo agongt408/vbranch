@@ -174,8 +174,8 @@ def _map_graph(inputs, outputs):
         - inputs: List of input tensors
         - outputs: List of outputs tensors
     """
-
-    def build_map(tensor, layers, inputs):
+    layers = []
+    def build_map(tensor, inputs):
         # End recursion if reached inputs
         if tensor in inputs:
             return
@@ -189,17 +189,13 @@ def _map_graph(inputs, outputs):
             AttributeError('tensor {} was not created by custom layer'.\
                 format(tensor))
 
-        layer = tensor._vb_history
+        l = tensor._vb_history
+        if l not in layers:
+            for x in l._inbound_tensors:
+                build_map(x, inputs)
+            layers.append(l)
 
-        for x in layer._inbound_tensors:
-            build_map(x, layers, inputs)
-
-        # Add layer of tensor to layers list (only if unique)
-        if not layer in layers:
-            layers.append(layer)
-
-    layers = []
     for x in outputs:
-        build_map(x, layers, inputs)
+        build_map(x, inputs)
 
     return layers

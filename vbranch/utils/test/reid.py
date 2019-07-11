@@ -6,7 +6,7 @@ import multiprocessing
 from time import time
 
 def get_score(sess, dataset='market', preprocess=True, img_dim=(128,64,3),
-        crop=False, flip=False, rank=[1,5], n_branches=1):
+        crop=False, flip=False, rank=[1,5], n_branches=1, buffer=100):
     """
     Returns the rank scores (multiple) and mAP
     Args:
@@ -24,8 +24,8 @@ def get_score(sess, dataset='market', preprocess=True, img_dim=(128,64,3),
     assert dataset in ['market', 'duke']
 
     # Get image data iterators
-    gallery_data = TestGen(dataset, 'test', preprocess, img_dim, crop, flip)
-    query_data = TestGen(dataset, 'query', preprocess, img_dim, crop, flip)
+    gallery_data = TestGen(dataset, 'test', preprocess, img_dim, crop, flip, buffer=buffer)
+    query_data = TestGen(dataset, 'query', preprocess, img_dim, crop, flip, buffer=buffer)
     gallery_embs,query_embs = _get_emb(sess, gallery_data, query_data, n_branches)
 
     rank_score, mAP_score = _evaluate_metrics(gallery_embs, query_embs,

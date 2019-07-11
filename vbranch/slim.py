@@ -40,7 +40,7 @@ def Dense(x, units, use_bias=True, name=None, n_branches=None, shared=0,
 
     return L.Dense(units, name, use_bias=use_bias)(x)
 
-def BatchNormalization(x, epsilon=1e-6, name=None, n_branches=None, merge=False):
+def BatchNormalization(x, axis=-1, epsilon=1e-6, name=None, n_branches=None, merge=False):
     if name is None:
         name = unused_scope('bn')
 
@@ -83,7 +83,7 @@ def Conv2D(x, filters, kernel_size, strides=1, padding='valid',
         filters_list = [filters] * n_branches
 
         return VBL.Conv2D(filters_list, kernel_size, n_branches, name,
-            shared_filters, strides, padding, merge=merge)(x)
+            shared_filters, strides, padding, use_bias, merge=merge)(x)
 
     return L.Conv2D(filters, kernel_size, name, strides, padding, use_bias)(x)
 
@@ -151,6 +151,18 @@ def Add(x, name=None, n_branches=None, merge=False):
 
     return L.Add(name)(x)
 
+def Concatenate(x, name=None, n_branches=None, merge=False):
+    if name is None:
+        name = unused_scope('concatenate')
+
+    if any([isinstance(x_, VBOutput) for x_ in x]) or n_branches is not None:
+        if n_branches is None:
+            assert all([len(x_) == len(x[0]) for x_ in x])
+            n_branches = len(x[0])
+        return VBL.Concatenate(n_branches, name, merge=merge)(x)
+
+    return L.Concatenate(name)(x)
+
 # Utils
 
 def exist_scope(name):
@@ -176,9 +188,12 @@ def unused_scope(init_name):
         if name.find('_') < 0:
             return name + '_1'
 
-        reverse_name = name[::-1]
-        counter = int(name[-reverse_name.find('_'):])
-        return name[:-reverse_name.find('_')] + str(counter + 1)
+        try:
+            reverse_name = name[::-1]
+            counter = int(name[-reverse_name.find('_'):])
+            return name[:-reverse_name.find('_')] + str(counter + 1)
+        except ValueError:
+            return name + '_1'
 
     name = init_name
     while exist_scope(name):

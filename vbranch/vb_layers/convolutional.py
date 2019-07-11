@@ -6,7 +6,7 @@ import numpy as np
 
 class Conv2D(Layer):
     def __init__(self, filters_list, kernel_size, n_branches, name,
-            shared_filters=0, strides=1, padding='valid', merge=False):
+            shared_filters=0, strides=1, padding='valid', use_bias=True, merge=False):
         super().__init__(name, n_branches, merge)
 
         assert n_branches == len(filters_list),'n_branches != len(filters_list)'
@@ -16,6 +16,7 @@ class Conv2D(Layer):
         self.padding = padding
         self.shared_filters = shared_filters
         self.shared_branch = None
+        self.use_bias = use_bias
 
     @Layer.call
     def __call__(self, x):
@@ -25,7 +26,8 @@ class Conv2D(Layer):
         if self.shared_filters == 0:
             for i in range(self.n_branches):
                 layer = L.Conv2D(self.filters_list[i], self.kernel_size,
-                    'vb'+str(i+1), strides=self.strides, padding=self.padding)
+                    'vb'+str(i+1), strides=self.strides, padding=self.padding,
+                    use_bias=self.use_bias)
 
                 if type(x[i]) is list:
                     input_ = smart_concat(x[i], -1)
@@ -54,7 +56,7 @@ class Conv2D(Layer):
         # For efficiency, only apply computation to shared_in ONCE
         self.shared_branch = L.Conv2D(self.shared_filters, self.kernel_size,
             'shared_to_shared', strides=self.strides, padding=self.padding,
-            fan_in=fan_in, fan_out=fan_out)
+            fan_in=fan_in, fan_out=fan_out, use_bias=self.use_bias)
 
         for i in range(self.n_branches):
             assert self.filters_list[i] >= self.shared_filters, \
@@ -64,13 +66,16 @@ class Conv2D(Layer):
             # Operations to build the rest of the layer
             shared_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 'vb'+str(i+1)+'_shared_to_unique', strides=self.strides,
-                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out,
+                use_bias=self.use_bias)
             unique_to_shared = L.Conv2D(self.shared_filters, self.kernel_size,
                 'vb'+str(i+1)+ '_unique_to_shared', strides=self.strides,
-                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out,
+                use_bias=self.use_bias)
             unique_to_unique = L.Conv2D(unique_filters, self.kernel_size,
                 'vb'+str(i+1) + '_unique_to_unique', strides=self.strides,
-                padding=self.padding, fan_in=fan_in, fan_out=fan_out)
+                padding=self.padding, fan_in=fan_in, fan_out=fan_out,
+                use_bias=self.use_bias)
 
             if type(x[i]) is list:
                 shared_in = x[i][0]

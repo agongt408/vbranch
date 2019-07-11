@@ -39,6 +39,12 @@ class Summary(object):
             if print_show_line[r]:
                 print('-' * total_width)
 
+def get_shape(x):
+    if isinstance(x, EmptyOutput):
+        return []
+    else:
+        return x.get_shape().as_list()
+
 def get_shape_as_str(tensor):
     shape = tensor.get_shape().as_list()
     return shape_to_str(shape)
@@ -71,6 +77,10 @@ def smart_concat(xs, axis=-1, name='concat'):
     for x in xs:
         if not isinstance(x, EmptyOutput):
             x_concat.append(x)
+
+    if len(x_concat) == 0:
+        return EmptyOutput()
+        
     return tf.concat(x_concat, axis=axis, name=name)
 
 def eval_params(func):

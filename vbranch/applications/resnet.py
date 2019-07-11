@@ -6,7 +6,6 @@ from tensorflow import Tensor
 from numpy import ndarray
 import pickle
 
-
 def ResNet50(inputs, classes, name=None, shared_frac=None, weights=None):
     """
     Construct ResNet50 model with optional weights
@@ -117,6 +116,7 @@ def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
+        shared_frac = float(shared_frac)
 
     ip = Input(input_)
 

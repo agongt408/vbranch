@@ -1,7 +1,7 @@
 # Virtual branching version of layers
 
 from .. import layers as L
-from ..utils.generic import eval_params, smart_add, smart_concat, EmptyOutput
+from ..utils.generic import eval_params, smart_add, smart_concat, EmptyOutput, get_shape
 
 import tensorflow as tf
 import collections
@@ -56,17 +56,12 @@ class Layer(object):
     # setting output shape after calling the layer
     @staticmethod
     def call(func):
-        def get_shape(x):
-            if isinstance(x, EmptyOutput):
-                return []
-            else:
-                return x.get_shape().as_list()
-
         def call(layer, x):
             """All x must either be a single tensor, a VBOutput object,
             or a list of VBOutput objects."""
             # Store model scope
             layer.model_scope = tf.get_variable_scope().name
+            # print(layer.name, x)
 
             # Set inbound nodes
             if type(x) is list:
@@ -111,6 +106,7 @@ class Layer(object):
 
             for output in output_list:
                 if type(output) is list:
+                    # print(output)
                     out_shape = [get_shape(output[0]), get_shape(output[1])]
                 else:
                     out_shape = [get_shape(output)]

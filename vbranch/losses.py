@@ -54,7 +54,12 @@ def _triplet(pred, P, K, margin=0.2, name=None):
             hard_neg = tf.reduce_min(neg)
 
             if margin == 'soft':
-                loss = log1p(hard_pos - hard_neg)
+                # Apply piecewise in order to avoid NaN warnings
+                # Loss value error approx. 1e-9 using threshold value of 20
+                spread = hard_pos - hard_neg
+                condition = tf.less(spread, 20)
+                loss = tf.cond(condition, lambda: log1p(spread), lambda: spread)
+                # print(loss)
             else:
                 loss = tf.maximum(margin + hard_pos - hard_neg, 0.0)
             batch_losses.append(loss)

@@ -90,7 +90,7 @@ class ModelVB(NetworkVB):
         self.assign_ops = assign_ops
 
     def fit(self, epochs, steps_per_epoch, train_dict={}, val_dict=None,
-            log_path=None, call_step=1):
+            log_path=None, call_step=1, verbose=2):
         """
         Train virtual branching model given training and validation data
         Args:
@@ -113,7 +113,7 @@ class ModelVB(NetworkVB):
         history = _fit(self.train_init_ops, self.test_init_ops, train_dict,
             epochs, steps_per_epoch, self.losses, self.train_ops, val_dict,
             log_path, self.callbacks, self.schedulers, self.n_branches,
-            self.assign_ops, call_step=call_step)
+            self.assign_ops, call_step=call_step, verbose=verbose)
         return history
 
     def _get_shared_unshared_vars(self):
@@ -213,9 +213,9 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
             for name, func in schedulers.items():
                 sched_dict[name] = func(e + 1)
 
-            if e == 0:
-                batch = sess.run('input:0')
-                print(batch.min(), batch.max())
+            # if e == 0:
+            #     batch = sess.run('input:0')
+            #     print(batch.min(), batch.max())
 
             for i in range(steps_per_epoch):
                 progbar_vals = []

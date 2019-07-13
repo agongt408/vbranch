@@ -5,8 +5,7 @@ from tensorflow.keras.utils import Progbar
 import multiprocessing
 from time import time
 
-def get_score(sess, dataset='market', preprocess=True, img_dim=(128,64,3),
-        crop=False, flip=False, rank=[1,5], n_branches=1, buffer=100):
+def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
     """
     Returns the rank scores (multiple) and mAP
     Args:
@@ -24,16 +23,36 @@ def get_score(sess, dataset='market', preprocess=True, img_dim=(128,64,3),
     assert dataset in ['market', 'duke']
 
     # Get image data iterators
-    gallery_data = TestGen(dataset, 'test', preprocess, img_dim, crop, flip, buffer=buffer)
-    query_data = TestGen(dataset, 'query', preprocess, img_dim, crop, flip, buffer=buffer)
+    gallery_data = TestGen(dataset, 'test', **kwargs)
+    query_data = TestGen(dataset, 'query', **kwargs)
     gallery_embs,query_embs = _get_emb(sess, gallery_data, query_data, n_branches)
 
-    rank_score, mAP_score = _evaluate_metrics(gallery_embs, query_embs,
-        gallery_data, query_data, rank)
+    if n_branches == 1:
+        rank_score, mAP_score = _evaluate_metrics(gallery_embs, query_embs,
+            gallery_data, query_data, rank)
 
-    results = {'mAP': mAP_score}
-    for i, r in enumerate(rank):
-        results['rank'+str(r)] = rank_score[i]
+        results = {'mAP': mAP_score}
+        for i, r in enumerate(rank):
+            results['rank'+str(r)] = rank_score[i]
+    else:
+        results = {}
+        for branch in range(n_branches):
+            rank_score, mAP_score = _evaluate_metrics(gallery_embs[branch],
+                query_embs[branch], gallery_data, query_data, rank)
+
+            results['mAP_{}'.format(branch+1)] = mAP_score
+            for i, r in enumerate(rank):
+                results['rank{}_{}'.format(r, branch+1)] = rank_score[i]
+
+        # Ensemble performance
+        gallery_concat = np.concatenate(gallery_embs, axis=-1)
+        query_concat = np.concatenate(query_embs, axis=-1)
+        rank_score, mAP_score = _evaluate_metrics(gallery_concat,
+            query_concat, gallery_data, query_data, rank)
+
+        results['mAP_ensemble'] = mAP_score
+        for i, r in enumerate(rank):
+            results['rank{}_ensemble'.format(r)] = rank_score[i]
 
     return results
 
@@ -56,24 +75,34 @@ def _get_emb(sess, gallery_iter, query_iter, n_branches=1):
                 output.append('model/output/vb{}/output:0'.format(i+1))
 
         for i, batch in enumerate(data_iter):
-            # if i == 0:
-            #     print(batch.min(), batch.max())
+            if isinstance(batch, np.ndarray):
+                sess.run(test_init_op, feed_dict={'x:0':batch,
+                    'batch_size:0':len(batch)})
+                e = sess.run(output)
+            else:
+                # Test augmentation
+                aug_outputs = []
+                for i, aug_batch in enumerate(batch):
+                    sess.run(test_init_op, feed_dict={'x:0':aug_batch,
+                        'batch_size:0':len(aug_batch)})
+                    aug_outputs.append(sess.run(output))
+                # Mean has better performance vs. concatenate
+                e = np.mean(aug_outputs, axis=0)
 
-            sess.run(test_init_op, feed_dict={'x:0':batch,'batch_size:0':len(batch)})
-            e = sess.run(output)
+            # if n_branches > 1:
+            #     e = np.concatenate(e, axis=-1)
 
-            if n_branches > 1:
-                e = np.concatenate(e, axis=-1)
-
+            # print(e.shape)
             embs.append(e)
-            progbar.add(len(e))
+            progbar.add(e.shape[-2])
 
         return embs
 
+    # Concatenate along batch dim
     print('Computing gallery embeddings...')
-    gallery_embs = np.concatenate(compute_emb(gallery_iter, n_branches), axis=0)
+    gallery_embs = np.concatenate(compute_emb(gallery_iter, n_branches), axis=-2)
     print('Computing query embeddings...')
-    query_embs = np.concatenate(compute_emb(query_iter, n_branches), axis=0)
+    query_embs = np.concatenate(compute_emb(query_iter, n_branches), axis=-2)
 
     return gallery_embs , query_embs
 
@@ -85,7 +114,7 @@ def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
     gallery_cams = np.array([p[2] for p in gallery_data.files_arr])
 
     def evaluate(query_e, query_f, mem_correct, mem_AP):
-        print('Started process...')
+        # print('Started process...')
         correct = [0 for _ in rank]
         AP = []
 

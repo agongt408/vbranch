@@ -30,9 +30,8 @@ def one_shot_acc(n_branches=1):
 
     return vb_func
 
-def reid_acc(dataset, n_branches=1, img_dim=(256, 128, 3), preprocess=True, buffer=100):
+def reid_acc(dataset, n_branches=1, **kwargs):
     """Compute re-ID rank and mAP scores"""
     def func(sess, feed_dict=None):
-        return get_score(sess, dataset, img_dim=img_dim, n_branches=n_branches,
-            preprocess=preprocess, buffer=buffer)
+        return get_score(sess, dataset, n_branches=n_branches, **kwargs)
     return func

@@ -42,8 +42,7 @@ def base(input_, *layers_spec, name=None, shared_frac=None):
             units = spec
             shared = shared_frac
         elif type(spec) is tuple:
-            units = spec[0]
-            shared = spec[1]
+            units, shared = spec
         else:
             raise ValueError('invalid layers spec:', spec)
 

@@ -5,16 +5,35 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-def lr_exp_decay_scheduler(init_lr, t0, t1, decay):
+def lr_exp_decay_scheduler(init_lr, t0, t1, decay, warm_up=0):
     """NOTE: `episode` starts from 1"""
     def func(episode):
-        if episode < t0:
-            return init_lr
-        lr = init_lr * np.power(decay, (episode - t0) / (t1 - t0))
+        if episode <= warm_up:
+            lr = (episode - 1) * (init_lr - init_lr*decay) / warm_up + init_lr*decay
+        elif episode < t0:
+            lr = init_lr
+        else:
+            lr = init_lr * np.power(decay, (episode - t0) / (t1 - t0))
         return lr
     return func
 
+# # https://arxiv.org/pdf/1807.00537.pdf
+# def lr_warm_up_scheduler():
+#     """NOTE: `episode` starts from 1"""
+#     def func(episode):
+#         if episode <= 20:
+#             lr = (episode - 1) * (1e-3 - 5e-5) / 20 + 5e-5
+#         elif episode <= 80:
+#             lr = 1e-3
+#         elif episode <= 100:
+#             lr = 1e-4
+#         else:
+#             lr = 1e-5
+#         return lr
+#     return func
+
 def beta1_scheduler(t0, beta_init=0.9, beta_final=0.5):
+    """NOTE: `episode` starts from 1"""
     def func(episode):
         if episode > t0:
             return beta_final
@@ -104,13 +123,6 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
 
     return x_list, y_list
 
-def wrap_iterator(generator, *args):
-    def func():
-        while True:
-            batch = generator.next(*args).astype('float32')
-            yield batch
-    return func
-
 def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
     batch_size_ = tf.placeholder('int64', name='batch_size')
 
@@ -150,16 +162,22 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
 
     return inputs, labels_one_hot, train_init_op, test_init_op
 
-def get_data_iterator_from_generator(train_gen, input_dim, *args, n=1):
+def get_data_iterator_from_generator(train_gen, input_dim, n=1):
     """
     Create baseline/vbranch iterator from generator (train), and tensor slices
     (test). E.g., used for Omniglot dataset.
     Args:
-        - train_gen: object with next() method (not an iterator or Python
-        generator)
+        - train_gen: Python generator or instance of class that implements
+        __next__ method
         - input_dim: dimension of expected input
         - n: number of branches
     """
+    def wrap(generator):
+        def func():
+            while True:
+                batch = next(generator) #.next(*args).astype('float32')
+                yield batch
+        return func
 
     x = tf.placeholder('float32', input_dim, name='x')
     batch_size = tf.placeholder('int64', name='batch_size')
@@ -169,9 +187,8 @@ def get_data_iterator_from_generator(train_gen, input_dim, *args, n=1):
     test_init_op = []
 
     for i in range(n):
-        train_dataset = tf.data.Dataset.\
-            from_generator(wrap_iterator(train_gen, *args),
-                'float32', output_shapes=input_dim)
+        train_dataset = tf.data.Dataset.from_generator(wrap(train_gen),
+            'float32', output_shapes=input_dim)
         test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
         iterator = tf.data.Iterator.from_structure('float32', input_dim)
 

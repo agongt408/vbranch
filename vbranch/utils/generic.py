@@ -2,105 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import pandas as pd
-
-class Summary(object):
-    """Helper class used to print model summaries"""
-
-    def __init__(self, *labels):
-        self.labels = labels
-        self.rows = [] # Stores contents of each row
-        self.show_line = [] # Stores whether to show line for each row
-
-    def add(self, *items, show_line=True):
-        assert len(self.labels) == len(items)
-        self.rows.append(items)
-        self.show_line.append(show_line)
-
-    def show(self):
-        # Include labels
-        # Array of lists
-        print_rows = [self.labels,] + self.rows
-        print_show_line = [True,] + self.show_line
-
-        widths = []
-        for i in range(len(self.labels)):
-            w = np.max([len(str(row[i])) for row in print_rows]) + 2
-            widths.append(w)
-
-        total_width = np.sum(widths)
-
-        for r, row in enumerate(print_rows):
-            str_f = ''
-            for i in range(len(row)):
-                str_f += ('{:<'+str(widths[i])+'}').format(str(row[i]))
-
-            print(str_f)
-
-            if print_show_line[r]:
-                print('-' * total_width)
-
-def get_shape(x):
-    if isinstance(x, EmptyOutput):
-        return []
-    else:
-        return x.get_shape().as_list()
-
-def get_shape_as_str(tensor):
-    shape = tensor.get_shape().as_list()
-    return shape_to_str(shape)
-
-def shape_to_str(shape):
-    return str(shape).replace(' ', '')
-
-def get_num_params(tensor):
-    return np.prod(tensor.get_shape().as_list())
-
-# From VB layers
-
-def smart_add(x, y, name='add'):
-    return smart_add_n([x, y], name=name)
-
-def smart_add_n(x_list, name='add'):
-    x_add = []
-    for x in x_list:
-        if not isinstance(x, EmptyOutput):
-            x_add.append(x)
-
-    if len(x_add) == 0:
-        return EmptyOutput()
-
-    return tf.add_n(x_add, name=name)
-
-def smart_concat(xs, axis=-1, name='concat'):
-    # Intelligently concat x and y to avoid error when concating EmptyOutput
-    x_concat = []
-    for x in xs:
-        if not isinstance(x, EmptyOutput):
-            x_concat.append(x)
-
-    if len(x_concat) == 0:
-        return EmptyOutput()
-        
-    return tf.concat(x_concat, axis=axis, name=name)
-
-def eval_params(func):
-    """
-    Decorator to evaluate the parameters returned by get_weights method
-    using a tf session. Initializes variables if needed."""
-
-    def inner(layer, sess=None):
-        variables = func(layer)
-
-        if sess is None:
-            weights = variables
-        else:
-            weights = sess.run(variables)
-        return weights
-
-    return inner
-
-class EmptyOutput(object):
-    pass
+import json
 
 def TFSessionGrow():
     # https://www.tensorflow.org/guide/using_gpu
@@ -128,17 +30,18 @@ def get_path(dataset, arch, *prefixes, vb=False, model_id=None, **kwargs):
         elif type(val) is float:
             path = os.path.join(path, '{}{:.2f}'.format(name, val))
         else:
-            raise ValueError('invalid value')
-
-    if model_id is not None:
-        path = os.path.join('models', path, 'model_{}'.format(model_id))
+            raise ValueError('invalid value, {}, of type {}'.\
+                format(val, type(val)))
 
     for prefix in prefixes[::-1]:
         path = os.path.join(prefix, path)
 
+    if model_id is not None:
+        path = os.path.join('models', path, 'model_{}'.format(model_id))
+
     return path
 
-def _dir_path(dataset, arch, n_classes=None, samples_per_class=None):
+def get_dir_path(dataset, arch, n_classes=None, samples_per_class=None):
     if dataset == 'toy':
         dirpath = get_path(dataset, arch, C=n_classes, SpC=samples_per_class)
     else:
@@ -155,7 +58,7 @@ def get_model_path(dataset, arch, n_classes=None, samples_per_class=None, model_
 
     return model_path
 
-def _vb_dir_path(dataset,arch,n_branches,shared, n_classes=None,
+def get_vb_dir_path(dataset,arch,n_branches,shared, n_classes=None,
         samples_per_class=None):
     if dataset == 'toy':
         dirpath = get_path(dataset, arch, vb=True, C=n_classes,
@@ -187,40 +90,35 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def save_results(data, dirname, filename, mode='w'):
-    """Helper to save `data` dict to csv"""
+    """Helper to save `data` dict to csv or json"""
 
     # Create folder to store csv
-    csv_dir = os.path.join('results', dirname)
-    if not os.path.isdir(csv_dir):
-        os.system('mkdir -p ' + csv_dir)
+    dirpath = os.path.join('results', dirname)
+    if not os.path.isdir(dirpath):
+        os.system('mkdir -p ' + dirpath)
 
-    csv_path = os.path.join(csv_dir, filename)
+    filepath = os.path.join(dirpath, filename)
 
-    if mode == 'w':
-        results = pd.DataFrame(data=data)
-    elif mode == 'a':
-        results = pd.DataFrame(data=data, index=[0])
+    if 'csv' in filename:
+        if mode == 'w':
+            results = pd.DataFrame(data=data)
+        elif mode == 'a':
+            results = pd.DataFrame(data=data, index=[0])
+        else:
+            raise ValueError('invalid file I/O mode ("w" or "a")')
+
+        if os.path.isfile(filepath) and mode == 'a':
+            results.to_csv(filepath, mode=mode, header=False)
+        else:
+            results.to_csv(filepath, mode=mode)
+    elif 'json' in filename:
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=4)
     else:
-        raise ValueError('invalid file I/O mode ("w" or "a")')
+        raise ValueError('filename must be .csv or .json')
 
-    if os.path.isfile(csv_path) and mode == 'a':
-        results.to_csv(csv_path, mode=mode, header=False)
-    else:
-        results.to_csv(csv_path, mode=mode)
-
-    return csv_path
+    return filepath
 
 def p_console(*args):
     # Print to console
     print(bcolors.HEADER, *args, bcolors.ENDC)
-
-def check_2d_param(p):
-    """Returns correctly formatted parameter for pool_size, kernel_size, strides"""
-    if type(p) is int:
-        p_list = [p, p]
-    elif type(p) is tuple or type(p) is list:
-        p_list = list(p)
-    else:
-        raise ValueError('parameter must be int or tuple')
-
-    return p_list

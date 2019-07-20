@@ -1,5 +1,5 @@
 from ..slim import *
-from ..utils.generic import get_shape
+from ..utils.layer import get_shape
 from ..engine import Model, ModelVB
 from .weight_utils import load_weights
 from ..vb_layers.core import VBOutput
@@ -120,7 +120,7 @@ def DenseNet(blocks, inputs, weights='imagenet', classes=1000,
     x = Dense(x, 1024, shared=shared_frac)
     x = BatchNormalization(x)
     x = Activation(x, 'relu')
-    x = Dense(x, classes, name='output')
+    x = Dense(x, classes, name='output', merge=True)
 
     if type(inputs) is list:
         model = ModelVB(img_input, x, name=name)

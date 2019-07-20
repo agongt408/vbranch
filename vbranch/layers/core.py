@@ -1,4 +1,4 @@
-from ..utils.generic import eval_params, EmptyOutput
+from ..utils.layer import *
 from ..initializers import glorot_uniform
 
 import tensorflow as tf

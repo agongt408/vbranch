@@ -233,7 +233,7 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                         for _, func in callbacks.items():
                             results = func(sess, train_dict_copy)
                             for name, r in results.items():
-                                hist_append(history, name, r)
+                                hist_append(history, name, encode(r))
                                 progbar_vals.append((name, r))
 
                     if val_dict is not None:
@@ -247,18 +247,18 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                             for _, func in callbacks.items():
                                 results = func(sess, val_dict)
                                 for name, r in results.items():
-                                    hist_append(history, 'val_'+name, r)
+                                    hist_append(history, 'val_'+name, encode(r))
                                     progbar_vals.append(('val_'+name, r))
 
                 # Update progress bar
                 progbar.update(i+1, values=progbar_vals)
 
             for name, l in loss.items():
-                hist_append(history, name, l)
+                hist_append(history, name, encode(l))
 
             if val_dict is not None:
                 for name, l in val_loss.items():
-                    hist_append(history, 'val_'+name, l)
+                    hist_append(history, 'val_'+name, encode(l))
 
         if not save_model_path is None:
             saver = tf.train.Saver()
@@ -273,3 +273,8 @@ def hist_append(history, key, value):
     else:
         history[key] = []
         history[key].append(value)
+
+def encode(value):
+    if type(value) is int:
+        return value
+    return float(value)

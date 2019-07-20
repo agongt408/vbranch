@@ -1,5 +1,5 @@
 from .core import Layer
-from ..utils.generic import check_2d_param
+from ..utils.layer import check_2d_param
 
 import tensorflow as tf
 

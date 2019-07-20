@@ -115,7 +115,14 @@ def margin(preds_per_model, labels, j):
     result_per_model = hit - miss
     return np.mean(result_per_model, axis=1)
 
-def compute_correlation_strength(preds, labels, n_classes, n_models):
+def compute_correlation_strength(outputs, labels_one_hot, n_classes, n_models):
+    """
+    Args:
+        - outputs: list of outputs with shape [n_models, n_samples]
+        - labels: one hot labels
+    """
+    preds = np.array([np.argmax(x, axis=1) for x in outputs]).transpose(1,0)
+    labels = np.argmax(labels_one_hot, axis=-1)
     j_list = j_hat(preds, labels, n_classes)
 
     rmg_list = []

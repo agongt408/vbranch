@@ -10,8 +10,8 @@ import json
 from ..utils import openpose as op
 
 class DataGenerator(object):
-    def __init__(self, dataset, split, verify=False, data_root='../data',
-            keypoint_root='./openpose_output', pose_orientation=None):
+    def __init__(self, dataset, split, pose_orientation=None, verify=False,
+            data_root='../data', keypoint_root='./openpose_output'):
         """
         Get data for Market-1501 and DukeMTMC datasets. Both use same file
         format. `files_dict` stores paths under each corresponding identity;
@@ -43,10 +43,9 @@ class DataGenerator(object):
         files_arr = []
 
         dir = os.path.join(data_root, dataset, split)
-        if pose_orientation is not None:
-            keypoints_path = os.path.join(keypoint_root,dataset,split+'.json')
-            with open(keypoints_path, 'r') as f:
-                keypoint_data = json.load(f)
+        keypoints_path = os.path.join(keypoint_root,dataset,split+'.json')
+        with open(keypoints_path, 'r') as f:
+            keypoint_data = json.load(f)
 
         for name in os.listdir(dir):
             if name[-4:] == '.jpg':
@@ -58,12 +57,15 @@ class DataGenerator(object):
 
                     path = os.path.join(dir, name)
                     camera = int(name[name.index('_')+2 : name.index('_')+3])
+                    if name in keypoint_data.keys():
+                        pose = op.get_pose(keypoint_data[name])
+                    else:
+                        pose = -1
 
                     if pose_orientation is None:
-                        files_arr.append([path, idt, camera])
+                        files_arr.append([path, idt, camera, pose])
                         files_dict[idt].append(path)
                     else:
-                        pose = op.get_pose(keypoint_data[name])
                         if pose == pose_orientation:
                             files_arr.append([path, idt, camera, pose])
                             files_dict[idt].append(path)
@@ -105,8 +107,8 @@ class TripletDataGenerator(DataGenerator):
     def __init__(self, dataset, split, P, K,
             preprocess=True, img_dim=(128,64,3),
             crop=False, flip=True,
-            flatten=True, labels=False):
-        super().__init__(dataset, split)
+            flatten=True, labels=False, pose_orientation=None):
+        super().__init__(dataset, split, pose_orientation)
         self.P = P
         self.K = K
         self.preprocess = preprocess
@@ -200,7 +202,8 @@ class TripletDataGenerator(DataGenerator):
 class TestingDataGenerator(DataGenerator):
     def __init__(self, dataset, split,
             preprocess=None, img_dim=(128,64,3),
-            crop=False, flip=True, buffer=1000):
+            crop=False, flip=True, buffer=1000,
+            pose_orientation=None):
         """
         Creates iterable object over the specified split of the dataset
         (can be `train` split, despite name of class).
@@ -210,7 +213,7 @@ class TestingDataGenerator(DataGenerator):
             evenly distributed buffer is calculated to improve accuracy of
             batch norm statistics, but not greater than specified buffer"""
 
-        super().__init__(dataset, split)
+        super().__init__(dataset, split, pose_orientation)
 
         self.preprocess = preprocess
         self.img_dim = img_dim

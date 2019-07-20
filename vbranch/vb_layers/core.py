@@ -1,7 +1,7 @@
 # Virtual branching version of layers
 
 from .. import layers as L
-from ..utils.generic import eval_params, smart_add, smart_concat, EmptyOutput, get_shape
+from ..utils.layer import *
 
 import tensorflow as tf
 import collections
@@ -157,69 +157,57 @@ class Dense(Layer):
         self.branches = []
         output_list = []
 
-        if self.shared_units == 0:
-            for i in range(self.n_branches):
-                layer = L.Dense(self.units_list[i], 'vb'+str(i+1))
-
-                if type(x[i]) is list:
-                    input_ = smart_concat(x[i], -1)
-                else:
-                    input_ = x[i]
-
-                x_out = layer(input_)
-                self.branches.append(layer)
-                output_list.append(x_out)
-
-            return output_list
-
-        # Calculate `fan_in` for weight initialization
-        if type(x[0]) is list:
-            fan_in_list = []
-            for x_ in x[0]:
-                if not isinstance(x_, EmptyOutput):
-                    fan_in_list.append(x_.get_shape().as_list()[-1])
-            fan_in = np.sum(fan_in_list)
-        else:
-            fan_in = x[0].get_shape().as_list()[-1]
-
+        fan_in = get_fan_in(x[0])
         fan_out = int(np.mean(self.units_list))
         assert all([fan_out == units for units in self.units_list])
 
-        # For efficiency, only apply computation to shared_in ONCE
-        self.shared_branch = L.Dense(self.shared_units, 'shared_to_shared',
-            fan_in=fan_in, fan_out=fan_out)
+        if self.shared_units > 0:
+            # For efficiency, only apply computation to shared_in ONCE
+            self.shared_branch = L.Dense(self.shared_units, 'shared_to_shared',
+                fan_in=fan_in, fan_out=fan_out)
 
         for i in range(self.n_branches):
-            assert self.units_list[i] >= self.shared_units, \
-                'units < shared_units'
-            unique_units = self.units_list[i] - self.shared_units
-
-            # Operations to build the rest of the layer
-            shared_to_unique = L.Dense(unique_units,
-                'vb'+str(i+1)+'_shared_to_unique', fan_in=fan_in, fan_out=fan_out)
-            unique_to_shared = L.Dense(self.shared_units,
-                'vb'+str(i+1)+'_unique_to_shared', fan_in=fan_in, fan_out=fan_out)
-            unique_to_unique = L.Dense(unique_units,
-                'vb'+str(i+1)+'_unique_to_unique', fan_in=fan_in, fan_out=fan_out)
-
-            if type(x[i]) is list:
-                shared_in = x[i][0]
-                unique_in = x[i][1]
-
-                shared_out = smart_add(self.shared_branch(shared_in),
-                    unique_to_shared(unique_in))
-                unique_out = smart_add(shared_to_unique(shared_in),
-                    unique_to_unique(unique_in))
+            if self.shared_units == 0:
+                layer = L.Dense(self.units_list[i], 'vb'+str(i+1))
+                x_out = layer(smart_concat(x[i], -1))
+                self.branches.append(layer)
+                output_list.append([EmptyOutput(), x_out])
+            elif self.shared_units == fan_out:
+                x_out = self.shared_branch(smart_concat(x[i], -1))
+                output_list.append([x_out, EmptyOutput()])
             else:
-                shared_out = self.shared_branch(x[i])
-                unique_out = shared_to_unique(x[i])
+                # Build the rest of the layer
+                unique_units = self.units_list[i] - self.shared_units
+                shared_to_unique = L.Dense(unique_units,
+                    'vb'+str(i+1)+'_shared_to_unique',
+                    fan_in=fan_in, fan_out=fan_out)
+                unique_to_shared = L.Dense(self.shared_units,
+                    'vb'+str(i+1)+'_unique_to_shared',
+                    fan_in=fan_in, fan_out=fan_out)
+                unique_to_unique = L.Dense(unique_units,
+                    'vb'+str(i+1)+'_unique_to_unique',
+                    fan_in=fan_in, fan_out=fan_out)
 
-            cross_weights = CrossWeights(shared_to_unique=shared_to_unique,
-                unique_to_shared=unique_to_shared,
-                unique_to_unique=unique_to_unique)
+                if type(x[i]) is list:
+                    shared_in = x[i][0]
+                    unique_in = x[i][1]
 
-            self.branches.append(cross_weights)
-            output_list.append([shared_out, unique_out])
+                    shared_out = smart_add(self.shared_branch(shared_in),
+                        unique_to_shared(unique_in))
+                    unique_out = smart_add(shared_to_unique(shared_in),
+                        unique_to_unique(unique_in))
+                else:
+                    shared_out = self.shared_branch(x[i])
+                    unique_out = shared_to_unique(x[i])
+
+                cross_weights = CrossWeights(
+                    shared_to_unique=shared_to_unique,
+                    unique_to_shared=unique_to_shared,
+                    unique_to_unique=unique_to_unique
+                )
+
+                self.branches.append(cross_weights)
+                output_list.append([shared_out, unique_out])
 
         return output_list
 

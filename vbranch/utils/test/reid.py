@@ -5,7 +5,8 @@ from tensorflow.keras.utils import Progbar
 import multiprocessing
 from time import time
 
-def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
+def get_score(sess, dataset='market', rank=[1,5], n_branches=1, embeddings=None,
+        **kwargs):
     """
     Returns the rank scores (multiple) and mAP
     Args:
@@ -25,10 +26,14 @@ def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
     # Get image data iterators
     gallery_data = TestGen(dataset, 'test', **kwargs)
     query_data = TestGen(dataset, 'query', **kwargs)
-    gallery_embs,query_embs = _get_emb(sess, gallery_data, query_data, n_branches)
+
+    if embeddings is None:
+        gallery_embs,query_embs = get_emb(sess, gallery_data, query_data, n_branches)
+    else:
+        gallery_embs, query_embs = embeddings
 
     if n_branches == 1:
-        rank_score, mAP_score = _evaluate_metrics(gallery_embs, query_embs,
+        rank_score, mAP_score = evaluate_metrics(gallery_embs, query_embs,
             gallery_data, query_data, rank)
 
         results = {'mAP': mAP_score}
@@ -37,7 +42,7 @@ def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
     else:
         results = {}
         for branch in range(n_branches):
-            rank_score, mAP_score = _evaluate_metrics(gallery_embs[branch],
+            rank_score, mAP_score = evaluate_metrics(gallery_embs[branch],
                 query_embs[branch], gallery_data, query_data, rank)
 
             results['mAP_{}'.format(branch+1)] = mAP_score
@@ -47,7 +52,7 @@ def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
         # Ensemble performance
         gallery_concat = np.concatenate(gallery_embs, axis=-1)
         query_concat = np.concatenate(query_embs, axis=-1)
-        rank_score, mAP_score = _evaluate_metrics(gallery_concat,
+        rank_score, mAP_score = evaluate_metrics(gallery_concat,
             query_concat, gallery_data, query_data, rank)
 
         results['mAP_ensemble'] = mAP_score
@@ -56,7 +61,7 @@ def get_score(sess, dataset='market', rank=[1,5], n_branches=1, **kwargs):
 
     return results
 
-def _get_emb(sess, gallery_iter, query_iter, n_branches=1):
+def get_emb(sess, gallery_iter, query_iter, n_branches=1):
     """Get embeddings for gallery and query sets"""
 
     def compute_emb(data_iter, n_branches):
@@ -106,7 +111,7 @@ def _get_emb(sess, gallery_iter, query_iter, n_branches=1):
 
     return gallery_embs , query_embs
 
-def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
+def evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
     # print("Computing rank {} and mAP...".format(rank))
     # progbar = Progbar(len(query_data.files_arr))
 
@@ -118,7 +123,7 @@ def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
         correct = [0 for _ in rank]
         AP = []
 
-        for q, (_, idt, camera) in enumerate(query_f):
+        for q, (_, idt, camera, pose) in enumerate(query_f):
             b = np.logical_or(gallery_cams != camera, gallery_idts != idt)
             distance_vectors = np.power(np.squeeze(np.abs(gallery_embs[b] - query_e[q])), 2)
             distance = np.sqrt(np.sum(distance_vectors, axis=1))
@@ -185,7 +190,7 @@ def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
 
     return rank_score, mAP
 
-# def _evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
+# def evaluate_metrics(gallery_embs, query_embs, gallery_data, query_data, rank):
 #     gallery_idts = np.array([p[1] for p in gallery_data.files_arr])
 #     gallery_cams = np.array([p[2] for p in gallery_data.files_arr])
 #

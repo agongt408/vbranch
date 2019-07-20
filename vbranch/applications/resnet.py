@@ -1,5 +1,4 @@
 from ..slim import *
-from ..utils import TFSessionGrow
 from .weight_utils import load_weights
 
 from tensorflow import Tensor
@@ -60,7 +59,7 @@ def ResNet152(inputs, classes, name=None, shared_frac=None):
     return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
-def base(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
+def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
         shared_frac=None):
     """
     Construct ResNet model with additional FC layers

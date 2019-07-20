@@ -2,13 +2,13 @@ from ..slim import *
 from tensorflow import Tensor
 
 def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
+    return CNN(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
 
 def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, (classes, 0), 32, 64, 128, 256, name=name,
+    return CNN(inputs, (classes, 0), 32, 64, 128, 256, name=name,
         shared_frac=shared_frac)
 
-def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
+def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None):
     """
     Create SimpleCNN model; dynamically determine what type of model to use
     (i.e., Model or ModelVB)
@@ -30,6 +30,7 @@ def base(input_, final_spec, *layers_spec, name=None, shared_frac=None):
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
+        shared_frac = float(shared_frac)
 
     ip = Input(input_)
 

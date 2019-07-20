@@ -2,18 +2,18 @@ from ..slim import *
 from tensorflow import Tensor
 
 def SimpleFCNv1(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, 512, classes, name=name, shared_frac=shared_frac)
+    return FCN(inputs, 512, classes, name=name, shared_frac=shared_frac)
 
 def SimpleFCNv2(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, 512, 256, classes, name=name, shared_frac=shared_frac)
+    return FCN(inputs, 512, 256, classes, name=name, shared_frac=shared_frac)
 
 def SimpleFCNv3(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, 512, 512, classes, name=name,shared_frac=shared_frac)
+    return FCN(inputs, 512, 512, classes, name=name,shared_frac=shared_frac)
 
 def SimpleFCNv4(inputs, classes, name=None, shared_frac=None):
-    return base(inputs, 512, 512, 512, classes, name=name,shared_frac=shared_frac)
+    return FCN(inputs, 512, 512, 512, classes, name=name,shared_frac=shared_frac)
 
-def base(input_, *layers_spec, name=None, shared_frac=None):
+def FCN(input_, *layers_spec, name=None, shared_frac=None):
     """
     Create SimpleFCN model; dynamically determine what type of model to use
     (i.e., Model or ModelVB)
@@ -33,6 +33,7 @@ def base(input_, *layers_spec, name=None, shared_frac=None):
     if vb_mode:
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
+        shared_frac = float(shared_frac)
 
     ip = Input(input_)
 

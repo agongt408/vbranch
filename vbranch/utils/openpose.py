@@ -77,7 +77,7 @@ def get_theta(bodyKeypoints):
     cos = min(max(get_pose_score(bodyKeypoints), -1), 1)
     return np.arccos(cos)
 
-def get_pose(bodyKeypoints, n=2):
+def get_pose(bodyKeypoints, n=3):
     """
     Get pose orientation of image
     Args:
@@ -85,8 +85,8 @@ def get_pose(bodyKeypoints, n=2):
         - n: number of possible pose orientations (0=front, `n-1`=back)
     """
     theta = get_theta(bodyKeypoints)
-    for i in range(1, n):
-        if theta < i * np.pi / n:
+    for i in range(n):
+        if theta < (i + 1) * np.pi / n:
             return i
     # back
     return n - 1

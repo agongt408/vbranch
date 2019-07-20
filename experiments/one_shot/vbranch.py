@@ -4,12 +4,9 @@ sys.path.insert(0, '.')
 from vbranch.applications.cnn import *
 from vbranch.applications.resnet import *
 from vbranch.datasets import omniglot
-
-from vbranch.utils.generic import TFSessionGrow, restore_sess, _vb_dir_path, get_vb_model_path, p_console, save_results
-from vbranch.utils.training import get_data, get_data_iterator_from_generator, lr_exp_decay_scheduler
-from vbranch.utils.test.one_shot import compute_one_shot_acc, vbranch_one_shot
 from vbranch.callbacks import one_shot_acc
 from vbranch.losses import triplet_omniglot
+from vbranch.utils import *
 
 import tensorflow as tf
 import numpy as np

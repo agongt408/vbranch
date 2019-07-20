@@ -1,6 +1,6 @@
 from .. import layers as L
 from .core import Layer, VBOutput
-from ..utils.generic import smart_add_n, smart_concat, EmptyOutput
+from ..utils.layer import *
 
 from tensorflow import Tensor
 

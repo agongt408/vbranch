@@ -1,5 +1,5 @@
 from .core import Layer
-from ..utils.generic import eval_params, EmptyOutput, check_2d_param
+from ..utils.layer import *
 from ..initializers import glorot_uniform
 
 import tensorflow as tf

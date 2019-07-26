@@ -1,5 +1,5 @@
 from ..slim import *
-from .weight_utils import load_weights
+from .weight_utils import load_weights_resnet
 
 from tensorflow import Tensor
 from numpy import ndarray
@@ -19,14 +19,14 @@ def ResNet50(inputs, classes, name=None, shared_frac=None, weights=None):
         (256, 256, 1024), (512, 512, 2048)
     ]
 
-    model = base(inputs, classes, layer_spec, kernel_spec, filter_spec,
+    model = ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
     if weights == 'imagenet':
         print('Loading weights for ResNet50...')
         with open('weights/resnet50.pickle', 'rb') as pickle_in:
             weights = pickle.load(pickle_in)
-        assign_ops = load_weights(model, weights)
+        assign_ops = load_weights_resnet(model, weights)
         return model, assign_ops
 
     return model
@@ -35,28 +35,28 @@ def ResNet18(inputs, classes, name=None, shared_frac=None):
     layer_spec = (2, 2, 2, 2)
     kernel_spec = (3, 3)
     filter_spec = [(64, 64), (128, 128), (256, 256), (512, 512)]
-    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
+    return ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
 def ResNet34(inputs, classes, name=None, shared_frac=None):
     layer_spec = (3, 4, 6, 3)
     kernel_spec = (3, 3)
     filter_spec = [(64, 64), (128, 128), (256, 256), (512, 512)]
-    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
+    return ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
 def ResNet101(inputs, classes, name=None, shared_frac=None):
     layers_spec = (3, 4, 23, 3)
     kernel_spec = (1, 3, 1)
     filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
-    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
+    return ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
 def ResNet152(inputs, classes, name=None, shared_frac=None):
     layers_spec = (3, 8, 36, 3)
     kernel_spec = (1, 3, 1)
     filter_spec = [(64, 64, 256), (128, 128, 512), (256, 256, 1024), (512, 512, 2048)]
-    return base(inputs, classes, layer_spec, kernel_spec, filter_spec,
+    return ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
         name=name, shared_frac=shared_frac)
 
 def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
@@ -148,7 +148,7 @@ def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
     x = Dense(x, filter_spec[-1][-1] // 2, shared=shared_frac)
     x = BatchNormalization(x)
     x = Activation(x, 'relu')
-    x = Dense(x, classes, name='output')
+    x = Dense(x, classes, name='output', merge=True)
 
     # x = GlobalAveragePooling2D(x, name='output')
     if type(input_) is list:

@@ -4,7 +4,7 @@ import numpy as np
 import zipfile
 
 class Omniglot(object):
-    def __init__(self, set):
+    def __init__(self, set, A, P, K, flatten=True, preprocess=True):
         self.dir_path = _extract_omniglot_images(set)
 
         self.files = {}
@@ -15,7 +15,16 @@ class Omniglot(object):
                 im_dir = os.path.join(self.dir_path, alpha, char)
                 self.files[alpha][char] = os.listdir(im_dir)
 
-    def next(self, A, P, K, flatten=True, preprocess=True):
+        self.A = A
+        self.P = P
+        self.K = K
+        self.flatten = flatten
+        self.preprocess = preprocess
+
+    def __next__(self):
+        return self.sample(self.A, self.P, self.K, self.flatten, self.preprocess)
+
+    def sample(self, A, P, K, flatten=True, preprocess=True):
         """
         Args:
             - A: number of alphabets per batch
@@ -66,8 +75,8 @@ class Omniglot(object):
 
         return index_list, files_list
 
-def load_generator(set):
-    return Omniglot(set)
+def load_generator(set, *args):
+    return Omniglot(set, *args)
 
 def _extract_omniglot_images(set):
     # Clone Omniglot repo from GitHub if not in dir

@@ -83,7 +83,7 @@ def train(dataset, arch, model_id, epochs, steps_per_epoch, P, K):
     model = build_model(dataset, arch, train_generator, lr_scheduler, P, K)
     model.summary()
 
-    history = model.fit(epochs, steps_per_epoch, log_path=model_path, call_step=10)
+    history = model.fit(epochs, steps_per_epoch, log_path=model_path, call_step=50)
     save_results(history, dirpath, 'train_%d.json' % model_id)
 
 def test(dataset, arch, model_id_list):

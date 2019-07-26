@@ -175,7 +175,7 @@ def get_data_iterator_from_generator(train_gen, input_dim, n=1):
     def wrap(generator):
         def func():
             while True:
-                batch = next(generator) #.next(*args).astype('float32')
+                batch = next(generator)
                 yield batch
         return func
 

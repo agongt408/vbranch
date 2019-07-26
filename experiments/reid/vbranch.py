@@ -31,7 +31,7 @@ parser.add_argument('--shared_frac', action='store', default=0, nargs='?',
 parser.add_argument('--test', action='store_true', help='test model')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
-parser.add_argument('--epochs', action='store', default=90, nargs='?',
+parser.add_argument('--epochs', action='store', default=250, nargs='?',
                     type=int, help='number of epochs to train model')
 parser.add_argument('--model_id',action='store',nargs='*',type=int,default=[1],
                     help='list of checkpoint model ids')
@@ -95,7 +95,7 @@ def train(dataset, arch, n_branches, shared_frac, model_id,
         train_generator, lr_scheduler, P, K)
     model.summary()
 
-    history = model.fit(epochs, steps_per_epoch, log_path=model_path, call_step=10)
+    history = model.fit(epochs, steps_per_epoch, log_path=model_path, call_step=50)
     save_results(history, dirpath, 'train_%d.json' % model_id)
 
 def test(dataset, arch, n_branches, shared_frac, model_id):

@@ -42,10 +42,10 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
 def build_model(architecture, train_gen, input_dim, output_dim,
-        lr_scheduler, n_branches, shared, **kwargs):
+        lr_scheduler, n_branches, shared):
 
     inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
-        train_gen, input_dim, kwargs['A'], kwargs['P'], kwargs['K'], n=n_branches)
+        train_gen, input_dim, n=n_branches)
     lr = tf.placeholder('float32', name='lr')
 
     name = 'model'
@@ -58,14 +58,14 @@ def build_model(architecture, train_gen, input_dim, output_dim,
             raise ValueError('Invalid architecture')
 
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        model.compile(optimizer, triplet_omniglot(**kwargs),
+        model.compile(optimizer, triplet_omniglot(A, P, K),
                       train_init_op, test_init_op,
                       callbacks={'acc': one_shot_acc(n_branches)},
                       schedulers={'lr:0': lr_scheduler})
     return model
 
 def train(dataset, arch, n_branches, model_id, epochs,
-        steps_per_epoch, shared_frac, **kwargs):
+        steps_per_epoch, shared_frac, A, P, K):
     model_path = get_vb_model_path(dataset, arch, n_branches, shared_frac,
         model_id=model_id)
     p_console('Save model path: '+ model_path)
@@ -73,13 +73,13 @@ def train(dataset, arch, n_branches, model_id, epochs,
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = omniglot.load_generator(set='train')
+        train_gen = omniglot.load_generator('train', A, P, K)
         input_dim = [None, 105, 105, 1]
         output_dim = 128
         lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
 
     model = build_model(arch, train_gen, input_dim, output_dim,
-        lr_scheduler, n_branches, shared_frac, **kwargs)
+        lr_scheduler, n_branches, shared_frac, A, P, K)
     model.summary()
 
     history = model.fit(epochs, steps_per_epoch, log_path=model_path)

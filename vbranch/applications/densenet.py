@@ -1,7 +1,7 @@
 from ..slim import *
 from ..utils.layer import get_shape
 from ..engine import Model, ModelVB
-from .weight_utils import load_weights
+from .weight_utils import load_weights_densenet
 from ..vb_layers.core import VBOutput
 
 from tensorflow import Tensor
@@ -132,7 +132,7 @@ def DenseNet(blocks, inputs, weights='imagenet', classes=1000,
         print('Loading weights for DenseNet121...')
         with open('weights/densenet121.pickle', 'rb') as pickle_in:
             weights = pickle.load(pickle_in)
-        assign_ops = load_weights(model, weights)
+        assign_ops = load_weights_densenet(model, weights)
         return model, assign_ops
 
     return model

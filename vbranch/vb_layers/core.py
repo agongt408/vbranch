@@ -117,6 +117,8 @@ class Layer(object):
             vb_out = VBOutput(output_list)
             setattr(vb_out, '_vb_history', layer)
 
+            setattr(layer, 'output', vb_out)
+
             return vb_out
 
         return call

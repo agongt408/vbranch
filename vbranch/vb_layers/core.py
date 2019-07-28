@@ -94,9 +94,12 @@ class Layer(object):
                     output_list = []
                     for i, output in enumerate(func(layer, x)):
                         if type(output) is list:
-                            with tf.variable_scope('vb'+str(i+1)):
-                                vb_output = smart_concat(output, name='output')
-                            output_list.append(vb_output)
+                            if isinstance(output[0], EmptyOutput):
+                                merge_out = output[1]
+                            else:
+                                with tf.variable_scope('vb'+str(i+1)):
+                                    merge_out = smart_concat(output, name='output')
+                            output_list.append(merge_out)
                         else:
                             output_list.append(output)
                 else:

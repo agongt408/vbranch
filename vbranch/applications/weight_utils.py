@@ -43,17 +43,13 @@ def load_weights_resnet(model, weights):
                 break
 
             if isinstance(layer, vb_layers.Conv2D):
-                assign_ops.append(get_vb_assign_conv(layer,
-                    weights[layer.name]['filter'],
-                    weights[layer.name]['bias'] if layer.use_bias else None))
+                assign_ops.append(get_vb_assign_conv(layer, weights[layer.name]))
             elif isinstance(layer, vb_layers.BatchNormalization):
-                assign_ops.append(get_vb_assign_bn(layer,
-                    weights[layer.name]['scale'],
-                    weights[layer.name]['beta']))
+                assign_ops.append(get_vb_assign_bn(layer, weights[layer.name]))
 
     return assign_ops
 
-def load_weights_densenet(model, weights):
+def load_weights_densenet(model, weights, growth_rate=32, init_dim=64):
     assign_ops = []
 
     if isinstance(model, Model):
@@ -84,38 +80,32 @@ def load_weights_densenet(model, weights):
             if isinstance(layer, vb_layers.Concatenate):
                 concat_layer = layer
 
+            if isinstance(layer, vb_layers.AveragePooling2D):
+                init_dim = get_fan_in(layer._inbound_tensors[0][0])
+
             if concat_layer is None:
                 if isinstance(layer, vb_layers.Conv2D):
-                    assign_ops.append(get_vb_assign_conv(layer,
-                        weights[layer.name]['filter'],
-                        weights[layer.name]['bias'] if layer.use_bias else None))
+                    assign_ops.append(get_vb_assign_conv(layer, weights[layer.name]))
                 elif isinstance(layer, vb_layers.BatchNormalization):
-                    assign_ops.append(get_vb_assign_bn(layer,
-                        weights[layer.name]['scale'],
-                        weights[layer.name]['beta']))
+                    assign_ops.append(get_vb_assign_bn(layer, weights[layer.name]))
             else:
                 if isinstance(layer, vb_layers.Conv2D):
-                    # Estimate shared_frac
-                    dim1 = get_fan_in(concat_layer._inbound_tensors[0][0])
-                    dim2 = get_fan_in(concat_layer._inbound_tensors[1][0])
+                    # # Estimate shared_frac
                     shared_frac = get_fan_in(layer._inbound_tensors[0][0][0]) / \
                         get_fan_in(layer._inbound_tensors[0][0])
 
                     assign_ops.append(get_vb_assign_conv_concat(layer,
-                        dim1, dim2, shared_frac, weights[layer.name]['filter']))
-                    # Reset concat layer only after reached first conv layer
+                        weights[layer.name], growth_rate, init_dim, shared_frac))
+
+                    # Reset concat layer only after reaching first conv layer
                     concat_layer = None
                 elif isinstance(layer, vb_layers.BatchNormalization):
-                    # Estimate shared_frac
-                    dim1 = get_fan_in(concat_layer._inbound_tensors[0][0])
-                    dim2 = get_fan_in(concat_layer._inbound_tensors[1][0])
+                    # # Estimate shared_frac
                     shared_frac = get_fan_in(layer._inbound_tensors[0][0][0]) / \
                         get_fan_in(layer._inbound_tensors[0][0])
 
                     assign_ops.append(get_vb_assign_bn_concat(layer,
-                        dim1, dim2, shared_frac,
-                        weights[layer.name]['scale'],
-                        weights[layer.name]['beta']))
+                        weights[layer.name], growth_rate, init_dim, shared_frac))
 
     return assign_ops
 
@@ -182,131 +172,107 @@ def get_weight_partition_bn(name, scale_ref, beta_ref, scale_value, beta_value):
     beta_assign = tf.assign(beta_ref, beta_slice)
     return scale_assign, beta_assign
 
-def get_vb_assign_conv(layer, filter_value, bias_value=None):
+def get_vb_assign_conv(layer, weights):
     assign_ops = []
 
     if layer.shared_branch is None:
         for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.f, filter_value))
+            assign_ops.append(tf.assign(sub_layer.f, weights['filter']))
 
-            if layer.use_bias:
-                assign_ops.append(tf.assign(sub_layer.b, bias_value))
+            if 'bias' in weights.keys():
+                assign_ops.append(tf.assign(sub_layer.b, weights['bias']))
     else:
-        if layer.use_bias:
+        if 'bias' in weights.keys():
             assign_ops.append(get_weight_partition_conv('shared_to_shared',
-                layer.shared_branch.f, filter_value,
-                layer.shared_branch.b, bias_value))
+                layer.shared_branch.f, weights['filter'],
+                layer.shared_branch.b, weights['bias']))
         else:
             assign_ops.append(get_weight_partition_conv('shared_to_shared',
-                layer.shared_branch.f, filter_value))
+                layer.shared_branch.f, weights['filter']))
 
         for branch in layer.branches:
             # Extract CrossWeights namedtuple
             for name, sub_layer in branch._asdict().items():
-                if layer.use_bias:
+                if 'bias' in weights.keys():
                     assign_ops.append(get_weight_partition_conv(name,
-                        sub_layer.f, filter_value,
-                        sub_layer.b, bias_value))
+                        sub_layer.f, weights['filter'],
+                        sub_layer.b, weights['bias']))
                 else:
                     assign_ops.append(get_weight_partition_conv(name,
-                        sub_layer.f, filter_value))
+                        sub_layer.f, weights['filter']))
 
     return assign_ops
 
-def get_vb_assign_bn(layer, scale_value, beta_value):
+def get_vb_assign_bn(layer, weights):
     assign_ops = []
 
     if layer.shared_branch is None:
         for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.scale, scale_value))
-            assign_ops.append(tf.assign(sub_layer.beta, beta_value))
+            assign_ops.append(tf.assign(sub_layer.scale, weights['scale']))
+            assign_ops.append(tf.assign(sub_layer.beta, weights['beta']))
     else:
         assign_ops.append(get_weight_partition_bn('shared_to_shared',
             layer.shared_branch.scale, layer.shared_branch.beta,
-            scale_value, beta_value))
+            weights['scale'], weights['beta']))
 
         for sub_layer in layer.branches:
             assign_ops.append(get_weight_partition_bn('unique_to_unique',
-                sub_layer.scale, sub_layer.beta, scale_value, beta_value))
+                sub_layer.scale, sub_layer.beta, weights['scale'], weights['beta']))
 
     return assign_ops
 
-def get_vb_assign_conv_concat(layer, dim1, dim2, shared_frac, filter_value):
-    assign_ops = []
+def get_vb_assign_conv_concat(layer, weight, growth_rate, init_dim, shared_frac):
+    shared, unique = rearrange_4d(weight['filter'], growth_rate,
+        init_dim, shared_frac)
+    filter_value = np.concatenate([shared, unique], axis=-2)
+    return get_vb_assign_conv(layer, filter_value)
 
-    if layer.shared_branch is None:
-        for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.f, filter_value))
+def get_vb_assign_bn_concat(layer, weight, growth_rate, init_dim, shared_frac):
+    scale_shared, scale_unique = rearrange_1d(weight['scale'],
+        growth_rate, init_dim, shared_frac)
+    scale_value = np.concatenate([scale_shared, scale_unique])
 
-            if layer.use_bias:
-                assign_ops.append(tf.assign(sub_layer.b, bias_value))
-    else:
-        part1 = filter_value[:, :, :dim1]
-        part2 = filter_value[:, :, dim1:]
+    beta_shared, beta_unique = rearrange_1d(weight['beta'],
+        growth_rate, init_dim, shared_frac)
+    beta_value = np.concatenate([beta_shared, beta_unique])
 
-        # Shared to shared
-        shared_to_shared = np.concatenate([
-            part1[:, :, :int(shared_frac*dim1), :layer.shared_filters],
-            part2[:, :, :int(shared_frac*dim2), :layer.shared_filters]
-        ], axis=2)
+    return get_vb_assign_bn(layer, scale_value, beta_value)
 
-        assign_ops.append(tf.assign(layer.shared_branch.f, shared_to_shared))
+def rearrange_4d(weight, growth_rate, init_dim, shared_frac):
+    fan_in = weight.shape[-2]
+    fan_out = weight.shape[-1]
 
-        # CrossWeights
-        shared_to_unique = np.concatenate([
-            part1[:, :, :int(shared_frac*dim1), layer.shared_filters:],
-            part2[:, :, :int(shared_frac*dim2), layer.shared_filters:]
-        ], axis=2)
-        unique_to_shared = np.concatenate([
-            part1[:, :, int(shared_frac*dim1):, :layer.shared_filters],
-            part2[:, :, int(shared_frac*dim2):, :layer.shared_filters]
-        ], axis=2)
-        unique_to_unique = np.concatenate([
-            part1[:, :, int(shared_frac*dim1):, layer.shared_filters:],
-            part2[:, :, int(shared_frac*dim2):, layer.shared_filters:]
-        ], axis=2)
+    if fan_in == init_dim:
+        shared = weight[..., :int(shared_frac*fan_in), :]
+        unique = weight[..., int(shared_frac*fan_in):, :]
+        return shared, unique
 
-        for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.shared_to_unique.f, shared_to_unique))
-            assign_ops.append(tf.assign(sub_layer.unique_to_shared.f, unique_to_shared))
-            assign_ops.append(tf.assign(sub_layer.unique_to_unique.f, unique_to_unique))
+    shared_1, unique_1 = rearrange_4d(weight[..., :-growth_rate, :],
+        growth_rate, init_dim, shared_frac)
 
-    return assign_ops
+    part2 = weight[..., -growth_rate:, :]
+    shared_2 = part2[..., :int(shared_frac*growth_rate), :]
+    unique_2 = part2[..., int(shared_frac*growth_rate):, :]
 
-def get_vb_assign_bn_concat(layer, dim1, dim2, shared_frac, scale_value, beta_value):
-    assign_ops = []
+    shared = np.concatenate([shared_1, shared_2], axis=-2)
+    unique = np.concatenate([unique_1, unique_2], axis=-2)
+    return shared, unique
 
-    if layer.shared_branch is None:
-        for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.scale, scale_value))
-            assign_ops.append(tf.assign(sub_layer.beta, beta_value))
-    else:
-        scale_part1 = scale_value[:dim1]
-        scale_part2 = scale_value[dim1:]
-        beta_part1 = beta_value[:dim1]
-        beta_part2 = beta_value[dim1:]
+def rearrange_1d(weight, growth_rate, init_dim, shared_frac):
+    fan_in = weight.shape[0]
 
-        # Shared to shared
-        assign_ops.append(tf.assign(layer.shared_branch.scale, np.concatenate([
-            scale_part1[:int(shared_frac*dim1)],
-            scale_part2[:int(shared_frac*dim2)]
-        ])))
-        assign_ops.append(tf.assign(layer.shared_branch.beta, np.concatenate([
-            beta_part1[:int(shared_frac*dim1)],
-            beta_part2[:int(shared_frac*dim2)]
-        ])))
+    if fan_in == init_dim:
+        shared = weight[:int(shared_frac*fan_in)]
+        unique = weight[int(shared_frac*fan_in):]
+        return shared, unique
 
-        scale_unique = np.concatenate([
-            scale_part1[int(shared_frac*dim1):],
-            scale_part2[int(shared_frac*dim2):]
-        ])
-        beta_unique = np.concatenate([
-            beta_part1[int(shared_frac*dim1):],
-            beta_part2[int(shared_frac*dim2):]
-        ])
+    shared_1, unique_1 = rearrange_1d(weight[:-growth_rate],
+        growth_rate, init_dim, shared_frac)
 
-        for sub_layer in layer.branches:
-            assign_ops.append(tf.assign(sub_layer.scale, scale_unique))
-            assign_ops.append(tf.assign(sub_layer.beta, beta_unique))
+    part2 = weight[-growth_rate:]
+    shared_2 = part2[:int(shared_frac*growth_rate)]
+    unique_2 = part2[int(shared_frac*growth_rate):]
 
-    return assign_ops
+    shared = np.concatenate([shared_1, shared_2])
+    unique = np.concatenate([unique_1, unique_2])
+    return shared, unique

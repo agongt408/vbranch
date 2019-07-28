@@ -126,9 +126,8 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
 def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
     batch_size_ = tf.placeholder('int64', name='batch_size')
 
-    if share_xy or n == 1:
-        x = tf.placeholder('float32', x_shape, name='x')
-        y = tf.placeholder('float32', y_shape, name='y')
+    x_test = tf.placeholder('float32', x_shape, name='x')
+    y_test = tf.placeholder('float32', y_shape, name='y')
 
     inputs = []
     labels_one_hot = []
@@ -136,16 +135,19 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
     test_init_op = []
 
     for i in range(n):
-        if not share_xy and not n == 1:
-            x = tf.placeholder('float32', x_shape, name='vb{:d}_x'.format(i+1))
-            y = tf.placeholder('float32', y_shape, name='vb{:d}_y'.format(i+1))
+        if not share_xy and n > 1:
+            x = tf.placeholder('float32', x_shape, name=f'vb{i+1}_x')
+            y = tf.placeholder('float32', y_shape, name=f'vb{i+1}_y')
+        else:
+            x, y = x_test, y_test
 
         train_dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
             repeat().batch(batch_size_).shuffle(buffer_size=4*batch_size)
-        test_dataset = tf.data.Dataset.from_tensor_slices((x,y)).\
+        test_dataset = tf.data.Dataset.from_tensor_slices((x_test,y_test)).\
             repeat().batch(batch_size_)
 
-        iter_ = tf.data.Iterator.from_structure(('float32','float32'), (x_shape, y_shape))
+        iter_ = tf.data.Iterator.from_structure(('float32','float32'),
+                                                (x_shape, y_shape))
         input_, label_one_hot_ = iter_.get_next('input')
 
         if n == 1:
@@ -201,6 +203,6 @@ def get_data_iterator_from_generator(train_gen, input_dim, n=1):
             inputs.append(iterator.get_next(name='input_'+str(i+1)))
             train_init_op.append(iterator.make_initializer(train_dataset))
             test_init_op.append(iterator.make_initializer(test_dataset,
-                name='test_init_op_'+str(i+1)))
+                name=f'test_init_op_{i+1}'))
 
     return inputs, train_init_op, test_init_op

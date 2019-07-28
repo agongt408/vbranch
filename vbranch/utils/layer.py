@@ -66,8 +66,8 @@ def smart_add_n(x_list, name='add'):
 
     if len(x_add) == 0:
         return EmptyOutput()
-    elif len(x_add) == 1:
-        return x_add[0]
+    # elif len(x_add) == 1:
+    #     return x_add[0]
 
     return tf.add_n(x_add, name=name)
 
@@ -83,8 +83,8 @@ def smart_concat(xs, axis=-1, name='concat'):
 
     if len(x_concat) == 0:
         return EmptyOutput()
-    elif len(x_concat) == 1:
-        return x_concat[0]
+    # elif len(x_concat) == 1:
+    #     return x_concat[0]
 
     return tf.concat(x_concat, axis=axis, name=name)
 

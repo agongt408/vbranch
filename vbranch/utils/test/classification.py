@@ -59,9 +59,9 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     outputs = []
     test_init_ops = []
     for i in range(n_branches):
-        name = os.path.join(model_name, 'output/vb{}/output:0'.format(i+1))
+        name = os.path.join(model_name, f'output/vb{i+1}/output:0')
         outputs.append(name)
-        test_init_ops.append('test_init_op_'+str(i+1))
+        test_init_ops.append(f'test_init_op_{i+1}')
 
     feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
     sess.run(test_init_ops, feed_dict=feed_dict)

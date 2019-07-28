@@ -74,8 +74,8 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
         epochs, steps_per_epoch,batch_size, path, train_frac):
     if path is None:
         model_path = get_model_path(dataset, arch, n_classes,
-            samples_per_class,model_id)
-        dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+            samples_per_class, model_id)
+        dirpath = get_dir_path(dataset, arch, n_classes, samples_per_class)
     else:
         model_path = os.path.join('models', path, 'model_{}'.format(model_id))
         if not os.path.isdir(model_path):
@@ -87,6 +87,7 @@ def train(dataset,arch,model_id,n_classes,n_features,samples_per_class,
     # Load data
     (X_train, y_train), (X_test, y_test) = get_data(dataset, arch,
         n_classes, n_features, samples_per_class, train_frac=train_frac)
+
     print('93>', X_train.shape, y_train.shape)
     print('94>', X_test.shape, y_test.shape)
 
@@ -192,12 +193,14 @@ if __name__ == '__main__':
                 # Run trial with specified model id
                 train(args.dataset, args.architecture,model_id,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size, args.path, args.train_frac)
+                    args.steps_per_epoch, args.batch_size, args.path,
+                    args.train_frac)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
                 train(args.dataset, args.architecture,i+1,args.num_classes,
                     args.num_features, args.samples_per_class, args.epochs,
-                    args.steps_per_epoch, args.batch_size, args.path, args.train_frac)
+                    args.steps_per_epoch, args.batch_size, args.path,
+                    args.train_frac)
 
     print('Finished!')

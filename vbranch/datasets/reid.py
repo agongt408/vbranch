@@ -34,6 +34,9 @@ class DataGenerator(object):
         self.files_dict, self.files_arr = self._get_data(dataset,
             split, data_root, keypoint_root, pose_orientation)
 
+        for idt in self.files_dict.keys():
+            assert len(self.files_dict[idt]) > 1, f'idt {idt} has zero samples'
+
         if verify and split in ['test' , 'query']:
             self._verify(dataset)
 

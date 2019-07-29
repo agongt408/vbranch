@@ -10,7 +10,7 @@ import json
 from ..utils import openpose as op
 
 class DataGenerator(object):
-    def __init__(self, dataset, split, pose_orientation=None, verify=False,
+    def __init__(self, dataset, split, pose_orientation=None, n_poses=2, verify=False,
             data_root='../data', keypoint_root='./openpose_output'):
         """
         Get data for Market-1501 and DukeMTMC datasets. Both use same file
@@ -32,16 +32,16 @@ class DataGenerator(object):
         self.dataset = dataset
         self.split = split
         self.files_dict, self.files_arr = self._get_data(dataset,
-            split, data_root, keypoint_root, pose_orientation)
+            split, data_root, keypoint_root, pose_orientation, n_poses)
 
         for idt in self.files_dict.keys():
-            assert len(self.files_dict[idt]) > 1, f'idt {idt} has zero samples'
+            assert len(self.files_dict[idt]) > 0, f'idt {idt} has zero samples'
 
         if verify and split in ['test' , 'query']:
             self._verify(dataset)
 
     @staticmethod
-    def _get_data(dataset, split, data_root, keypoint_root, pose_orientation):
+    def _get_data(dataset, split, data_root, keypoint_root, pose_orientation, n_poses):
         files_dict = {}
         files_arr = []
 
@@ -61,7 +61,7 @@ class DataGenerator(object):
                     path = os.path.join(dir, name)
                     camera = int(name[name.index('_')+2 : name.index('_')+3])
                     if name in keypoint_data.keys():
-                        pose = op.get_pose(keypoint_data[name])
+                        pose = op.get_pose(keypoint_data[name], n_poses)
                     else:
                         pose = -1
 
@@ -73,7 +73,16 @@ class DataGenerator(object):
                             files_arr.append([path, idt, camera, pose])
                             files_dict[idt].append(path)
 
-        return files_dict, files_arr
+        if pose_orientation is None:
+            return files_dict, files_arr
+
+        # Remove empty identities
+        cleaned_files_dict = {}
+        for idt in files_dict.keys():
+            if len(files_dict[idt]) > 0:
+                cleaned_files_dict[idt] = files_dict[idt]
+
+        return cleaned_files_dict, files_arr
 
     @staticmethod
     def _verify(dataset):

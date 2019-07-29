@@ -197,10 +197,10 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         train_dict_copy['batch_size:0'] = len(train_dict['x:0'])
 
     with TFSessionGrow() as sess:
-        if 'beta1:0' in schedulers.keys():
-            sess.run(tf.global_variables_initializer(), feed_dict={'beta1:0':0.9})
-        else:
-            sess.run(tf.global_variables_initializer())
+        # if 'beta1:0' in schedulers.keys():
+        #     sess.run(tf.global_variables_initializer(), feed_dict={'beta1:0':0.9})
+        # else:
+        sess.run(tf.global_variables_initializer())
         sess.run(assign_ops)
         # print(sess.run('model/conv1/bias:0'))
 

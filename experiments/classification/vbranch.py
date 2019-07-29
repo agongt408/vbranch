@@ -43,8 +43,10 @@ parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
 parser.add_argument('--train_frac', action='store', default=1., type=float,
                     help='fraction of original dataset to use for training')
-parser.add_argument('--bagging', action='store', default=1, type=float,
+parser.add_argument('--bagging', action='store', default=0, type=float,
                     help='fraction of dataset to sample for bagging')
+parser.add_argument('--bootstrap', action='store_true',
+                    help='if true, sample with replacement')
 
 parser.add_argument('--path', action='store', nargs='?', default=None,
                     help='manually specify path to save model checkpoint and results')
@@ -53,7 +55,7 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
         n_branches, shared, bagging):
 
     inputs, labels, train_init_ops, test_init_ops = get_data_iterator(x_shape,
-        y_shape, batch_size=batch_size, n=n_branches, share_xy=(bagging==1))
+        y_shape, batch_size=batch_size, n=n_branches, share_xy=(bagging==0))
 
     name = 'model'
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
@@ -79,7 +81,7 @@ def build_model(architecture, n_classes, x_shape, y_shape, batch_size,
 
 def train(dataset, arch, n_branches, model_id, n_classes, n_features,
         samples_per_class, epochs, steps_per_epoch, batch_size, shared,
-        path, train_frac, bagging):
+        path, train_frac, bagging, bootstrap):
     if path is None:
         model_path = get_vb_model_path(dataset, arch, n_branches, shared,
             n_classes, samples_per_class, model_id)
@@ -100,9 +102,10 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
     x_shape = (None,) + X_train.shape[1:]
     y_shape = (None, n_classes)
 
-    if bagging < 1:
+    if bagging <= 1:
         x_train_list, y_train_list = bag_samples(X_train, y_train, n_branches,
-                                             max_samples=float(bagging))
+                                             max_samples=float(bagging),
+                                             bootstrap=bootstrap)
         for i, (x_, y_) in enumerate(zip(x_train_list, y_train_list)):
             print('Bag {}:'.format(i+1), x_.shape, y_.shape)
 
@@ -111,7 +114,7 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
         n_branches, shared, bagging)
     model.summary()
 
-    if n_branches == 1 or bagging == 1:
+    if n_branches == 1 or bagging == 0:
         train_dict = {'x:0': X_train, 'y:0': y_train, 'batch_size:0': batch_size}
     else:
         train_dict = {'x:0': X_train, 'y:0': y_train}
@@ -161,6 +164,7 @@ def test(dataset, arch, n_branches, model_id, shared, n_classes,
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    print('166>', args.bootstrap)
 
     if args.test:
         p_console('MODE: TEST')
@@ -177,12 +181,14 @@ if __name__ == '__main__':
                 train(args.dataset, args.architecture, args.num_branches,id,
                     args.num_classes, args.num_features,args.samples_per_class,
                     args.epochs, args.steps_per_epoch, args.batch_size,
-                    args.shared_frac, args.path, args.train_frac, args.bagging)
+                    args.shared_frac, args.path, args.train_frac,
+                    args.bagging, args.bootstrap)
         else:
             for i in range(args.trials):
                 train(args.dataset, args.architecture, args.num_branches,i+1,
                     args.num_classes, args.num_features,args.samples_per_class,
                     args.epochs, args.steps_per_epoch,args.batch_size,
-                    args.shared_frac, args.path, args.train_frac, args.bagging)
+                    args.shared_frac, args.path, args.train_frac,
+                    args.bagging, args.bootstrap)
 
     print('Finished!')

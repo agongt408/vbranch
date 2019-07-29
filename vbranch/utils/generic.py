@@ -25,7 +25,7 @@ def get_path(dataset, arch, *prefixes, vb=False, model_id=None, **kwargs):
         path = 'vb-' + path
 
     for name, val in kwargs.items():
-        if type(val) is int:
+        if type(val) is int or type(val) is str:
             path = os.path.join(path, '{}{}'.format(name, val))
         elif type(val) is float:
             path = os.path.join(path, '{}{:.2f}'.format(name, val))

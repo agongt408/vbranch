@@ -90,7 +90,7 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
 
     return (X_train, y_train), (X_test, y_test)
 
-def bag_samples(X, Y, n, max_samples=1.0, bootstrap=True):
+def bag_samples(X, Y, n, max_samples=1.0, bootstrap=False):
     """
     Perform bagging on numpy arrays X, Y
     Args:
@@ -160,7 +160,7 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
             labels_one_hot.append(label_one_hot_)
             train_init_op.append(iter_.make_initializer(train_dataset))
             test_init_op.append(iter_.make_initializer(test_dataset,
-                name='test_init_op_'+str(i+1)))
+                name=f'test_init_op_{i+1}'))
 
     return inputs, labels_one_hot, train_init_op, test_init_op
 

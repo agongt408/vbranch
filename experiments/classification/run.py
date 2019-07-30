@@ -93,30 +93,31 @@ import os
 
 ARCHITECTURE = 'fcn'
 
-for bagging in [1.0]:
-    # # baseline_path = f'no-boot-bagging/mnist-{ARCHITECTURE}/Bg{bagging}'
-    # baseline_path = f'bagging/mnist-{ARCHITECTURE}/Bg{bagging}'
-    #
-    # cmd = f'python experiments/classification/baseline.py ' \
-    #     f'--architecture {ARCHITECTURE} --dataset mnist --trials 8 ' \
-    #     f'--path {baseline_path}'
-    # os.system(cmd)
+for bagging in [0.4, 0.6, 0.8, 1.0]:
+    for batch_size in [32, 64, 96, 128, 160]:
+        baseline_path = f'bagging-3/mnist-{ARCHITECTURE}/Bg{bagging}/Ba{batch_size}'
 
-    for num_branches in range(2, 5):
-        # model_id_list = ''
-        # for i in range(num_branches):
-        #     model_id_list += '%d ' % (i+1)
-        # 
-        # cmd = f'python experiments/classification/baseline.py ' \
-        #     f'--architecture fcn --dataset mnist --test --trials 8 ' \
-        #     f'--path {baseline_path} --model_id ' + model_id_list
-        # os.system(cmd)
+        cmd = f'python experiments/classification/baseline.py ' \
+            f'--architecture {ARCHITECTURE} --dataset mnist --trials 8 ' \
+            f'--path {baseline_path} --batch_size {batch_size} --epochs 50'
+        os.system(cmd)
 
-        vb_path = f'bagging/vb-mnist-{ARCHITECTURE}/Bg{bagging}'
+        for num_branches in range(2, 5):
+            model_id_list = ''
+            for i in range(num_branches):
+                model_id_list += '%d ' % (i+1)
 
-        for shared_frac in [0., 0.25, 0.5, 0.75, 1.]:
-            cmd = f'python experiments/classification/vbranch.py ' \
-                f'--architecture fcn --dataset mnist --trials 8 ' \
-                f'--num_branches {num_branches} --shared_frac {shared_frac} ' \
-                f'--bagging {bagging} --path {vb_path} --bootstrap'
+            cmd = f'python experiments/classification/baseline.py ' \
+                f'--architecture fcn --dataset mnist --test --trials 8 ' \
+                f'--path {baseline_path} --model_id {model_id_list}'
             os.system(cmd)
+
+            vb_path = f'bagging-3/vb-mnist-{ARCHITECTURE}/Bg{bagging}/Ba{batch_size}'
+
+            for shared_frac in [0., 0.25, 0.5, 0.75, 1.]:
+                cmd = f'python experiments/classification/vbranch.py ' \
+                    f'--architecture fcn --dataset mnist --trials 8 ' \
+                    f'--num_branches {num_branches} --shared_frac {shared_frac} ' \
+                    f'--bagging {bagging} --path {vb_path} --bootstrap ' \
+                    f'--batch_size {batch_size} --epochs 50'
+                os.system(cmd)

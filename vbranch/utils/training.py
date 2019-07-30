@@ -104,6 +104,7 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=False):
 
     if type(max_samples) is float:
         samples = int(max_samples * len(X))
+        print(samples)
     elif type(max_samples) is int:
         samples = max_samples
     else:

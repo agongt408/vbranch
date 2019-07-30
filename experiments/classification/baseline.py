@@ -154,6 +154,7 @@ def test(dataset,arch,model_id_list,n_classes,samples_per_class,
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    print('157> batch size', args.batch_size)
 
     if args.test:
         p_console('MODE: TEST')

@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def plot_line(results, branches, n_trials=8, p1=[]):
+def plot_line(results, branches, n_trials=8, p1=[], p2=None):
     shared_frac = [0, 0.25, 0.5, 0.75, 1]
 
     if len(p1) == 0:
@@ -22,12 +22,18 @@ def plot_line(results, branches, n_trials=8, p1=[]):
                  label='baseline', linestyle='--')
     else:
         for p in p1:
-            baseline_acc = results['baseline'][str(p)][0]
+            if p2 is None:
+                baseline_acc = results['baseline'][str(p)][0]
+            else:
+                baseline_acc = results['baseline'][str(p)][str(p2)][0]
             vbranch_acc = []
             vbranch_std = []
 
             for s in shared_frac:
-                acc, std = results['vbranch'][str(p)][str(branches)][str(s)]
+                if p2 is None:
+                    acc, std = results['vbranch'][str(p)][str(branches)][str(s)]
+                else:
+                    acc, std = results['vbranch'][str(p)][str(p2)][str(branches)][str(s)]
                 vbranch_acc.append(acc)
                 vbranch_std.append(std)
 

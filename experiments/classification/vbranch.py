@@ -164,7 +164,8 @@ def test(dataset, arch, n_branches, model_id, shared, n_classes,
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    print('166>', args.bootstrap)
+    print('167> bootstrap', args.bootstrap)
+    print('168> batch size', args.batch_size)
 
     if args.test:
         p_console('MODE: TEST')

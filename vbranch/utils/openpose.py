@@ -60,18 +60,19 @@ def get_xy(keypoints, name):
     x, y, c = keypoints[0][keypoint_map[name]]
     return Coord(x, y)
 
-def get_pose_score(bodyKeypoints):
+def get_pose_score(bodyKeypoints, eps=1e-4):
     RShoulder = get_xy(bodyKeypoints, 'RShoulder')
     LShoulder = get_xy(bodyKeypoints, 'LShoulder')
     RHip = get_xy(bodyKeypoints, 'RHip')
     LHip = get_xy(bodyKeypoints, 'LHip')
+    if abs(RShoulder.x - LShoulder.x) < 0.01:
+        print('69>', RShoulder, LShoulder)
 
-    eps = 1e-4
     mu = -(RShoulder.x - LShoulder.x) / (eps + abs(RShoulder.x - LShoulder.x))
     torso_width = distance(RShoulder, LShoulder)
     torso_height = 0.5*(distance(RShoulder,RHip)+distance(LShoulder,LHip))+eps
 
-    return mu *  torso_width / torso_height
+    return (mu + eps) *  torso_width / torso_height
 
 def get_theta(bodyKeypoints):
     cos = min(max(get_pose_score(bodyKeypoints), -1), 1)

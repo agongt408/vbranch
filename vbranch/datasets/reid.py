@@ -28,6 +28,7 @@ class DataGenerator(object):
 
         assert dataset in ['market', 'duke']
         assert split in ['train', 'test', 'query']
+        assert pose_orientation < n_poses, 'pose must be less than n_poses'
 
         self.dataset = dataset
         self.split = split

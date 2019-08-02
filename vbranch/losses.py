@@ -4,7 +4,7 @@ def softmax_cross_entropy_with_logits():
     """Cross entropy loss"""
     return _softmax_cross_entropy_with_logits
 
-def triplet(P, K, margin=0.2):
+def triplet(P, K, margin='soft'):
     """
     Triplet loss (batch-hard variant)
     (https://arxiv.org/pdf/1703.07737.pdf)
@@ -40,7 +40,7 @@ def _softmax_cross_entropy_with_logits(labels, logits, name=None):
     loss = tf.reduce_mean(cross_entropy, name=name)
     return loss
 
-def _triplet(pred, P, K, margin=0.2, name=None):
+def _triplet(pred, P, K, margin='soft', name=None):
     assert margin == 'soft' or margin >= 0
 
     batch_losses = []
@@ -54,29 +54,24 @@ def _triplet(pred, P, K, margin=0.2, name=None):
             hard_neg = tf.reduce_min(neg)
 
             if margin == 'soft':
-                # Apply piecewise in order to avoid NaN warnings
-                # Loss value error approx. 1e-9 using threshold value of 20
-                spread = hard_pos - hard_neg
-                condition = tf.less(spread, 20)
-                loss = tf.cond(condition, lambda: log1p(spread), lambda: spread)
-                # print(loss)
+                loss = tf.log1p(hard_pos - hard_neg)
             else:
                 loss = tf.maximum(margin + hard_pos - hard_neg, 0.0)
             batch_losses.append(loss)
 
     return tf.reduce_sum(batch_losses, name=name)
 
-def _triplet_omniglot(pred, A, P, K, margin=0.2, name=None):
+def _triplet_omniglot(pred, A, P, K, margin='soft', name=None):
     alpha_losses = []
     for i in range(A):
         alpha_pred = pred[P*K*i : P*K*(i+1)]
         alpha_losses.append(_triplet(alpha_pred, P, K, margin))
 
-    return tf.reduce_sum(alpha_losses, name=name)
+    return tf.reduce_mean(alpha_losses, name=name)
 
-def log1p(x):
-    """Soft margin function"""
-    return tf.log(1 + tf.exp(x))
+# def log1p(x):
+#     """Soft margin function"""
+#     return tf.log(1 + tf.exp(x))
 
 def norm(x1, x2, axis=1, norm=1):
     return tf.pow(tf.reduce_sum(tf.pow(tf.abs(x1 - x2), norm),

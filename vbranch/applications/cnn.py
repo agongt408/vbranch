@@ -2,13 +2,14 @@ from ..slim import *
 from tensorflow import Tensor
 
 def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
-    return CNN(inputs, (classes, 0), 16, 32, name=name, shared_frac=shared_frac)
+    return CNN(inputs, classes, 16, 32, name=name, shared_frac=shared_frac)
 
-def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None):
-    return CNN(inputs, (classes, 0), 32, 64, 128, 256, name=name,
-        shared_frac=shared_frac)
+def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None, subsample_initial=True):
+    return CNN(inputs, classes, 32, 64, 128, 256, name=name,
+        shared_frac=shared_frac, subsample_initial=subsample_initial)
 
-def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None):
+def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None,
+        subsample_initial=False):
     """
     Create SimpleCNN model; dynamically determine what type of model to use
     (i.e., Model or ModelVB)
@@ -34,7 +35,18 @@ def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None):
 
     ip = Input(input_)
 
-    x = ip
+    if subsample_initial:
+        # Initial convolution
+        x = ZeroPadding2D(ip, padding=(3,3), name='conv1_pad')
+        x = Conv2D(x, 32, (7,7), strides=(2,2), name='conv1', padding='valid',
+                shared=shared_frac)
+        x = BatchNormalization(x, name='bn_conv1')
+        x = Activation(x, 'relu')
+        x = ZeroPadding2D(x, padding=(1,1), name='pool1_pad')
+        x = MaxPooling2D(x, (3, 3), strides=(2, 2))
+    else:
+        x = ip
+
     for i, spec in enumerate(layers_spec):
         if type(spec) is int:
             filters = spec
@@ -46,31 +58,35 @@ def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None):
             raise ValueError('invalid layers spec:', spec)
 
         for l in range(2):
+            # if l == 0 and i > 0:
+            #     strides = 2
+            # else:
+            #     strides = 1
             x = Conv2D(x, filters, 3, name='conv2d_%d_%d'%(i+1,l+1),
-                    shared=shared)
+                    shared=shared, padding='same', strides=1)
             x = BatchNormalization(x, name='bn_%d_%d' % (i+1, l+1))
             x = Activation(x, 'relu', name='relu_%d_%d' % (i+1, l+1))
 
         if i < len(layers_spec) - 1:
             x = AveragePooling2D(x, (2,2),name='avg_pool2d_'+str(i+1))
-        else:
-            x = GlobalAveragePooling2D(x, name='global_avg_pool2d')
-            x = Dense(x, filters, name='fc1', shared=shared)
-            x = BatchNormalization(x, name='bn_fc1')
-            x = Activation(x, 'relu', name='relu_fc1')
 
-            if type(final_spec) is int:
-                final_units = final_spec
-                shared = shared_frac
-            elif type(final_spec) is tuple:
-                final_units, shared = final_spec
-            else:
-                raise ValueError('invalid final_spec:', final_spec)
+    x = GlobalAveragePooling2D(x, name='global_avg_pool2d')
+    x = Dense(x, filters, name='fc1', shared=shared)
+    x = BatchNormalization(x, name='bn_fc1')
+    x = Activation(x, 'relu', name='relu_fc1')
 
-            if vb_mode:
-                x = Dense(x,final_units,shared=shared,merge=True, name='output')
-            else:
-                x = Dense(x, final_units, name='output')
+    if type(final_spec) is int:
+        final_units = final_spec
+        shared = shared_frac
+    elif type(final_spec) is tuple:
+        final_units, shared = final_spec
+    else:
+        raise ValueError('invalid final_spec:', final_spec)
+
+    if vb_mode:
+        x = Dense(x,final_units,shared=shared,merge=True, name='output')
+    else:
+        x = Dense(x, final_units, name='output')
 
     if type(input_) is list:
         return ModelVB(ip, x, name=name)

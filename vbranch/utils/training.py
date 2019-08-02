@@ -41,7 +41,8 @@ def beta1_scheduler(t0, beta_init=0.9, beta_final=0.5):
     return func
 
 def get_data(dataset, architecture, num_classes=10, num_features=784,
-        samples_per_class=1000, one_hot=True, train_frac=1, seed=100):
+        samples_per_class=1000, one_hot=True, train_frac=1, seed=100,
+        preprocess=False):
     """
     Load (or generate) data
     Args:
@@ -58,10 +59,12 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
         # Load data from MNIST
         if architecture.find('fcn') > -1:
             (X_train, y_train), (X_test, y_test) = \
-                datasets.mnist.load_data(format='fcn', one_hot=one_hot)
+                datasets.mnist.load_data(format='fcn', one_hot=one_hot,
+                    preprocess=preprocess)
         elif architecture.find('cnn') > -1:
             (X_train, y_train), (X_test, y_test) = \
-                datasets.mnist.load_data(format='cnn', one_hot=one_hot)
+                datasets.mnist.load_data(format='cnn', one_hot=one_hot,
+                    preprocess=preprocess)
         else:
             raise ValueError('invalid architecture:', architecture)
     elif dataset == 'toy':
@@ -78,6 +81,9 @@ def get_data(dataset, architecture, num_classes=10, num_features=784,
 
         print('Training set:', X_train.shape, y_train.shape)
         print('Testing set:', X_test.shape, y_test.shape)
+    elif dataset == 'cifar10':
+        (X_train, y_train), (X_test, y_test) = datasets.cifar10.load_data(one_hot,
+            preprocess=preprocess)
     else:
         raise ValueError('invalid dataset: ' + dataset)
 

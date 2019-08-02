@@ -50,7 +50,7 @@ def get_dir_path(dataset, arch, n_classes=None, samples_per_class=None):
 
 def get_model_path(dataset, arch, n_classes=None, samples_per_class=None, model_id=1):
     # Get path to save model
-    dirpath = _dir_path(dataset, arch, n_classes, samples_per_class)
+    dirpath = get_dir_path(dataset, arch, n_classes, samples_per_class)
     model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
 
     if not os.path.isdir(model_path):
@@ -70,7 +70,7 @@ def get_vb_dir_path(dataset,arch,n_branches,shared, n_classes=None,
 def get_vb_model_path(dataset, arch, n_branches, shared, n_classes=None,
         samples_per_class=None, model_id=1):
     # Get path to save model
-    dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
+    dirpath = get_vb_dir_path(dataset, arch, n_branches, shared,
         n_classes, samples_per_class)
     model_path = os.path.join('models', dirpath, 'model_%d' % model_id)
 

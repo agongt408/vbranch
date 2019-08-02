@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', action='store', default='omniglot',
                     nargs='?', choices=['omniglot'], help='dataset')
 parser.add_argument('--architecture', action='store', default='cnn',
-                    nargs='?', choices=['simple', 'res'],
+                    nargs='?', choices=['simple', 'resnet'],
                     help='model architecture, i.e., simple cnn or resnet')
 parser.add_argument('--A',action='store',default=4,nargs='?',type=int,help='A')
 parser.add_argument('--P',action='store',default=8,nargs='?',type=int,help='P')
@@ -39,14 +39,14 @@ def build_model(architecture, train_gen, input_dim, output_dim,
         lr_scheduler, **kwargs):
 
     inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
-        train_gen, input_dim, kwargs['A'], kwargs['P'], kwargs['K'])
+        train_gen, input_dim)
     lr = tf.placeholder('float32', name='lr')
 
     name = 'model'
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         if architecture == 'simple':
             model = SimpleCNNLarge(inputs, output_dim, name=name)
-        elif architecture == 'res':
+        elif architecture == 'resnet':
             model = ResNet18(inputs, output_dim, name=name)
         else:
             raise ValueError('Invalid architecture')
@@ -66,7 +66,8 @@ def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = omniglot.load_generator(set='train')
+        train_gen = omniglot.load_generator('train', kwargs['A'], kwargs['P'],
+            kwargs['K'])
         input_dim = [None, 105, 105, 1]
         output_dim = 128
         lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
@@ -76,7 +77,7 @@ def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
     model.summary()
 
     history = model.fit(epochs, steps_per_epoch, log_path=model_path)
-    dirpath = _dir_path(dataset, arch)
+    dirpath = get_dir_path(dataset, arch)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, arch, model_id_list,train_dict={},test_dict={}, acc_dict={}):
@@ -141,7 +142,7 @@ def test(dataset, arch, model_id_list,train_dict={},test_dict={}, acc_dict={}):
     print('Concatenate embedding acc:', concat_acc)
 
     results_dict = {'mean_acc' : mean_acc, 'concat_acc' : concat_acc}
-    dirpath = _dir_path(dataset, arch)
+    dirpath = get_dir_path(dataset, arch)
     save_results(results_dict, dirpath, 'B%d-test.csv'%len(model_id_list), 'a')
 
     return train_dict, test_dict, acc_dict

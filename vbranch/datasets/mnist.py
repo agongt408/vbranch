@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-def load_data(format, one_hot=True):
+def load_data(format, one_hot=True, preprocess=False):
     (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
 
     if format == 'fcn':
@@ -12,6 +12,10 @@ def load_data(format, one_hot=True):
         X_test = X_test[..., np.newaxis]
     else:
         raise ValueError('invalid format')
+
+    if preprocess:
+        X_train = X_train / 127.5 - 1
+        X_test = X_test / 127.5 - 1
 
     if one_hot:
         num_classes = 10

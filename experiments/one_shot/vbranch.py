@@ -42,7 +42,7 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
 def build_model(architecture, train_gen, input_dim, output_dim,
-        lr_scheduler, n_branches, shared):
+        lr_scheduler, n_branches, shared, A, P, K):
 
     inputs, train_init_op, test_init_op = get_data_iterator_from_generator(
         train_gen, input_dim, n=n_branches)
@@ -83,7 +83,7 @@ def train(dataset, arch, n_branches, model_id, epochs,
     model.summary()
 
     history = model.fit(epochs, steps_per_epoch, log_path=model_path)
-    dirpath = _vb_dir_path(dataset, arch, n_branches, shared_frac)
+    dirpath = get_vb_dir_path(dataset, arch, n_branches, shared_frac)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, architecture, n_branches, model_id, shared_frac, message):

@@ -85,7 +85,7 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
     if path is None:
         model_path = get_vb_model_path(dataset, arch, n_branches, shared,
             n_classes, samples_per_class, model_id)
-        dirpath = _vb_dir_path(dataset, arch, n_branches, shared,
+        dirpath = get_vb_dir_path(dataset, arch, n_branches, shared,
             n_classes, samples_per_class)
     else:
         path = os.path.join(path, f'B{n_branches}', 'S{:.2f}'.format(shared))

@@ -102,7 +102,7 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
     x_shape = (None,) + X_train.shape[1:]
     y_shape = (None, n_classes)
 
-    if bagging <= 1:
+    if bagging > 0:
         x_train_list, y_train_list = bag_samples(X_train, y_train, n_branches,
                                              max_samples=float(bagging),
                                              bootstrap=bootstrap)

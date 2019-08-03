@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def plot_line(results, branches, n_trials=8, p1=[], p2=None):
+def plot_line(results, branches, n_trials=8, p1=[], p2=None, show=True):
     shared_frac = [0, 0.25, 0.5, 0.75, 1]
 
     if len(p1) == 0:
@@ -42,8 +42,10 @@ def plot_line(results, branches, n_trials=8, p1=[], p2=None):
             plt.plot(shared_frac, [baseline_acc]*len(shared_frac),
                      label=str(p), linestyle='--')
 
+    plt.title(p2)
     plt.legend()
-    plt.show()
+    if show:
+        plt.show()
 
 def plot_baseline_3d(results, X=[0.01, 0.05, 0.1, 0.2], Y=[8, 16, 32, 64, 128],
                      xlabel=None, ylabel=None):

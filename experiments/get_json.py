@@ -23,14 +23,16 @@ parser.add_argument('--shared_frac', nargs='*', type=float,
 parser.add_argument('--params', nargs='*', help='additional hyperparameters')
 parser.add_argument('--metric', default='val_acc',
                     nargs='?', help='performance metric')
+parser.add_argument('--epoch', default=-1, nargs='?', type=int,
+                    help='epoch to take results')
 
-def get_baseline_acc_from_file(params, dirpath, metric):
+def get_baseline_acc_from_file(params, dirpath, metric, epoch):
     print(dirpath)
 
     acc_list = []
     for f in glob(dirpath + '/train_*'):
         csv = pd.read_csv(f)
-        acc_list.append(csv.iloc[-1][metric])
+        acc_list.append(csv.iloc[epoch][metric])
 
     assert len(acc_list) > 0, params
     return np.mean(acc_list), np.std(acc_list)
@@ -46,7 +48,7 @@ def get_ensemble_acc_from_file(params, branches, dirpath):
 
     return ensemble_results
 
-def get_vbranch_acc_from_file(params, branches, shared_frac, dirpath, metric):
+def get_vbranch_acc_from_file(params, branches, shared_frac, dirpath, metric, epoch):
     vbranch_results = {}
     for b in branches:
         vbranch_results[b] = {}
@@ -56,7 +58,7 @@ def get_vbranch_acc_from_file(params, branches, shared_frac, dirpath, metric):
             print(path)
             for f in glob(path + '/train_*'):
                 csv = pd.read_csv(f)
-                acc_list.append(csv.iloc[-1][f'{metric}_ensemble'])
+                acc_list.append(csv.iloc[epoch][f'{metric}_ensemble'])
 
             assert len(acc_list) > 0, params
             vbranch_results[b][s] = [np.mean(acc_list), np.std(acc_list)]
@@ -64,16 +66,16 @@ def get_vbranch_acc_from_file(params, branches, shared_frac, dirpath, metric):
     return vbranch_results
 
 def get_results(setup, *params, dirpath='results', p_count=0,
-        branches=[], shared_frac=[], metric='val_acc'):
+        branches=[], shared_frac=[], metric='val_acc', epoch=-1):
 
     if p_count == len(params):
         if setup == 'baseline':
-            results = get_baseline_acc_from_file(params, dirpath, metric)
+            results = get_baseline_acc_from_file(params, dirpath, metric, epoch)
         # elif setup == 'ensemble':
         #     results = get_ensemble_acc_from_file(params, branches, dirpath)
         else:
             results = get_vbranch_acc_from_file(params, branches,
-                shared_frac, dirpath, metric)
+                shared_frac, dirpath, metric, epoch)
         return results
 
     results = {}
@@ -84,7 +86,8 @@ def get_results(setup, *params, dirpath='results', p_count=0,
     for config in config_list:
         p = config[len(dirpath)+len(f'/{params[p_count]}'):]
         results[p] = get_results(setup, *params, dirpath=config,
-            p_count=p_count+1, branches=branches, shared_frac=shared_frac)
+            p_count=p_count+1, branches=branches, shared_frac=shared_frac,
+            epoch=epoch)
 
     return results
 
@@ -99,7 +102,7 @@ if __name__ == '__main__':
 
     baseline_results = get_results('baseline', *params,
         dirpath=os.path.join(args.dir, f'{args.dataset}-{args.architecture}'),
-        metric=args.metric)
+        metric=args.metric, epoch=args.epoch-1)
 
     # ensemble_results = get_results('ensemble', *params,
     #     dirpath=os.path.join(args.dir, f'{args.dataset}-{args.architecture}'),
@@ -107,7 +110,8 @@ if __name__ == '__main__':
 
     vbranch_results = get_results('vbranch', *params,
         dirpath=os.path.join(args.dir, f'vb-{args.dataset}-{args.architecture}'),
-        branches=branches, shared_frac=args.shared_frac, metric=args.metric)
+        branches=branches, shared_frac=args.shared_frac, metric=args.metric,
+        epoch=args.epoch-1)
 
     results = {
         'baseline' : baseline_results,

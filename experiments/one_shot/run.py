@@ -2,11 +2,11 @@ import os
 
 # Omniglot
 
-cmd = f'python experiments/one_shot/baseline.py ' \
-    f'--architecture simple --dataset omniglot --epochs 60 --trials 4'
-os.system(cmd)
+# cmd = f'python experiments/one_shot/baseline.py ' \
+#     f'--architecture simple --dataset omniglot --epochs 60 --trials 4'
+# os.system(cmd)
 
-for num_branches in range(2, 5):
+for num_branches in range(4, 5):
     # model_id_list = ''
     # for i in range(num_branches):
     #     model_id_list += '%d ' % (i+1)

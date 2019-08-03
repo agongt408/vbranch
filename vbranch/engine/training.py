@@ -192,9 +192,10 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
 
     # Classification (training accuracy calculation)
     train_dict_copy = copy(train_dict)
-    # if 'batch_size:0' in list(train_dict.keys()) and \
-    #         'x:0' in list(train_dict.keys()):
-    #     train_dict_copy['batch_size:0'] = 1000 # len(train_dict['x:0'])
+    if 'batch_size:0' in list(train_dict.keys()) and \
+            'x:0' in list(train_dict.keys()):
+        train_dict_copy['x:0'] = train_dict_copy['x:0'][:1000]
+        train_dict_copy['y:0'] = train_dict_copy['y:0'][:1000]
 
     with TFSessionGrow() as sess:
         # if 'beta1:0' in schedulers.keys():

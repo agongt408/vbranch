@@ -194,8 +194,8 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
     train_dict_copy = copy(train_dict)
     if 'batch_size:0' in list(train_dict.keys()) and \
             'x:0' in list(train_dict.keys()):
-        train_dict_copy['x:0'] = train_dict_copy['x:0'][:1000]
-        train_dict_copy['y:0'] = train_dict_copy['y:0'][:1000]
+        train_dict_copy['x:0'] = train_dict_copy['x:0'][:500]
+        train_dict_copy['y:0'] = train_dict_copy['y:0'][:500]
 
     with TFSessionGrow() as sess:
         # if 'beta1:0' in schedulers.keys():
@@ -227,39 +227,39 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                 for name, l in loss.items():
                     progbar_vals.append((name, l))
 
-                if i == steps_per_epoch - 1:
-                    # For classification, evaluate callbacks (e.g., accuracy)
-                    # on training set
-                    if callbacks != {} and (e + 1) % call_step == 0:
-                        for _, func in callbacks.items():
-                            results = func(sess, train_dict_copy)
-                            for name, r in results.items():
-                                hist_append(history, name, encode(r))
-                                progbar_vals.append((name, r))
-
-                    if val_dict is not None:
-                        sess.run(test_init_op, feed_dict=val_dict)
-                        val_loss = sess.run(loss_op)
-
-                        for name, l in val_loss.items():
-                            progbar_vals.append(('val_' + name, l))
-
-                        if callbacks != {} and (e + 1) % call_step == 0:
-                            for _, func in callbacks.items():
-                                results = func(sess, val_dict)
-                                for name, r in results.items():
-                                    hist_append(history, 'val_'+name, encode(r))
-                                    progbar_vals.append(('val_'+name, r))
+                # if i == steps_per_epoch - 1:
+                #     # For classification, evaluate callbacks (e.g., accuracy)
+                #     # on training set
+                #     if callbacks != {} and (e + 1) % call_step == 0:
+                #         for _, func in callbacks.items():
+                #             results = func(sess, train_dict_copy)
+                #             for name, r in results.items():
+                #                 hist_append(history, name, encode(r))
+                #                 progbar_vals.append((name, r))
+                #
+                #     if val_dict is not None:
+                #         sess.run(test_init_op, feed_dict=val_dict)
+                #         val_loss = sess.run(loss_op)
+                #
+                #         for name, l in val_loss.items():
+                #             progbar_vals.append(('val_' + name, l))
+                #
+                #         if callbacks != {} and (e + 1) % call_step == 0:
+                #             for _, func in callbacks.items():
+                #                 results = func(sess, val_dict)
+                #                 for name, r in results.items():
+                #                     hist_append(history, 'val_'+name, encode(r))
+                #                     progbar_vals.append(('val_'+name, r))
 
                 # Update progress bar
                 progbar.update(i+1, values=progbar_vals)
 
-            for name, l in loss.items():
-                hist_append(history, name, encode(l))
-
-            if val_dict is not None:
-                for name, l in val_loss.items():
-                    hist_append(history, 'val_'+name, encode(l))
+            # for name, l in loss.items():
+            #     hist_append(history, name, encode(l))
+            # 
+            # if val_dict is not None:
+            #     for name, l in val_loss.items():
+            #         hist_append(history, 'val_'+name, encode(l))
 
         if not save_model_path is None:
             saver = tf.train.Saver()

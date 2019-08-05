@@ -66,6 +66,15 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
     sess.run(test_init_ops, feed_dict=feed_dict)
     logits_list = sess.run(outputs)
+
+    # # Memory-constrained optimization
+    # logits_list = []
+    # for i in range(n_branches):
+    #     name = os.path.join(model_name, f'output/vb{i+1}/output:0')
+    #     test_init_op = f'test_init_op_{i+1}'
+    #     sess.run(test_init_op, feed_dict=feed_dict)
+    #     logits_list.append(sess.run(name))
+
     vbranch_acc = compute_acc_from_logits(logits_list, y, num_classes,mode=mode)
 
     baseline_acc_list = []

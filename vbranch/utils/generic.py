@@ -6,7 +6,7 @@ import json
 
 def TFSessionGrow():
     # https://www.tensorflow.org/guide/using_gpu
-    config = tf.ConfigProto()
+    config = tf.ConfigProto(inter_op_parallelism_threads=8)
     config.gpu_options.allow_growth = True
     return tf.Session(config=config)
 

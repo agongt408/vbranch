@@ -88,7 +88,7 @@ def train(dataset, arch, n_branches, model_id, n_classes, n_features,
         dirpath = get_vb_dir_path(dataset, arch, n_branches, shared,
             n_classes, samples_per_class)
     else:
-        path = os.path.join(path, f'B{n_branches}', 'S{:.2f}'.format(shared))
+        path = os.path.join(path, f'B{n_branches}', f'S{shared:.2f}')
         model_path = os.path.join('models', path, f'model_{model_id}')
         if not os.path.isdir(model_path):
             os.system('mkdir -p ' + model_path)

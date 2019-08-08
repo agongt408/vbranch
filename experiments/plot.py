@@ -7,7 +7,8 @@ def plot_line(results, branches, n_trials=8, p1=[], p2=None, show=True):
     shared_frac = [0, 0.25, 0.5, 0.75, 1]
 
     if len(p1) == 0:
-        baseline_acc = results['baseline'][0]
+        # baseline_acc = results['baseline'][0]
+        baseline_acc = results['baseline'][str(branches)][0]
         vbranch_acc = []
         vbranch_std = []
 

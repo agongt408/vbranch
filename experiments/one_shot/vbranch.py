@@ -41,6 +41,9 @@ parser.add_argument('--steps_per_epoch', action='store', default=100, nargs='?',
                     type=int, help='number of training steps per epoch')
 parser.add_argument('--m',action='store',nargs='?',help='msg in results file')
 
+parser.add_argument('--path', action='store', nargs='?', default=None,
+                    help='manually specify path to save model checkpoint and results')
+
 def build_model(architecture, train_gen, input_dim, output_dim,
         lr_scheduler, n_branches, shared, A, P, K):
 
@@ -64,16 +67,29 @@ def build_model(architecture, train_gen, input_dim, output_dim,
                       schedulers={'lr:0': lr_scheduler})
     return model
 
-def train(dataset, arch, n_branches, model_id, epochs,
-        steps_per_epoch, shared_frac, A, P, K):
-    model_path = get_vb_model_path(dataset, arch, n_branches, shared_frac,
-        model_id=model_id)
+def train(dataset, arch, n_branches, model_id, epochs, steps_per_epoch,
+        shared_frac, path, A, P, K):
+    if path is None:
+        model_path = get_vb_model_path(dataset, arch, n_branches, shared,
+            n_classes, samples_per_class, model_id)
+        dirpath = get_vb_dir_path(dataset, arch, n_branches, shared,
+            n_classes, samples_per_class)
+    else:
+        path = os.path.join(path, f'B{n_branches}', f'S{shared_frac:.2f}')
+        model_path = os.path.join('models', path, f'model_{model_id}')
+        if not os.path.isdir(model_path):
+            os.system('mkdir -p ' + model_path)
+        dirpath = path
+
+    # model_path = get_vb_model_path(dataset, arch, n_branches, shared_frac,
+    #     model_id=model_id)
     p_console('Save model path: '+ model_path)
 
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = omniglot.load_generator('train', A, P, K)
+        train_gen = omniglot.load_generator('train', A, P, K, sync=True,
+            n_branches=n_branches)
         input_dim = [None, 105, 105, 1]
         output_dim = 128
         lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
@@ -83,7 +99,6 @@ def train(dataset, arch, n_branches, model_id, epochs,
     model.summary()
 
     history = model.fit(epochs, steps_per_epoch, log_path=model_path)
-    dirpath = get_vb_dir_path(dataset, arch, n_branches, shared_frac)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, architecture, n_branches, model_id, shared_frac, message):
@@ -122,12 +137,12 @@ if __name__ == '__main__':
         if args.trials == 1:
             for id in args.model_id:
                 train(args.dataset,args.architecture, args.num_branches, id,
-                    args.epochs,args.steps_per_epoch, args.shared_frac,
+                    args.epochs,args.steps_per_epoch, args.shared_frac, args.path,
                     A=args.A, P=args.P, K=args.K)
         else:
             for i in range(args.trials):
                 train(args.dataset, args.architecture, args.num_branches, i+1,
-                    args.epochs,args.steps_per_epoch, args.shared_frac,
+                    args.epochs,args.steps_per_epoch, args.shared_frac, args.path,
                     A=args.A, P=args.P, K=args.K)
 
     print('Finished!')

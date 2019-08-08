@@ -110,6 +110,7 @@ def vbranch_one_shot(sess, n_branches, total_runs=20, mode='concat',
 
     # Get graph tensors
     test_init_op = ['test_init_op_'+str(i+1) for i in range(n_branches)]
+    # test_init_op = 'test_init_op'
     outputs = []
     for i in range(n_branches):
         name = os.path.join(model_name, 'output/vb{}/output:0'.format(i+1))

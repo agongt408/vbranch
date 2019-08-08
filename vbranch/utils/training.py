@@ -171,7 +171,7 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
 
     return inputs, labels_one_hot, train_init_op, test_init_op
 
-def get_data_iterator_from_generator(train_gen, input_dim, n=1):
+def get_data_iterator_from_generator(generators, input_dim, n=1):
     """
     Create baseline/vbranch iterator from generator (train), and tensor slices
     (test). E.g., used for Omniglot dataset.
@@ -196,6 +196,7 @@ def get_data_iterator_from_generator(train_gen, input_dim, n=1):
     test_init_op = []
 
     for i in range(n):
+        train_gen = generators[i] if type(generators) is list else generators
         train_dataset = tf.data.Dataset.from_generator(wrap(train_gen),
             'float32', output_shapes=input_dim)
         test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)

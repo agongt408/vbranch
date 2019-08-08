@@ -35,6 +35,9 @@ parser.add_argument('--test', action='store_true', help='testing mode')
 parser.add_argument('--trials', action='store', default=1, nargs='?', type=int,
                     help='number of trials to perform, if 1, then model_id used')
 
+parser.add_argument('--path', action='store', nargs='?', default=None,
+                    help='manually specify path to save model checkpoint and results')
+
 def build_model(architecture, train_gen, input_dim, output_dim,
         lr_scheduler, **kwargs):
 
@@ -59,15 +62,24 @@ def build_model(architecture, train_gen, input_dim, output_dim,
                       schedulers={'lr:0': lr_scheduler})
     return model
 
-def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
-    model_path = get_model_path(dataset, arch, model_id=model_id)
+def train(dataset, arch, model_id, epochs,steps_per_epoch, path, **kwargs):
+    if path is None:
+        model_path = get_model_path(dataset, arch, n_classes,
+            samples_per_class, model_id)
+        dirpath = get_dir_path(dataset, arch, n_classes, samples_per_class)
+    else:
+        model_path = os.path.join('models', path, 'model_{}'.format(model_id))
+        if not os.path.isdir(model_path):
+            os.system('mkdir -p ' + model_path)
+        dirpath = path
+
+    # model_path = get_model_path(dataset, arch, model_id=model_id)
     p_console('Save model path: '+ model_path)
 
     tf.reset_default_graph()
 
     if dataset == 'omniglot':
-        train_gen = omniglot.load_generator('train', kwargs['A'], kwargs['P'],
-            kwargs['K'])
+        train_gen = omniglot.load_generator('train', **kwargs)
         input_dim = [None, 105, 105, 1]
         output_dim = 128
         lr_scheduler = lr_exp_decay_scheduler(0.001, 2*epochs//3, epochs, 0.001)
@@ -77,7 +89,6 @@ def train(dataset, arch, model_id, epochs,steps_per_epoch, **kwargs):
     model.summary()
 
     history = model.fit(epochs, steps_per_epoch, log_path=model_path)
-    dirpath = get_dir_path(dataset, arch)
     save_results(history, dirpath, 'train_%d.csv' % model_id, mode='w')
 
 def test(dataset, arch, model_id_list,train_dict={},test_dict={}, acc_dict={}):
@@ -181,13 +192,13 @@ if __name__ == '__main__':
             for id in args.model_id:
                 # Run trial with specified model ids
                 train(args.dataset, args.architecture,id,
-                    args.epochs,args.steps_per_epoch,
+                    args.epochs,args.steps_per_epoch, args.path,
                     A=args.A, P=args.P, K=args.K)
         else:
             # Run n trials with model id from 1 to args.trials
             for i in range(args.trials):
                 train(args.dataset, args.architecture,i+1,
-                    args.epochs,args.steps_per_epoch,
+                    args.epochs,args.steps_per_epoch, args.path,
                     A=args.A, P=args.P, K=args.K)
 
     print('Finished!')

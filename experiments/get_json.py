@@ -100,9 +100,11 @@ if __name__ == '__main__':
     else:
         params = args.params
 
-    baseline_results = get_results('baseline', *params,
-        dirpath=os.path.join(args.dir, f'{args.dataset}-{args.architecture}'),
-        metric=args.metric, epoch=args.epoch-1)
+    baseline_results = {}
+    for b in branches:
+        baseline_results[b] = get_results('baseline', *params,
+            dirpath=os.path.join(args.dir, f'{args.dataset}-{args.architecture}', f'B{b}'),
+            metric=args.metric, epoch=args.epoch-1)
 
     # ensemble_results = get_results('ensemble', *params,
     #     dirpath=os.path.join(args.dir, f'{args.dataset}-{args.architecture}'),

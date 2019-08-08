@@ -34,7 +34,7 @@ class Omniglot(object):
             else return triplet with shape [A, P, K, ...]
         Returns:
             numpy array"""
-
+        # print('sample')
         def sample(arr, n, replace=False):
             return np.random.choice(arr, n, replace=replace)
 
@@ -75,8 +75,13 @@ class Omniglot(object):
 
         return index_list, files_list
 
-def load_generator(set, *args):
-    return Omniglot(set, *args)
+def load_generator(set, A, P, K, sync=False, n_branches=1):
+    if sync:
+        sync_gen = SyncGenerator(A, P, K, n_branches)
+        branch_gen = [Slicer(sync_gen, i) for i in range(n_branches)]
+        return branch_gen
+
+    return Omniglot(set, A, P, K)
 
 def _extract_omniglot_images(set):
     # Clone Omniglot repo from GitHub if not in dir
@@ -102,3 +107,37 @@ def _extract_omniglot_images(set):
         raise ValueError('invalid data set')
 
     return dir_path
+
+# Enable non-replacement A sampling for multiple branches
+class SyncGenerator(object):
+    def __init__(self, A, P, K, n_branches):
+        self.A = A
+        self.P = P
+        self.K = K
+        self.n_branches = n_branches
+        self.gen = Omniglot('train', A*n_branches, P, K)
+        self.batch = None
+        self.requests = 0
+
+    def get(self, i):
+        if self.batch is None:
+            self.batch = next(self.gen)
+            self.requests = self.n_branches
+
+        start = i*self.A*self.P*self.K
+        end = (i+1)*self.A*self.P*self.K
+        branch_batch = self.batch[start: end]
+        self.requests -= 1
+
+        if self.requests == 0:
+            self.batch = None
+
+        return branch_batch
+
+class Slicer(object):
+    def __init__(self, parent, branch):
+        self.parent = parent
+        self.branch = branch
+
+    def __next__(self):
+        return self.parent.get(self.branch)

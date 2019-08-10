@@ -151,7 +151,7 @@ class ModelVB(NetworkVB):
         unshared_train_ops = []
 
         for i in range(self.n_branches):
-            loss = self.losses['loss_' + str(i+1)]
+            loss = self.losses[f'loss_{i+1}']
 
             # Compute gradients of shared vars for each branch
             # (but don't apply)
@@ -180,22 +180,17 @@ class ModelVB(NetworkVB):
         train_ops = [unshared_train_ops, shared_train_op]
         return train_ops
 
-        # train_ops = []
-        # for name, loss in self.losses.items():
-        #     train_ops.append(optimizer.minimize(loss))
-        # return train_ops
-
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},
         schedulers={}, n_branches=1, assign_ops=[], call_step=1, verbose=2):
     history = {}
 
     # Classification (training accuracy calculation)
-    train_dict_copy = copy(train_dict)
-    if train_dict is not None and 'batch_size:0' in list(train_dict.keys()) and \
-            'x:0' in list(train_dict.keys()):
-        train_dict_copy['x:0'] = train_dict_copy['x:0'][:500]
-        train_dict_copy['y:0'] = train_dict_copy['y:0'][:500]
+    train_dict_copy = {}
+    if train_dict is not None and 'x:0' in train_dict.keys() and \
+            'y:0' in train_dict.keys():
+        train_dict_copy['x:0'] = train_dict['x:0'][:500]
+        train_dict_copy['y:0'] = train_dict['y:0'][:500]
 
     with TFSessionGrow() as sess:
         # if 'beta1:0' in schedulers.keys():
@@ -203,8 +198,6 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         # else:
         sess.run(tf.global_variables_initializer())
         sess.run(assign_ops)
-        # print(sess.run('model/conv1/bias:0'))
-        # sess.run(train_init_op, feed_dict=train_dict)
 
         for e in range(epochs):
             print("Epoch {}/{}".format(e + 1, epochs))
@@ -214,11 +207,6 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
             sched_dict = {}
             for name, func in schedulers.items():
                 sched_dict[name] = func(e + 1)
-
-            # if e == 0:
-            #     batch = sess.run('input:0')
-            #     print(batch.min(), batch.max())
-            # print('init')
 
             for i in range(steps_per_epoch):
                 progbar_vals = []

@@ -1,5 +1,8 @@
 from ..slim import *
+from .weight_utils import load_weights_resnet
+
 from tensorflow import Tensor
+import pickle
 
 def SimpleCNNSmall(inputs, classes, name=None, shared_frac=None):
     return CNN(inputs, classes, 16, 32, name=name, shared_frac=shared_frac)
@@ -8,8 +11,23 @@ def SimpleCNNLarge(inputs, classes, name=None, shared_frac=None, subsample_initi
     return CNN(inputs, classes, 32, 64, 128, 256, name=name,
         shared_frac=shared_frac, subsample_initial=subsample_initial)
 
+def CNNCifar10(inputs, name=None, shared_frac=None, weights=None):
+    layers = [32, 64, 128]
+    n_classes = 10
+    model = CNN(inputs, n_classes, *layers, name='model',
+                        shared_frac=shared_frac, n_layers=2)
+
+    if weights is not None:
+        print('Loading weights for CNN...')
+        with open(weights, 'rb') as pickle_in:
+            weights_data = pickle.load(pickle_in)
+        assign_ops = load_weights_resnet(model, weights_data)
+        return model, assign_ops
+
+    return model
+
 def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None,
-        subsample_initial=False):
+        subsample_initial=False, n_layers=2):
     """
     Create SimpleCNN model; dynamically determine what type of model to use
     (i.e., Model or ModelVB)
@@ -38,7 +56,7 @@ def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None,
     if subsample_initial:
         # Initial convolution
         x = ZeroPadding2D(ip, padding=(3,3), name='conv1_pad')
-        x = Conv2D(x, 32, (7,7), strides=(2,2), name='conv1', padding='valid',
+        x = Conv2D(x, 32, (7,7), strides=(1,1), name='conv1', padding='valid',
                 shared=shared_frac)
         x = BatchNormalization(x, name='bn_conv1')
         x = Activation(x, 'relu')
@@ -57,7 +75,7 @@ def CNN(input_, final_spec, *layers_spec, name=None, shared_frac=None,
         else:
             raise ValueError('invalid layers spec:', spec)
 
-        for l in range(2):
+        for l in range(n_layers):
             # if l == 0 and i > 0:
             #     strides = 2
             # else:

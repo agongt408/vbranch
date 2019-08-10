@@ -67,14 +67,6 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     sess.run(test_init_ops, feed_dict=feed_dict)
     logits_list = sess.run(outputs)
 
-    # # Memory-constrained optimization
-    # logits_list = []
-    # for i in range(n_branches):
-    #     name = os.path.join(model_name, f'output/vb{i+1}/output:0')
-    #     test_init_op = f'test_init_op_{i+1}'
-    #     sess.run(test_init_op, feed_dict=feed_dict)
-    #     logits_list.append(sess.run(name))
-
     vbranch_acc = compute_acc_from_logits(logits_list, y, num_classes,mode=mode)
 
     baseline_acc_list = []
@@ -84,7 +76,7 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
 
     results['acc_ensemble'] = vbranch_acc
     for i, acc in enumerate(baseline_acc_list):
-        results['acc_' + str(i+1)] = acc
+        results[f'acc_{i+1}'] = acc
 
     return results
 
@@ -122,12 +114,13 @@ def margin(preds_per_model, labels, j):
     hit = (preds_per_model == labels).astype('int8')
     miss = (preds_per_model == j).astype('int8')
     result_per_model = hit - miss
+    print(np.mean(result_per_model, axis=0))
     return np.mean(result_per_model, axis=1)
 
 def compute_correlation_strength(outputs, labels_one_hot, n_classes, n_models):
     """
     Args:
-        - outputs: list of outputs with shape [n_models, n_samples]
+        - outputs: list of outputs with shape [n_models, n_samples, n_classes]
         - labels: one hot labels
     """
     preds = np.array([np.argmax(x, axis=1) for x in outputs]).transpose(1,0)
@@ -135,14 +128,14 @@ def compute_correlation_strength(outputs, labels_one_hot, n_classes, n_models):
     j_list = j_hat(preds, labels, n_classes)
 
     rmg_list = []
+    std_list = []
     for i in range(n_models):
-        rmg_list.append(rmg(preds[:, i], labels, j_list))
-
-    std_list = [np.std(x) for x in rmg_list]
+        x = rmg(preds[:, i], labels, j_list)
+        rmg_list.append(x)
+        std_list.append(np.std(x))
 
     num_list = []
     dem_list = []
-
     for i in range(n_models):
         for j in range(i+1, n_models):
             rho = np.corrcoef(rmg_list[0], rmg_list[1])[0,1]
@@ -153,6 +146,7 @@ def compute_correlation_strength(outputs, labels_one_hot, n_classes, n_models):
 
     strength_list = margin(preds, np.tile(labels[:, np.newaxis], [1,n_models]),
                            np.tile(j_list[:, np.newaxis], [1,n_models]))
+    # print(strength_list)
     strength = np.mean(strength_list)
 
     return mean_correlation, strength

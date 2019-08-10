@@ -10,6 +10,7 @@ class Conv2D(Layer):
         super().__init__(name, n_branches, merge)
 
         assert n_branches == len(filters_list),'n_branches != len(filters_list)'
+        assert type(kernel_size) in [int, list]
         self.filters_list = filters_list
         self.kernel_size = kernel_size
         self.strides = strides
@@ -24,9 +25,14 @@ class Conv2D(Layer):
         output_list = []
 
         # Calculate `fan_in` for weight initialization
-        fan_in = get_fan_in(x[0])
-        fan_out = int(np.mean(self.filters_list))
-        assert all([fan_out == units for units in self.filters_list])
+        if type(self.kernel_size) is int:
+            receptive_field_size = self.kernel_size**2
+        else:
+            receptive_field_size = self.kernel_size[0] * self.kernel_size[1]
+
+        fan_in = get_fan_in(x[0]) * receptive_field_size
+        fan_out = int(np.mean(self.filters_list)) * receptive_field_size
+        # assert all([fan_out == units for units in self.filters_list])
 
         if self.shared_filters > 0:
             # For efficiency, only apply computation to shared_in ONCE

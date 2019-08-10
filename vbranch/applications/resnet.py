@@ -36,7 +36,7 @@ def ResNet18(inputs, classes, name=None, shared_frac=None):
     kernel_spec = (3, 3)
     filter_spec = [(64, 64), (128, 128), (256, 256), (512, 512)]
     return ResNet(inputs, classes, layer_spec, kernel_spec, filter_spec,
-        name=name, shared_frac=shared_frac)
+        name=name, shared_frac=shared_frac, subsample_initial=False)
 
 def ResNet34(inputs, classes, name=None, shared_frac=None):
     layer_spec = (3, 4, 6, 3)
@@ -60,7 +60,7 @@ def ResNet152(inputs, classes, name=None, shared_frac=None):
         name=name, shared_frac=shared_frac)
 
 def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
-        shared_frac=None):
+        shared_frac=None, subsample_initial=True):
     """
     Construct ResNet model with additional FC layers
     Args:
@@ -119,14 +119,17 @@ def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
 
     ip = Input(input_)
 
-    # Initial convolution
-    x = ZeroPadding2D(ip, padding=(3,3), name='conv1_pad')
-    x = Conv2D(x, 64, (7,7), strides=(2,2), name='conv1', padding='valid',
-            shared=shared_frac)
-    x = BatchNormalization(x, name='bn_conv1')
-    x = Activation(x, 'relu')
-    x = ZeroPadding2D(x, padding=(1,1), name='pool1_pad')
-    x = MaxPooling2D(x, (3, 3), strides=(2, 2))
+    if subsample_initial:
+        # Initial convolution
+        x = ZeroPadding2D(ip, padding=(3,3), name='conv1_pad')
+        x = Conv2D(x, 64, (7,7), strides=(2,2), name='conv1', padding='valid',
+                shared=shared_frac)
+        x = BatchNormalization(x, name='bn_conv1')
+        x = Activation(x, 'relu')
+        x = ZeroPadding2D(x, padding=(1,1), name='pool1_pad')
+        x = MaxPooling2D(x, (3, 3), strides=(2, 2))
+    else:
+        x = ip
 
     for i, n_layers in enumerate(layer_spec):
         if i == 0:

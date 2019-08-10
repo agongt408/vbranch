@@ -110,7 +110,6 @@ def bag_samples(X, Y, n, max_samples=1.0, bootstrap=False):
 
     if type(max_samples) is float:
         samples = int(max_samples * len(X))
-        print(samples)
     elif type(max_samples) is int:
         samples = max_samples
     else:
@@ -214,3 +213,34 @@ def get_data_iterator_from_generator(generators, input_dim, n=1):
                 name=f'test_init_op_{i+1}'))
 
     return inputs, train_init_op, test_init_op
+
+# Enable non-replacement A sampling for multiple branches
+class SyncGenerator(object):
+    def __init__(self, generator, batch_size, n_branches):
+        self.n_branches = n_branches
+        self.gen = generator
+        self.batch = None
+        self.requests = 0
+
+    def get(self, i):
+        if self.batch is None:
+            self.batch = next(self.gen)
+            self.requests = self.n_branches
+
+        start = i*self.batch_size
+        end = (i+1)*self.batch_size
+        branch_batch = self.batch[start: end]
+        self.requests -= 1
+
+        if self.requests == 0:
+            self.batch = None
+
+        return branch_batch
+
+class Slicer(object):
+    def __init__(self, parent, branch):
+        self.parent = parent
+        self.branch = branch
+
+    def __next__(self):
+        return self.parent.get(self.branch)

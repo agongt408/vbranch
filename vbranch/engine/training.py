@@ -81,7 +81,7 @@ class ModelVB(NetworkVB):
             labels_list = [labels] * self.n_branches
 
         self.losses = self._get_losses(loss, labels_list)
-        self.train_ops = self._get_train_ops(optimizer)
+        self.train_ops = self._get_train_ops(optimizer, self.name)
 
         self.train_init_ops = train_init_ops
         self.test_init_ops = test_init_ops
@@ -116,7 +116,7 @@ class ModelVB(NetworkVB):
             self.assign_ops, call_step=call_step, verbose=verbose)
         return history
 
-    def _get_shared_unshared_vars(self):
+    def _get_vars(self, scope):
         """
         Returns shared variables (in order to later average gradients)
         and unshared variables (unique to each branch)"""
@@ -124,8 +124,7 @@ class ModelVB(NetworkVB):
         shared_vars = []
         unshared_vars = [[] for i in range(self.n_branches)]
 
-        all_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-            scope=self.name)
+        all_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
 
         for var in all_vars:
             if 'shared_to_shared' in var.name:
@@ -145,8 +144,8 @@ class ModelVB(NetworkVB):
             losses[name] = loss(labels[i], self.output[i], name=name)
         return losses
 
-    def _get_train_ops(self, optimizer):
-        self.shared_vars, self.unshared_vars = self._get_shared_unshared_vars()
+    def _get_train_ops(self, optimizer, scope):
+        self.shared_vars, self.unshared_vars = self._get_vars(scope)
         shared_grads = []
         unshared_train_ops = []
 
@@ -179,6 +178,13 @@ class ModelVB(NetworkVB):
 
         train_ops = [unshared_train_ops, shared_train_op]
         return train_ops
+
+    def set_trainable(self, scope=None):
+        if scope is None:
+            scope = self.name
+
+        print(f'Assigning gradients to scope {scope}')
+        self.train_ops = self._get_train_ops(self.optimizer, scope)
 
 def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
         loss_op, train_op, val_dict=None, save_model_path=None, callbacks={},

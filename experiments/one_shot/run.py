@@ -2,10 +2,10 @@ import os
 
 # Omniglot
 
-for num_branches in range(2, 7):
+for num_branches in range(3, 5):
     cmd = f'python experiments/one_shot/baseline.py ' \
-        f'--architecture simple --dataset omniglot --epochs 60 --trials 4 --A {num_branches} ' \
-        f'--path omniglot_zero/omniglot-simple/B{num_branches}'
+        f'--architecture simple --dataset omniglot --epochs 60 --trials 1 --A {num_branches} ' \
+        f'--path omniglot_zero/omniglot-simple/B{num_branches} --model_id 5 6 7 8'
     os.system(cmd)
 
     # model_id_list = ''
@@ -21,5 +21,5 @@ for num_branches in range(2, 7):
         cmd = f'python experiments/one_shot/vbranch.py ' \
             f'--architecture simple --dataset omniglot --epochs 60 ' \
             f'--num_branches {num_branches} --shared_frac {shared_frac} ' \
-            f'--trials 4 --A 1 --path omniglot_zero/vb-omniglot-simple'
+            f'--trials 1 --A 1 --path omniglot_zero/vb-omniglot-simple --model_id 5 6 7 8'
         os.system(cmd)

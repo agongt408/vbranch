@@ -116,11 +116,12 @@ def DenseNet(blocks, inputs, weights='imagenet', classes=1000,
     x = BatchNormalization(x, epsilon=1.001e-5, name='bn')
     x = Activation(x, 'relu', name='relu')
 
-    x = GlobalAveragePooling2D(x, name='avg_pool')
-    x = Dense(x, 1024, shared=shared_frac)
-    x = BatchNormalization(x)
-    x = Activation(x, 'relu')
-    x = Dense(x, classes, name='output', merge=True)
+    with tf.variable_scope('top'):
+        x = GlobalAveragePooling2D(x, name='avg_pool')
+        x = Dense(x, 1024, shared=shared_frac)
+        x = BatchNormalization(x)
+        x = Activation(x, 'relu')
+        x = Dense(x, classes, name='output', merge=True)
 
     if type(inputs) is list:
         model = ModelVB(img_input, x, name=name)

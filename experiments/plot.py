@@ -8,7 +8,7 @@ def plot_line(results, branches, n_trials=8, p1=[], p2=None, show=True):
 
     if len(p1) == 0:
         # baseline_acc = results['baseline'][0]
-        # baseline_acc = results['baseline'][str(branches)][0]
+        baseline_acc = results['baseline'][str(branches)][0]
         vbranch_acc = []
         vbranch_std = []
 
@@ -19,8 +19,8 @@ def plot_line(results, branches, n_trials=8, p1=[], p2=None, show=True):
 
         error = np.array(vbranch_std) / np.sqrt(n_trials)
         plt.errorbar(shared_frac, vbranch_acc, error*2, label='vbranch')
-        # plt.plot(shared_frac, [baseline_acc]*len(shared_frac),
-        #          label='baseline', linestyle='--')
+        plt.plot(shared_frac, [baseline_acc]*len(shared_frac),
+                 label='baseline', linestyle='--')
     else:
         for p in p1:
             if p2 is None:

@@ -10,7 +10,7 @@ class Conv2D(Layer):
         super().__init__(name, n_branches, merge)
 
         assert n_branches == len(filters_list),'n_branches != len(filters_list)'
-        assert type(kernel_size) in [int, list]
+        assert type(kernel_size) in [int, list, tuple], kernel_size
         self.filters_list = filters_list
         self.kernel_size = kernel_size
         self.strides = strides

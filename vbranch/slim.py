@@ -15,7 +15,9 @@ import tensorflow as tf
 # Core
 
 def Input(x):
-    if type(x) is list:
+    assert isinstance(x, tf.Tensor) or type(x) in [list, tuple]
+    if type(x) in [list, tuple]:
+        x = list(x)
         return VBL.Input(x, len(x))
     return L.Input(x)
 

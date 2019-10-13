@@ -75,7 +75,7 @@ class ModelVB(NetworkVB):
 
         self.optimizer = optimizer
 
-        if type(labels) is list:
+        if type(labels) in [list, tuple]:
             labels_list = labels
         else:
             labels_list = [labels] * self.n_branches
@@ -141,6 +141,8 @@ class ModelVB(NetworkVB):
         losses = {}
         for i in range(self.n_branches):
             name = 'loss_'+str(i+1)
+            # print(labels[i], self.output[i])
+            # print(len(labels[i]))
             losses[name] = loss(labels[i], self.output[i], name=name)
         return losses
 
@@ -195,8 +197,8 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
     train_dict_copy = {}
     if train_dict is not None and 'x:0' in train_dict.keys() and \
             'y:0' in train_dict.keys():
-        train_dict_copy['x:0'] = train_dict['x:0'][:500]
-        train_dict_copy['y:0'] = train_dict['y:0'][:500]
+        train_dict_copy['x:0'] = train_dict['x:0'][:1000]
+        train_dict_copy['y:0'] = train_dict['y:0'][:1000]
 
     with TFSessionGrow() as sess:
         # if 'beta1:0' in schedulers.keys():
@@ -215,6 +217,8 @@ def _fit(train_init_op, test_init_op, train_dict, epochs, steps_per_epoch,
                 sched_dict[name] = func(e + 1)
 
             for i in range(steps_per_epoch):
+                # print('batch labels>', sess.run('input_1:1').shape)
+                # print('logits>', sess.run('model/top/output/vb1/output:0').shape)
                 progbar_vals = []
                 for name, sched in sched_dict.items():
                     progbar_vals.append((name, sched))

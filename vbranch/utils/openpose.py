@@ -53,6 +53,9 @@ class Coord:
     def __str__(self):
         return '({},{})'.format(self.x, self.y)
 
+    def isNull(self):
+        return (self.x == 0 or self.y == 0)
+
 def distance(p1, p2):
     return np.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2)
 
@@ -65,8 +68,11 @@ def get_pose_score(bodyKeypoints, eps=1e-4):
     LShoulder = get_xy(bodyKeypoints, 'LShoulder')
     RHip = get_xy(bodyKeypoints, 'RHip')
     LHip = get_xy(bodyKeypoints, 'LHip')
-    if abs(RShoulder.x - LShoulder.x) < 0.01:
-        print('69>', RShoulder, LShoulder)
+
+    if RShoulder.isNull() or LShoulder.isNull():
+        return None
+    # if abs(RShoulder.x - LShoulder.x) < 0.01:
+    #     print('69>', RShoulder, LShoulder)
 
     mu = -(RShoulder.x - LShoulder.x) / (eps + abs(RShoulder.x - LShoulder.x))
     torso_width = distance(RShoulder, LShoulder)
@@ -75,7 +81,10 @@ def get_pose_score(bodyKeypoints, eps=1e-4):
     return (mu + eps) *  torso_width / torso_height
 
 def get_theta(bodyKeypoints):
-    cos = min(max(get_pose_score(bodyKeypoints), -1), 1)
+    pose_score = get_pose_score(bodyKeypoints)
+    if not pose_score:
+        return None
+    cos = min(max(pose_score, -1), 1)
     return np.arccos(cos)
 
 def get_pose(bodyKeypoints, n=3):
@@ -86,8 +95,16 @@ def get_pose(bodyKeypoints, n=3):
         - n: number of possible pose orientations (0=front, `n-1`=back)
     """
     theta = get_theta(bodyKeypoints)
+    if not theta:
+        return -1
+
     for i in range(n):
         if theta < (i + 1) * np.pi / n:
             return i
     # back
     return n - 1
+
+def get_pose_from_name(keypoint_data, name, n_poses):
+    if name in keypoint_data.keys():
+        return get_pose(keypoint_data[name], n_poses)
+    return -1

@@ -71,7 +71,12 @@ How to decrease correlation between virtual branches?
 
 What is effect of varying shared_frac throughout the model (e.g., could lower level of sharing for lower layers help propagate variance to final layers)?
 
+Person re-ID: ignore samples that cannot be detected properly by OpenPose
+
 ### Related Papers
+ArXiv pre-print: "Virtual CNN Branching: Efficient Feature Ensemble for Person Re-Identification"
+https://arxiv.org/pdf/1803.05872.pdf
+
 http://openaccess.thecvf.com/content_cvpr_2018/papers/Rebuffi_Efficient_Parametrization_of_CVPR_2018_paper.pdf
 
 https://arxiv.org/pdf/1511.02954.pdf

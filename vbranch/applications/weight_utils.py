@@ -100,6 +100,7 @@ def load_weights_densenet(model, weights, growth_rate=32, init_dim=64):
                     # Reset concat layer only after reaching first conv layer
                     concat_layer = None
                 elif isinstance(layer, vb_layers.BatchNormalization):
+                    # print(layer.name)
                     # # Estimate shared_frac
                     shared_frac = get_fan_in(layer._inbound_tensors[0][0][0]) / \
                         get_fan_in(layer._inbound_tensors[0][0])
@@ -225,7 +226,7 @@ def get_vb_assign_conv_concat(layer, weight, growth_rate, init_dim, shared_frac)
     shared, unique = rearrange_4d(weight['filter'], growth_rate,
         init_dim, shared_frac)
     filter_value = np.concatenate([shared, unique], axis=-2)
-    return get_vb_assign_conv(layer, filter_value)
+    return get_vb_assign_conv(layer, {'filter': filter_value})
 
 def get_vb_assign_bn_concat(layer, weight, growth_rate, init_dim, shared_frac):
     scale_shared, scale_unique = rearrange_1d(weight['scale'],
@@ -236,7 +237,7 @@ def get_vb_assign_bn_concat(layer, weight, growth_rate, init_dim, shared_frac):
         growth_rate, init_dim, shared_frac)
     beta_value = np.concatenate([beta_shared, beta_unique])
 
-    return get_vb_assign_bn(layer, scale_value, beta_value)
+    return get_vb_assign_bn(layer, {'scale': scale_value, 'beta':beta_value})
 
 def rearrange_4d(weight, growth_rate, init_dim, shared_frac):
     fan_in = weight.shape[-2]

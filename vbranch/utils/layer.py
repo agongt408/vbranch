@@ -119,12 +119,15 @@ def check_2d_param(p):
     return p_list
 
 def get_fan_in(inputs):
+    def func(x):
+        if isinstance(x, EmptyOutput):
+            fan_in = 0
+        else:
+            fan_in = x.get_shape().as_list()[-1]
+        return fan_in
+
     if type(inputs) is list:
-        fan_in_list = []
-        for x in inputs:
-            if not isinstance(x, EmptyOutput):
-                fan_in_list.append(x.get_shape().as_list()[-1])
-        fan_in = np.sum(fan_in_list)
+        fan_in = np.sum([func(x) for x in inputs])
     else:
-        fan_in = inputs.get_shape().as_list()[-1]
+        fan_in = func(inputs)
     return fan_in

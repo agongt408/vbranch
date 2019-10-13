@@ -29,16 +29,20 @@ def compute_acc_from_logits(logits, y_test_one_hot, num_classes=None, mode=None)
     return compute_acc_from_prob(pred, y_test_one_hot, num_classes)
 
 def baseline_classification(sess, x, y, model_name='model', num_classes=None,
-        return_logits=False):
+        return_logits=False, batch_size=None):
     # Convert labels to one-hot if needed
     if not isinstance(y, np.ndarray):
         y = np.array(y)
     if len(y.shape) == 1:
         y = tf.keras.utils.to_categorical(y, num_classes)
 
-    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
+    batch_size = len(x) if batch_size is None else batch_size
+    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': batch_size}
     sess.run('test_init_op', feed_dict=feed_dict)
-    logits = sess.run(os.path.join(model_name, 'output/output:0'))
+    logits_list = []
+    for _ in range(len(x) // batch_size):
+        logits_list.append(sess.run(os.path.join(model_name, 'top/output/output:0')))
+    logits = np.concatenate(logits_list)
 
     if return_logits:
         return compute_acc_from_logits(logits, y, num_classes), logits
@@ -47,7 +51,7 @@ def baseline_classification(sess, x, y, model_name='model', num_classes=None,
     return results
 
 def vbranch_classification(sess, x, y, n_branches, model_name='model',
-        num_classes=None, mode='before', return_logits=False):
+        num_classes=None, mode='before', return_logits=False, batch_size=None):
     results = {}
 
     # Convert to one-hot if needed
@@ -59,13 +63,22 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     outputs = []
     test_init_ops = []
     for i in range(n_branches):
-        name = os.path.join(model_name, f'output/vb{i+1}/output:0')
+        name = os.path.join(model_name, f'top/output/vb{i+1}/output:0')
         outputs.append(name)
         test_init_ops.append(f'test_init_op_{i+1}')
 
-    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
+    batch_size = len(x) if batch_size is None else batch_size
+    feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': batch_size}
     sess.run(test_init_ops, feed_dict=feed_dict)
-    logits_list = sess.run(outputs)
+    logits_list = []
+    for _ in range(len(x) // batch_size):
+        logits_list.append(sess.run(outputs))
+    logits_list = [np.concatenate(x) for x in zip(*logits_list)]
+    # print(len(logits_list), logits_list[0].shape)
+
+    # feed_dict = {'x:0': x, 'y:0':y, 'batch_size:0': len(x)}
+    # sess.run(test_init_ops, feed_dict=feed_dict)
+    # logits_list = sess.run(outputs)
 
     vbranch_acc = compute_acc_from_logits(logits_list, y, num_classes,mode=mode)
 

@@ -61,10 +61,11 @@ class DataGenerator(object):
 
                     path = os.path.join(dir, name)
                     camera = int(name[name.index('_')+2 : name.index('_')+3])
-                    if name in keypoint_data.keys():
-                        pose = op.get_pose(keypoint_data[name], n_poses)
-                    else:
-                        pose = -1
+                    # if name in keypoint_data.keys():
+                    #     pose = op.get_pose(keypoint_data[name], n_poses)
+                    # else:
+                    #     pose = -1
+                    pose = op.get_pose_from_name(keypoint_data, name, n_poses)
 
                     if pose_orientation is None:
                         files_arr.append([path, idt, camera, pose])

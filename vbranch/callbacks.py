@@ -2,15 +2,15 @@ from .utils.test.classification import baseline_classification, vbranch_classifi
 from .utils.test.one_shot import baseline_one_shot, vbranch_one_shot
 from .utils.test.reid import get_score
 
-def classification_acc(n_branches=1, n_classes=None):
+def classification_acc(n_branches=1, n_classes=None, batch_size=None):
     """Compute classification accuracy"""
     def func(sess, feed_dict):
         return baseline_classification(sess, feed_dict['x:0'], feed_dict['y:0'],
-            num_classes=n_classes)
+            num_classes=n_classes, batch_size=batch_size)
 
     def vb_func(sess, feed_dict):
         return vbranch_classification(sess, feed_dict['x:0'], feed_dict['y:0'],
-            n_branches, num_classes=n_classes)
+            n_branches, num_classes=n_classes, batch_size=batch_size)
 
     if n_branches == 1:
         return func

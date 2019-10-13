@@ -110,9 +110,10 @@ def ResNet(input_, classes, layer_spec, kernel_spec, filter_spec, name=None,
         return x
 
     # Create model
-    assert isinstance(input_, Tensor) or type(input_) is list
-    vb_mode = (type(input_) is list)
+    assert isinstance(input_, Tensor) or type(input_) in [list, tuple]
+    vb_mode = (type(input_) in [list, tuple])
     if vb_mode:
+        input_ = list(input_)
         assert shared_frac is not None
         assert shared_frac >= 0 and shared_frac <= 1
         shared_frac = float(shared_frac)

@@ -28,7 +28,16 @@ class VBOutput(object):
         return self.content[i]
 
     def to_list(self):
-        return self.content
+        def replace_empty(x):
+            if type(x) is list:
+                if len(x) == 0:
+                    return []
+                else:
+                    return [replace_empty(x[0])] + replace_empty(x[1:])
+            else:
+                return [] if isinstance(x, EmptyOutput) else x
+
+        return replace_empty(self.content)
 
     def __repr__(self):
         return str(self.content)

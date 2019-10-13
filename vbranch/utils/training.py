@@ -17,6 +17,17 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay, warm_up=0):
         return lr
     return func
 
+def lr_step_scheduler(*args):
+    """
+    args must be in format (lr, t), (lr, t), ...
+    """
+    def func(episode):
+        i = 0
+        while episode > args[i][0]:
+            i += 1
+        return args[i][1]
+    return func
+
 # # https://arxiv.org/pdf/1807.00537.pdf
 # def lr_warm_up_scheduler():
 #     """NOTE: `episode` starts from 1"""
@@ -170,7 +181,7 @@ def get_data_iterator(x_shape, y_shape, batch_size, n=1, share_xy=True):
 
     return inputs, labels_one_hot, train_init_op, test_init_op
 
-def get_data_iterator_from_generator(generators, input_dim, n=1):
+def get_data_iterator_from_generator(generators, input_dim, n=1, labels=False):
     """
     Create baseline/vbranch iterator from generator (train), and tensor slices
     (test). E.g., used for Omniglot dataset.
@@ -187,7 +198,13 @@ def get_data_iterator_from_generator(generators, input_dim, n=1):
                 yield batch
         return func
 
-    x = tf.placeholder('float32', input_dim, name='x')
+    if labels:
+        x = (tf.placeholder('float32', input_dim[0], name='x'),
+            tf.placeholder('float32', input_dim[1], name='y'))
+        output_types = ('float32', 'float32')
+    else:
+        x = tf.placeholder('float32', input_dim, name='x')
+        output_types = 'float32'
     batch_size = tf.placeholder('int64', name='batch_size')
 
     inputs = []
@@ -196,10 +213,11 @@ def get_data_iterator_from_generator(generators, input_dim, n=1):
 
     for i in range(n):
         train_gen = generators[i] if type(generators) is list else generators
+        print(output_types, input_dim)
         train_dataset = tf.data.Dataset.from_generator(wrap(train_gen),
-            'float32', output_shapes=input_dim)
+            output_types, output_shapes=input_dim)
         test_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
-        iterator = tf.data.Iterator.from_structure('float32', input_dim)
+        iterator = tf.data.Iterator.from_structure(output_types, input_dim)
 
         if n == 1:
             inputs = iterator.get_next('input')
@@ -212,6 +230,7 @@ def get_data_iterator_from_generator(generators, input_dim, n=1):
             test_init_op.append(iterator.make_initializer(test_dataset,
                 name=f'test_init_op_{i+1}'))
 
+    inputs = [list(x) for x in zip(*inputs)] if labels and n>1 else inputs
     return inputs, train_init_op, test_init_op
 
 # Enable non-replacement A sampling for multiple branches

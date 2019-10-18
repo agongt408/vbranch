@@ -3,6 +3,8 @@ import numpy as np
 
 def load_data(one_hot=True, preprocess=False):
     (X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    # print('Mean:', np.mean(X_train/255. - 1, axis=(0,1,2)))
+    # print('Std:', np.std(X_train/255. - 1, axis=(0,1,2)))
 
     if preprocess:
         X_train = preprocess_im(X_train)

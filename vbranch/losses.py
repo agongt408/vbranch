@@ -1,8 +1,14 @@
 import tensorflow as tf
 
-def softmax_cross_entropy_with_logits():
+def softmax_cross_entropy_with_logits(weight_decay=1.0e-4):
     """Cross entropy loss"""
-    return _softmax_cross_entropy_with_logits
+    def func(y, pred, name='loss'):
+        vars = tf.trainable_variables()
+        # print(vars, weight_decay)
+        l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in vars]) * weight_decay
+        entropy_loss = _softmax_cross_entropy_with_logits(y, pred)
+        return tf.add(entropy_loss, l2_loss, name=name)
+    return func
 
 def triplet(P, K, margin='soft'):
     """

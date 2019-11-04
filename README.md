@@ -4,10 +4,11 @@ Main idea: Partially share parameters between multiple models (“branches”) i
 
 Datasets:
 - MNIST
-- Toy classification dataset (generated using SciPy)
 - CIFAR10
 - Omniglot (triplet loss)
 - Market 1501 (person re-identification) (triplet loss)
+
+We perform analysis on strength and correlation between branches in order to explore how varying the level of parameter sharing affects ensemble performance (based on Random Forest paper).
 
 The vbranch implementation is modeled after Keras. Currently supported layers include Dense, Batch Normalization, Conv2D, padding layers, and pooling layers. We provide implementations of ResNet and DenseNet.
 
@@ -45,10 +46,6 @@ Correlation and Strength (from Random Forest paper):
 
 CNN = 1 (input) -> 32 -> 32 -> 64 -> 64 -> 128 -> 128 -> 256 -> 256 filters; batch norm, relu; softmax; 90 epochs;
 learning rate = 0.001; concatenate embeddings
-
-### Toy
-
-[toy-classification-results](toy-classification.ipynb)
 
 ## Notes
 

@@ -1,41 +1,28 @@
 # Virtual Branching
 
-- Simple ensemble
-- Multiple branches (same data)
-- Multiple branches (different data, equally sized partitions)
-- Multiple branches (different data, differently sized partitions)
+Main idea: Partially share parameters between multiple models (“branches”) in order to reduce overall parameter footprint while maintaining feature diversity (increased feature diversity generally leads to improved ensemble performance). We also incorporate bagging to further improve performance.
 
 Datasets:
 - MNIST
-- Toy classification dataset
-- Omniglot
-- Person Re-ID (future)
+- Toy classification dataset (generated using SciPy)
+- CIFAR10
+- Omniglot (triplet loss)
+- Market 1501 (person re-identification) (triplet loss)
+
+The vbranch implementation is modeled after Keras. Currently supported layers include Dense, Batch Normalization, Conv2D, padding layers, and pooling layers. We provide implementations of ResNet and DenseNet.
+
+ArXiv pre-print: "Virtual CNN Branching: Efficient Feature Ensemble for Person Re-Identification"
+https://arxiv.org/pdf/1803.05872.pdf
 
 ## Results
 
 ### MNIST
 
-![fcn-results](old/06072019/figs/fcn-2-results.png)
-![fcn-results](old/06072019/figs/fcn-3-results.png)
-![fcn-results](old/06072019/figs/fcn-4-results.png)
+![fcn-results](figs/paper/mnist-fcn-2.png)
+![fcn-results](figs/paper/mnist-fcn-3.png)
+![fcn-results](figs/paper/mnist-fcn-4.png)
 
-FCN = 784 (input) -> 512 -> 10 (output); batch norm, relu; softmax; 15 epochs;
-learning rate = 0.001; test = before mean acc
-
-![fcn2-results](old/06072019/figs/fcn2-2-results.png)
-![fcn2-results](old/06072019/figs/fcn2-3-results.png)
-![fcn2-results](old/06072019/figs/fcn2-4-results.png)
-
-FCN = 784 (input) -> 512 -> 256 -> 10 (output); batch norm, relu; softmax; 15 epochs;
-learning rate = 0.001; test = before mean acc
-
-** No batch norm or relu for final FC layer (output layer); improves performance for shared_frac=1; for figures with batch norm/relu after final FC layer, see [old-fcn](old/04272019/figs)
-
-![cnn-results](old/04272019/figs/cnn-2-results.png)
-![cnn-results](old/04272019/figs/cnn-3-results.png)
-![cnn-results](old/04272019/figs/cnn-4-results.png)
-
-CNN = 1 (input) -> 16 -> 16 -> 32 -> 32 filters; batch norm, relu; softmax; 30 epochs;
+FCN = 784 (input) -> 512 -> 10 (output); batch norm, relu; softmax; 20 epochs;
 learning rate = 0.001; test = before mean acc
 
 Training graph:
@@ -74,8 +61,6 @@ What is effect of varying shared_frac throughout the model (e.g., could lower le
 Person re-ID: ignore samples that cannot be detected properly by OpenPose
 
 ### Related Papers
-ArXiv pre-print: "Virtual CNN Branching: Efficient Feature Ensemble for Person Re-Identification"
-https://arxiv.org/pdf/1803.05872.pdf
 
 http://openaccess.thecvf.com/content_cvpr_2018/papers/Rebuffi_Efficient_Parametrization_of_CVPR_2018_paper.pdf
 

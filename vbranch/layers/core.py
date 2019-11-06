@@ -1,5 +1,5 @@
 from ..utils.layer import *
-from ..initializers import glorot_uniform
+from ..initializers import glorot_uniform, rectifier_init
 
 import tensorflow as tf
 from os.path import join
@@ -72,11 +72,14 @@ class Dense(Layer):
             return EmptyOutput()
 
         n_in = x.get_shape().as_list()[-1]
-        if self.fan_in is not None and self.fan_out is not None:
-            self.w = tf.get_variable('weight', initializer=\
-                glorot_uniform([n_in, self.units], self.fan_in, self.fan_out))
-        else:
-            self.w = tf.get_variable('weight', shape=[n_in, self.units])
+
+        if self.fan_in is None or self.fan_out is None:
+            self.fan_in = n_in
+            self.fan_out = self.units
+
+        self.w = tf.get_variable('weight', initializer=\
+            # glorot_uniform([n_in, self.units], self.fan_in, self.fan_out))
+            rectifier_init([n_in, self.units], self.fan_in))
 
         if self.use_bias:
             self.b = tf.get_variable('bias', initializer=tf.zeros([self.units]))

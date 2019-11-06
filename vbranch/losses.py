@@ -3,6 +3,9 @@ import tensorflow as tf
 def softmax_cross_entropy_with_logits(weight_decay=1.0e-4):
     """Cross entropy loss"""
     def func(y, pred, name='loss'):
+        if weight_decay == 0:
+            return _softmax_cross_entropy_with_logits(y, pred, name)
+
         vars = tf.trainable_variables()
         # print(vars, weight_decay)
         l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in vars]) * weight_decay

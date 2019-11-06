@@ -32,7 +32,7 @@ class Conv2D(Layer):
 
         fan_in = get_fan_in(x[0]) * receptive_field_size
         fan_out = int(np.mean(self.filters_list)) * receptive_field_size
-        # assert all([fan_out == units for units in self.filters_list])
+        assert all([fan_out == units for units in self.filters_list])
 
         if self.shared_filters > 0:
             # For efficiency, only apply computation to shared_in ONCE
@@ -44,7 +44,7 @@ class Conv2D(Layer):
             if self.shared_filters == 0:
                 layer = L.Conv2D(self.filters_list[i], self.kernel_size,
                     'vb'+str(i+1), strides=self.strides, padding=self.padding,
-                    use_bias=self.use_bias)
+                    fan_in=fan_in, fan_out=fan_out, use_bias=self.use_bias)
 
                 x_out = layer(smart_concat(x[i], -1))
                 self.branches.append(layer)

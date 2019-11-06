@@ -54,15 +54,18 @@ class DataGeneratorTrain(object):
 
         padded_batch = self.X_train[self.it*self.batch_size:(self.it+1)*self.batch_size]
         labels = self.y_train[self.it*self.batch_size:(self.it+1)*self.batch_size]
-        batch = []
 
-        for im in padded_batch:
-            crop_x = np.random.randint(2*self.padding)
-            crop_y = np.random.randint(2*self.padding)
-            im = im[crop_y:self.im_size+crop_y, crop_x:self.im_size+crop_x]
-            if self.flip and np.random.random() < 0.5:
-                im = np.flip(im, axis=1)
-            batch.append(im)
+        if self.padding > 0:
+            batch = []
+            for im in padded_batch:
+                crop_x = np.random.randint(2*self.padding)
+                crop_y = np.random.randint(2*self.padding)
+                im = im[crop_y:self.im_size+crop_y, crop_x:self.im_size+crop_x]
+                if self.flip and np.random.random() < 0.5:
+                    im = np.flip(im, axis=1)
+                batch.append(im)
+        else:
+            batch = padded_batch
 
         self.it = (self.it + 1) % self.steps_per_epoch
         return np.stack(batch), np.array(labels)

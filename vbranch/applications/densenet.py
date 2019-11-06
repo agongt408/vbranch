@@ -197,6 +197,8 @@ def DenseNet3(depth, growth_rate, inputs,
     x = dense_block(x, n_layers, 'conv3', shared_frac_blocks[1], growth_rate)
     x = transition_block(x, 0.5, 'pool3', shared_frac_blocks[1])
     x = dense_block(x, n_layers, 'conv4', shared_frac_blocks[2], growth_rate)
+    # x = transition_block(x, 0.5, 'pool4', shared_frac_blocks[1])
+    # x = dense_block(x, n_layers, 'conv5', shared_frac_blocks[2], growth_rate)
 
     x = BatchNormalization(x, epsilon=1.001e-5, name='bn')
     x = Activation(x, 'relu', name='relu')

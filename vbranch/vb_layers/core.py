@@ -182,7 +182,9 @@ class Dense(Layer):
 
         for i in range(self.n_branches):
             if self.shared_units == 0:
-                layer = L.Dense(self.units_list[i], 'vb'+str(i+1))
+                layer = L.Dense(self.units_list[i], 'vb'+str(i+1),
+                    fan_in=fan_in, fan_out=fan_out)
+
                 x_out = layer(smart_concat(x[i], -1))
                 self.branches.append(layer)
                 output_list.append([EmptyOutput(), x_out])

@@ -11,7 +11,7 @@ class Layer(object):
 
     @eval_params
     def get_weights(self):
-        scope = join(self.model_scope, self.name) + '/'
+        scope = self.model_scope + '/' + self.name + '/'
         weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
         return weights
 

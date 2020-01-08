@@ -32,7 +32,7 @@ class Conv2D(Layer):
 
         fan_in = get_fan_in(x[0]) * receptive_field_size
         fan_out = int(np.mean(self.filters_list)) * receptive_field_size
-        assert all([fan_out == units for units in self.filters_list])
+        # assert all([fan_out == units for units in self.filters_list])
 
         if self.shared_filters > 0:
             # For efficiency, only apply computation to shared_in ONCE

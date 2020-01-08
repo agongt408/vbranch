@@ -19,7 +19,7 @@ def lr_exp_decay_scheduler(init_lr, t0, t1, decay, warm_up=0):
 
 def lr_step_scheduler(*args):
     """
-    args must be in format (lr, t), (lr, t), ...
+    args must be in format (t, lr), (t, lr), ...
     """
     def func(episode):
         i = 0

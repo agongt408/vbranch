@@ -1,7 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
-def load_data(one_hot=True, preprocess=False):
+def load_data(one_hot=True, preprocess=False, 
+        random_crop=False, random_flip=True, multiple=3):
     (X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
     # print('Mean:', np.mean(X_train/255. - 1, axis=(0,1,2)))
     # print('Std:', np.std(X_train/255. - 1, axis=(0,1,2)))
@@ -10,6 +11,34 @@ def load_data(one_hot=True, preprocess=False):
         X_train = preprocess_im(X_train)
         X_test = preprocess_im(X_test)
 
+    if random_crop:
+        augmented_images = []
+        augmented_labels = []
+        padding, imsize = 2, 32
+        
+        pad_spec = ((0,0), (padding, padding), (padding, padding), (0,0))
+        padded_images = np.pad(X_train, pad_spec, 'constant', constant_values=0)
+
+        for im, lb in zip(padded_images, y_train):
+            for _ in range(multiple):
+                crop_x = np.random.randint(2*padding)
+                crop_y = np.random.randint(2*padding)
+                cropped_im = im[crop_y:imsize+crop_y, crop_x:imsize+crop_x]
+                
+                if np.random.random() < 0.5:
+                    cropped_im = np.flip(cropped_im, axis=1)
+                    
+                augmented_images.append(cropped_im)
+                augmented_labels.append(lb)
+
+        X_train = augmented_images
+        y_train = augmented_labels
+
+    if random_flip:
+        for i in range(len(X_train)):
+            if np.random.random() < 0.5:
+                X_train[i] = np.flip(X_train[i], axis=1)
+                
     if one_hot:
         num_classes = 10
         y_train = tf.keras.utils.to_categorical(y_train, num_classes)

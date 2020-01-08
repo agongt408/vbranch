@@ -41,7 +41,7 @@ def baseline_classification(sess, x, y, model_name='model', num_classes=None,
     sess.run('test_init_op', feed_dict=feed_dict)
     logits_list = []
     for _ in range(len(x) // batch_size):
-        logits_list.append(sess.run(os.path.join(model_name, 'top/output/output:0')))
+        logits_list.append(sess.run(f'{model_name}/top/output/output:0'))
     logits = np.concatenate(logits_list)
 
     if return_logits:
@@ -63,8 +63,7 @@ def vbranch_classification(sess, x, y, n_branches, model_name='model',
     outputs = []
     test_init_ops = []
     for i in range(n_branches):
-        name = os.path.join(model_name, f'top/output/vb{i+1}/output:0')
-        outputs.append(name)
+        outputs.append(f'{model_name}/top/output/vb{i+1}/output:0')
         test_init_ops.append(f'test_init_op_{i+1}')
 
     batch_size = len(x) if batch_size is None else batch_size

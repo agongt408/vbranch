@@ -68,25 +68,23 @@ def conv_block(x, growth_rate, name, shared):
     x = Concatenate([x, x1], name=name + '_concat')
     return x
 
-def DenseNet4(blocks, inputs,
+def DenseNetImageNet(blocks, inputs,
         weights='imagenet', classes=1000,
-        shared_frac=None, name=None, # subsample=True,
+        shared_frac=None, name=None,
         shared_frac_blocks=None):
     """Instantiates the DenseNet architecture.
     Optionally loads weights pre-trained on ImageNet.
     # Arguments
         blocks: numbers of building blocks for the four dense layers.
-        include_top: whether to include the fully-connected
-            layer at the top of the network.
+        inputs: Tensorflow tensor
         weights: one of `None` (random initialization),
               'imagenet' (pre-training on ImageNet),
               or the path to the weights file to be loaded.
-        input_tensor: optional Keras tensor
-            (i.e. output of `Input()`)
-            to use as image input for the model
         classes: optional number of classes to classify images
             into, only to be specified if `include_top` is True, and
-            if no `weights` argument is specified."""
+            if no `weights` argument is specified.
+        shared_frac: default shared fraction
+        shared_frac_blocks: individual block shared fraction"""
 
     # Create model
     # assert isinstance(inputs, Tensor) or type(inputs) in [list, tuple]
@@ -100,20 +98,13 @@ def DenseNet4(blocks, inputs,
 
     img_input = Input(inputs)
 
-    # if subsample:
     x = ZeroPadding2D(img_input, padding=(3, 3))
     x = Conv2D(x, 64, 7, strides=2, use_bias=False, name='conv1/conv',
-            # shared=shared_frac)
             shared=shared_frac_blocks[0])
     x = BatchNormalization(x, epsilon=1.001e-5, name='conv1/bn')
     x = Activation(x, 'relu', name='conv1/relu')
     x = ZeroPadding2D(x, padding=(1, 1))
     x = MaxPooling2D(x, 3, strides=2, name='pool1')
-    # else:
-    #     x = ZeroPadding2D(img_input, padding=(1, 1))
-    #     x = Conv2D(x, 64, 3, use_bias=False, name='conv1/conv',
-    #             # shared=shared_frac)
-    #             shared=shared_frac_blocks[0])
 
     x = dense_block(x, blocks[0], name='conv2', shared=shared_frac_blocks[0])
     x = transition_block(x, 0.5, name='pool2', shared=shared_frac_blocks[0])
@@ -128,9 +119,6 @@ def DenseNet4(blocks, inputs,
 
     with tf.variable_scope('top'):
         x = GlobalAveragePooling2D(x, name='avg_pool')
-        # x = Dense(x, 1024, shared=shared_frac)
-        # x = BatchNormalization(x)
-        # x = Activation(x, 'relu')
         x = Dense(x, classes, name='output', merge=True)
 
     if type(inputs) is list:
@@ -151,7 +139,7 @@ def DenseNet4(blocks, inputs,
 def DenseNet121(inputs, classes,
         weights=None, shared_frac=None,
         name=None, subsample=True, shared_frac_blocks=None):
-    return DenseNet4([6, 12, 24, 16], inputs, weights, classes,
+    return DenseNetImageNet([6, 12, 24, 16], inputs, weights, classes,
         shared_frac, name, shared_frac_blocks)
 
 # def DenseNet169(inputs, classes, weights=None, shared_frac=None, name=None):
@@ -160,14 +148,12 @@ def DenseNet121(inputs, classes,
 # def DenseNet201(inputs, classes, weights=None, shared_frac=None, name=None):
 #     return DenseNet([6, 12, 48, 32], inputs, weights, classes, shared_frac, name)
 
-def DenseNet3(depth, growth_rate, inputs,
+def DenseNet(depth, growth_rate, inputs,
         classes=10, shared_frac=None, name=None,
         shared_frac_blocks=None):
     """Instantiates the DenseNet architecture for Cifar10 with BC.
     # Arguments
-        input_tensor: optional Keras tensor
-            (i.e. output of `Input()`)
-            to use as image input for the model
+        inputs: TensorFlow tensor
         classes: optional number of classes to classify images
             into, only to be specified if `include_top` is True, and
             if no `weights` argument is specified."""
@@ -187,7 +173,7 @@ def DenseNet3(depth, growth_rate, inputs,
     n_layers = (depth - 4) // 6
 
     img_input = Input(inputs)
-
+    
     x = ZeroPadding2D(img_input, padding=(1, 1))
     x = Conv2D(x, growth_rate*2, 3, use_bias=False, name='conv1/conv',
             shared=shared_frac_blocks[0])
@@ -197,8 +183,6 @@ def DenseNet3(depth, growth_rate, inputs,
     x = dense_block(x, n_layers, 'conv3', shared_frac_blocks[1], growth_rate)
     x = transition_block(x, 0.5, 'pool3', shared_frac_blocks[1])
     x = dense_block(x, n_layers, 'conv4', shared_frac_blocks[2], growth_rate)
-    # x = transition_block(x, 0.5, 'pool4', shared_frac_blocks[1])
-    # x = dense_block(x, n_layers, 'conv5', shared_frac_blocks[2], growth_rate)
 
     x = BatchNormalization(x, epsilon=1.001e-5, name='bn')
     x = Activation(x, 'relu', name='relu')
